@@ -1,0 +1,2850 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>fylo — LAN Share</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+        :root[data-theme="light"] {
+            --bg: #f5f6fa;
+            --sidebar-bg: rgba(255, 255, 255, 0.45);
+            --card-bg: rgba(255, 255, 255, 0.75);
+            --text: #2f3542;
+            --text-light: #747d8c;
+            --border: rgba(255, 255, 255, 0.5);
+            --accent: #5f27cd;
+            --accent-hover: #341f97;
+            --accent-bg: rgba(95, 39, 205, 0.1);
+
+            --mint: rgba(46, 213, 115, 0.08);
+            --mint-border: rgba(46, 213, 115, 0.3);
+            --peach: rgba(255, 127, 80, 0.08);
+            --peach-border: rgba(255, 127, 80, 0.3);
+            --sky: rgba(116, 185, 255, 0.1);
+            --sky-border: rgba(116, 185, 255, 0.3);
+            --lavender: rgba(162, 155, 254, 0.1);
+            --lavender-border: rgba(162, 155, 254, 0.3);
+            --danger: rgba(255, 76, 76, 0.1);
+            --danger-text: #ff4757;
+            --save-green: #2ed573;
+            --save-green-hover: #26af5f;
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+            --inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+            --blob-1: rgba(0, 0, 0, 0.05);
+            --blob-2: rgba(255, 255, 255, 0.6);
+            --blob-3: rgba(0, 0, 0, 0.03);
+            --blob-4: rgba(255, 255, 255, 0.8);
+        }
+
+        :root[data-theme="dark"] {
+            --bg: #090a0f;
+            --sidebar-bg: rgba(15, 18, 28, 0.6);
+            --card-bg: rgba(20, 24, 38, 0.65);
+            --text: #f1f2f6;
+            --text-light: #a4b0be;
+            --border: rgba(255, 255, 255, 0.05);
+            --accent: #00d2d3;
+            --accent-hover: #01a3a4;
+            --accent-bg: rgba(0, 210, 211, 0.12);
+
+            --mint: rgba(46, 213, 115, 0.06);
+            --mint-border: rgba(46, 213, 115, 0.2);
+            --peach: rgba(255, 107, 107, 0.06);
+            --peach-border: rgba(255, 107, 107, 0.2);
+            --sky: rgba(84, 160, 255, 0.06);
+            --sky-border: rgba(84, 160, 255, 0.2);
+            --lavender: rgba(116, 185, 255, 0.06);
+            --lavender-border: rgba(116, 185, 255, 0.2);
+            --danger: rgba(255, 107, 129, 0.08);
+            --danger-text: #ff6b81;
+            --save-green: #2ed573;
+            --save-green-hover: #26af5f;
+            --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35);
+            --inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            --blob-1: rgba(255, 255, 255, 0.02);
+            --blob-2: rgba(0, 0, 0, 0.35);
+            --blob-3: rgba(255, 255, 255, 0.015);
+            --blob-4: rgba(0, 0, 0, 0.25);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: background-color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+                color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+                border-color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+                box-shadow 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        *::-webkit-scrollbar {
+            display: none;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            position: relative;
+            overflow-x: hidden;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Ambient Blobs */
+        .ambient-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+            transform: translate3d(var(--mouse-x, 0px), var(--mouse-y, 0px), 0);
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.45;
+            animation: float 25s infinite alternate ease-in-out;
+        }
+
+        .blob1 {
+            width: 600px;
+            height: 600px;
+            background: var(--blob-1);
+            top: -15%;
+            left: -15%;
+            animation-duration: 30s;
+        }
+
+        .blob2 {
+            width: 700px;
+            height: 700px;
+            background: var(--blob-2);
+            bottom: -15%;
+            right: -15%;
+            animation-duration: 35s;
+        }
+
+        .blob3 {
+            width: 500px;
+            height: 500px;
+            background: var(--blob-3);
+            top: 35%;
+            left: 45%;
+            animation-duration: 25s;
+        }
+
+        .blob4 {
+            width: 450px;
+            height: 450px;
+            background: var(--blob-4);
+            bottom: 25%;
+            left: 5%;
+            animation-duration: 28s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) scale(1) rotate(0deg);
+            }
+
+            50% {
+                transform: translate(80px, -60px) scale(1.15) rotate(180deg);
+            }
+
+            100% {
+                transform: translate(-50px, 40px) scale(0.9) rotate(360deg);
+            }
+        }
+
+        /* Layout Grid */
+        .app-layout {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+            z-index: 1;
+            position: relative;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* Glass Sidebar */
+        sidebar {
+            width: 230px;
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--border);
+            box-shadow: var(--glass-shadow);
+            box-shadow: var(--glass-shadow), var(--inner-shadow);
+            padding: 36px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            flex-shrink: 0;
+            border-radius: 36px;
+        }
+
+        .brand-zone {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 8px;
+        }
+
+        .logo {
+            font-size: 2.2rem;
+            font-weight: 900;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, var(--accent), #ff7675);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding: 4px 24px 4px 4px;
+            line-height: 1.2;
+            display: inline-block;
+        }
+
+        /* Nav List */
+        .nav-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            list-style: none;
+        }
+
+        .nav-item {
+            padding: 16px 24px;
+            border-radius: 22px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(6px);
+        }
+
+        .nav-item.active {
+            background: var(--card-bg);
+            color: var(--accent);
+            box-shadow: var(--glass-shadow), var(--inner-shadow);
+            border-color: var(--border);
+        }
+
+        /* Main Content panels */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            min-width: 0;
+        }
+
+        .view-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .view-panel-hub {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .hub-left {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            min-width: 0;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--border);
+            border-radius: 36px;
+            padding: 24px;
+            box-shadow: var(--glass-shadow), var(--inner-shadow);
+            width: 100%;
+            overflow: hidden;
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+        }
+
+        .panel-header {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .panel-desc {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            margin-bottom: 28px;
+            font-weight: 500;
+        }
+
+        /* Dropzone */
+        #dropzone {
+            border: 2px dashed var(--mint-border);
+            background: var(--mint);
+            border-radius: 28px;
+            padding: 64px 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #dropzone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        #dropzone:hover::before {
+            opacity: 1;
+        }
+
+        #dropzone:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+            box-shadow: 0 12px 30px rgba(0, 210, 211, 0.15);
+        }
+
+        #dropzone.drag-over {
+            border-color: var(--accent);
+            background: var(--lavender);
+            transform: scale(0.98);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .cloud-icon {
+            width: 64px;
+            height: 64px;
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: transform 0.3s ease;
+        }
+
+        #dropzone:hover .cloud-icon {
+            transform: translateY(-6px);
+        }
+
+        /* Clipboard */
+        #clipboard-text {
+            width: 100%;
+            height: 280px;
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid var(--peach-border);
+            background: var(--peach);
+            color: var(--text);
+            font-size: 1.05rem;
+            font-weight: 500;
+            resize: none;
+            outline: none;
+            line-height: 1.6;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        #clipboard-text:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(0, 210, 211, 0.15);
+        }
+
+        /* File List & Cards */
+        .file-list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        @keyframes rowIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .file-row {
+            background: var(--sky);
+            border: 1px solid var(--sky-border);
+            border-radius: 24px;
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            min-width: 0;
+            width: 100%;
+            animation: rowIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+
+        .file-row:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--glass-shadow);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent);
+        }
+
+        :root[data-theme="light"] .file-row:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .file-info-zone {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-grow: 1;
+            min-width: 0;
+            width: 100%;
+        }
+
+        .file-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 0.85rem;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            flex-shrink: 0;
+        }
+
+        .file-details {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex-grow: 1;
+            width: 100%;
+        }
+
+        .file-name {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            min-width: 0;
+            word-break: normal;
+        }
+
+        .file-meta {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 600;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .file-actions button {
+            border: none;
+            border-radius: 14px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-actions button[data-action="download"] {
+            background: var(--save-green);
+            color: white;
+            box-shadow: 0 4px 15px rgba(46, 213, 115, 0.25);
+        }
+
+        .file-actions button[data-action="download"]:hover {
+            background: var(--save-green-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 213, 115, 0.4);
+        }
+
+        .file-actions button[data-action="delete"] {
+            background: var(--danger);
+            color: var(--danger-text);
+        }
+
+        .file-actions button[data-action="delete"]:hover {
+            background: var(--danger-text);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 71, 87, 0.3);
+        }
+
+        .empty-note {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 600;
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        /* Device Pairing List */
+        .device-item {
+            padding: 20px;
+            border-radius: 26px;
+            background: var(--lavender);
+            border: 1px solid var(--lavender-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            list-style: none;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .device-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            min-width: 0;
+            flex-grow: 1;
+        }
+
+        .device-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-light);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .device-dot.online {
+            background: #2ed573;
+        }
+
+        .device-dot.online::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: inherit;
+            border-radius: inherit;
+            animation: pulse 2s infinite;
+            opacity: 0.45;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.45;
+            }
+
+            100% {
+                transform: scale(2.8);
+                opacity: 0;
+            }
+        }
+
+        .device-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            min-width: 0;
+        }
+
+        .kick-btn {
+            background: var(--danger);
+            color: var(--danger-text);
+            border: none;
+            padding: 10px 16px;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: all 0.25s ease;
+            flex-shrink: 0;
+        }
+
+        .kick-btn:hover {
+            background: var(--danger-text);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Buttons & QR */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 18px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.95rem;
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--glass-shadow);
+            background: var(--bg);
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            color: white;
+            border: none;
+            box-shadow: 0 6px 20px rgba(0, 210, 211, 0.25);
+        }
+
+        .btn-accent:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 8px 25px rgba(0, 210, 211, 0.4);
+        }
+
+        #qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 24px 0;
+            width: 100%;
+        }
+
+        #qr-img {
+            width: 200px;
+            height: 200px;
+            background: white;
+            padding: 12px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            max-width: 100%;
+            height: auto;
+        }
+
+        #lan-url {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 6px;
+            word-break: break-all;
+            text-align: center;
+            width: 100%;
+        }
+
+        #sidebar-qr-shelf {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            width: 100%;
+        }
+
+        #sidebar-qrcode svg {
+            width: 100% !important;
+            height: auto !important;
+            max-width: 140px;
+            display: block;
+            background: white;
+            padding: 8px;
+            border-radius: 16px;
+        }
+
+        #sidebar-url {
+            font-size: 0.75rem;
+            font-family: monospace;
+            word-break: break-all;
+            text-align: center;
+            color: var(--text-light);
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+
+        /* Toast Alert */
+        .fylo-toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            background: var(--accent);
+            color: #ffffff;
+            padding: 18px 32px;
+            border-radius: 22px;
+            box-shadow: 0 20px 45px rgba(0, 210, 211, 0.25);
+            z-index: 99999;
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            animation: toastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes toastIn {
+            from {
+                transform: translateY(80px) scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Kicked Screen */
+        #kicked-screen {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            text-align: center;
+            padding: 32px;
+        }
+
+        #kicked-screen h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        /* Responsive overrides */
+        @media(max-width: 990px) {
+            .view-panel-hub {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media(max-width: 860px) {
+            body {
+                flex-direction: column;
+            }
+
+            .app-layout {
+                flex-direction: column;
+                padding: 16px;
+                gap: 16px;
+                width: 100%;
+                max-width: 100vw;
+            }
+
+            sidebar {
+                width: 100%;
+                padding: 24px;
+                gap: 24px;
+                border-radius: 28px;
+            }
+
+            .nav-list {
+                flex-direction: row;
+                overflow-x: auto;
+                padding-bottom: 4px;
+                gap: 8px;
+                -webkit-overflow-scrolling: touch;
+                width: 100%;
+            }
+
+            .nav-item {
+                padding: 12px 18px;
+                font-size: 0.95rem;
+                white-space: nowrap;
+            }
+
+            .nav-item:hover {
+                transform: none;
+            }
+
+            .main-content {
+                padding: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .card {
+                padding: 24px;
+                border-radius: 28px;
+                width: 100%;
+            }
+
+            .file-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 16px;
+                padding: 18px;
+                width: 100%;
+            }
+
+            .file-info-zone {
+                width: 100%;
+                display: flex;
+                min-width: 0;
+            }
+
+            .file-actions {
+                justify-content: flex-end;
+                width: 100%;
+            }
+
+            #sidebar-qr-shelf {
+                display: none !important;
+            }
+        }
+
+        /* Player Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 24px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-container {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+        }
+
+        .modal-content-area {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+            min-height: 200px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            padding: 16px;
+            width: 100%;
+        }
+
+        .modal-content-area img,
+        .modal-content-area video {
+            max-width: 100%;
+            max-height: 60vh;
+            border-radius: 12px;
+        }
+
+        .modal-content-area audio {
+            width: 100%;
+        }
+
+        .text-viewer {
+            width: 100%;
+            height: 100%;
+            min-height: 300px;
+            max-height: 50vh;
+            background: transparent;
+            color: var(--text);
+            border: none;
+            font-family: monospace;
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+        }
+
+        .downloaded-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: #2ecc71;
+            font-weight: 800;
+            font-size: 0.8rem;
+            background: rgba(46, 204, 113, 0.12);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+
+        .file-name.downloaded {
+            cursor: pointer;
+            text-decoration: underline;
+            color: var(--accent);
+        }
+
+        /* Active Spring Actions */
+        .btn:active,
+        .nav-item:active,
+        .kick-btn:active {
+            transform: scale(0.95) !important;
+            transition: transform 0.1s ease !important;
+        }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            flex-shrink: 0;
+        }
+
+        .nav-item:hover svg {
+            transform: scale(1.15) rotate(-5deg);
+        }
+
+        .nav-item.active svg {
+            stroke: var(--accent);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient-wrapper">
+        <canvas id="canvas-bg"
+            style="position: absolute; top:0; left:0; width:100%; height:100%; z-index:2; pointer-events:none;"></canvas>
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+        <div class="blob blob3"></div>
+        <div class="blob blob4"></div>
+    </div>
+
+    <div id="kicked-screen" class="hidden">
+        <h1>Access Removed</h1>
+        <p>You have been disconnected from Fylo by the host.</p>
+    </div>
+
+    <div id="app" class="app-layout">
+        <sidebar>
+            <div class="brand-zone">
+                <div class="logo">fylo</div>
+                <button class="btn" id="theme-toggle"
+                    style="padding: 10px; border-radius: 14px; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex-shrink: 0;">
+                    <svg id="theme-icon" viewBox="0 0 24 24"
+                        style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+            </div>
+            <ul class="nav-list">
+                <li class="nav-item active" data-target="view-hub">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="18" cy="5" r="3" />
+                        <circle cx="6" cy="12" r="3" />
+                        <circle cx="18" cy="19" r="3" />
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                    </svg>
+                    <span>Share Hub</span>
+                </li>
+                <li class="nav-item" data-target="view-devices">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="4" y="4" width="16" height="12" rx="2" />
+                        <path d="M12 16v4M8 20h8" />
+                    </svg>
+                    <span>Devices (<span id="device-count">0</span>)</span>
+                </li>
+                <li class="nav-item" data-target="view-connect">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.59 16.11a6 6 0 0 1 6.82 0M12 20h.01" />
+                    </svg>
+                    <span>Connect</span>
+                </li>
+                <li class="nav-item" data-target="view-settings">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Settings</span>
+                </li>
+            </ul>
+            <div class="sidebar-qr-container hidden" id="sidebar-qr-shelf">
+                <div id="sidebar-qrcode"></div>
+                <div id="sidebar-url"></div>
+            </div>
+        </sidebar>
+
+        <main class="main-content">
+            <div id="view-hub" class="view-panel view-panel-hub">
+                <div class="hub-left">
+                    <div class="card">
+                        <div id="dropzone">
+                            <svg class="cloud-icon" viewBox="0 0 24 24">
+                                <path d="M12 5v14M5 12h14" />
+                            </svg>
+                            <p style="font-weight: 800; font-size: 1.1rem; color: var(--text);">Queue files for sharing
+                            </p>
+                            <p style="font-size: 0.85rem; color: var(--text-light); font-weight: 700;">or click to <span
+                                    id="browse-btn"
+                                    style="text-decoration: underline; color: var(--accent); font-weight: 800;">browse</span>
+                            </p>
+                            <input type="file" id="file-input" multiple>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="panel-header">
+                            <span>📦 Available Files (<span id="file-count">0</span>)</span>
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn btn-accent hidden" id="save-all-btn"
+                                    style="padding: 6px 14px; border-radius: 12px; font-size:0.85rem;">Save All
+                                    Assets</button>
+                                <button class="btn hidden" id="clear-all-btn"
+                                    style="padding: 6px 14px; border-radius: 12px; font-size:0.85rem; background:var(--danger); color:var(--danger-text); border:none;">Clear
+                                    All</button>
+                            </div>
+                        </div>
+                        <p class="panel-desc">Direct memory-bridged links awaiting activation download</p>
+                        <div class="file-list-container" id="gallery"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="panel-header">📋 Shared Clipboard</div>
+                    <p class="panel-desc" id="clipboard-meta">Text sharing sync block</p>
+                    <textarea id="clipboard-text" placeholder="Type or paste links here..."></textarea>
+                    <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 12px;">
+                        <button class="btn" id="clipboard-clear"
+                            style="background: var(--danger); color: var(--danger-text);">Clear</button>
+                        <button class="btn btn-accent" id="clipboard-copy">📋 Copy to Device</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-devices" class="view-panel hidden">
+                <div class="card">
+                    <div class="panel-header">👥 Connected Devices</div>
+                    <p class="panel-desc">Active instances detected on local LAN subnet</p>
+                    <ul id="device-list" style="padding: 0;"></ul>
+
+                    <div id="blocked-wrap" class="hidden"
+                        style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px;">
+                        <button class="btn" id="blocked-toggle"
+                            style="width: 100%; justify-content: center; border-radius: 16px;">Show Blocked
+                            Devices</button>
+                        <ul id="blocked-list" class="hidden" style="margin-top: 12px; padding: 0;"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-connect" class="view-panel hidden">
+                <div class="card" style="text-align: center;">
+                    <div class="panel-header" style="justify-content: center;">📱 Pair Device</div>
+                    <p class="panel-desc">Scan from target smartphone or terminal grid asset</p>
+                    <div id="qr-container">
+                        <img id="qr-img" alt="QR Code">
+                        <p id="lan-url"></p>
+                        <p id="network-type"
+                            style="font-size: 0.85rem; font-weight: 700; color: var(--text-light); margin-top: -4px; margin-bottom: 12px;">
+                        </p>
+
+                        <div id="network-select-container" class="hidden"
+                            style="margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                            <label for="network-select"
+                                style="font-size: 0.8rem; font-weight: 700; color: var(--text-light);">Server Interface
+                                Address:</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <select id="network-select"
+                                    style="padding: 8px 12px; border-radius: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); font-weight: 600; font-size: 0.85rem; outline: none; cursor: pointer; max-width: 250px;"></select>
+                                <button class="btn" id="network-refresh-btn"
+                                    style="padding: 8px 12px; border-radius: 12px; font-size: 0.8rem; margin: 0; min-height: unset; gap: 4px;">↻
+                                    Reload</button>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-accent" id="copy-url">Copy Link</button>
+                        <button class="btn hidden" id="open-hotspot-btn"
+                            style="margin-top: 8px; padding: 10px 20px; border-radius: 14px; font-size: 0.85rem; gap: 6px;">
+                            🔥 Open Hotspot Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-settings" class="view-panel hidden">
+                <div class="card">
+                    <div class="panel-header">⚙️ Application Settings</div>
+                    <p class="panel-desc">Configure local display profile and storage settings</p>
+
+                    <div style="margin-top: 8px; margin-bottom: 20px;">
+                        <h4 style="font-size: 1rem; margin-bottom: 6px; color: var(--text);">Device / Client Display
+                            Name</h4>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <input type="text" id="settings-client-name"
+                                placeholder="Enter your display name (e.g. My Phone)..."
+                                style="background: rgba(0,0,0,0.05); color: var(--text); border: 1px solid var(--border); padding: 12px 16px; border-radius: 14px; font-weight: 600; font-size: 0.9rem; flex-grow: 1; outline: none; transition: border-color 0.2s;">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 20px;">
+                        <h4 style="font-size: 1rem; margin-bottom: 6px; color: var(--text);">Default Download Directory
+                        </h4>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <span id="folder-path-display"
+                                style="background: rgba(0,0,0,0.15); padding: 12px 16px; border-radius: 14px; font-family: monospace; font-size: 0.85rem; flex-grow: 1; border: 1px solid var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading
+                                path configurations...</span>
+                            <button class="btn" id="change-folder-btn">Browse</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px;">
+                        <h4 style="font-size: 1rem; margin-bottom: 6px; color: var(--text);">Clipboard Auto-Sync</h4>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+                            <span style="font-size: 0.85rem; color: var(--text-light);">Automatically sync native
+                                clipboard content in background (requires browser permission on mobile)</span>
+                            <input type="checkbox" id="settings-clipboard-sync" checked
+                                style="width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Media Player Modal -->
+    <div id="player-modal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title" id="player-title">File Player</div>
+                <button class="modal-close" id="player-close">&times;</button>
+            </div>
+            <div class="modal-content-area" id="player-content">
+                <!-- Dynamic Player Content goes here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const $ = (sel) => document.querySelector(sel);
+
+        const isElectron = (typeof require !== 'undefined');
+        const ipcRenderer = isElectron ? require('electron').ipcRenderer : null;
+
+        let isHost = false;
+        let clipboardDirty = false;
+        let clipboardSaveTimer = null;
+
+        let memoryRegistry = new Map();
+        let processingStreamIds = new Set();
+        let activeTransfersCount = 0;
+        let downloadStartTimes = {};
+        let completedTransferTimes = {};
+        let downloadAbortControllers = {};
+        let activeWebRTCCancels = {};
+        let lastFilesJSON = '';
+        let lastLabelUpdateTimes = {};
+        let cancelledTransfers = new Set();
+
+        // Simple IndexedDB Helpers for Offline Phone Storage
+        const dbName = "fylo-db";
+        const storeName = "downloads";
+
+        function getDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, 1);
+                request.onupgradeneeded = (e) => {
+                    e.target.result.createObjectStore(storeName);
+                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function saveBlobLocal(id, blob) {
+            try {
+                const db = await getDB();
+                const tx = db.transaction(storeName, "readwrite");
+                tx.objectStore(storeName).put(blob, id);
+                localStorage.setItem(`fylo-downloaded-${id}`, 'true');
+                loadFiles();
+            } catch (e) {
+                console.error("IndexedDB save error:", e);
+            }
+        }
+
+        async function getBlobLocal(id) {
+            try {
+                const db = await getDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction(storeName, "readonly");
+                    const req = tx.objectStore(storeName).get(id);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function deleteBlobLocal(id) {
+            try {
+                const db = await getDB();
+                const tx = db.transaction(storeName, "readwrite");
+                tx.objectStore(storeName).delete(id);
+                localStorage.removeItem(`fylo-downloaded-${id}`);
+                loadFiles();
+            } catch (e) { }
+        }
+
+        // Electron File Blob Reader
+        async function getElectronFileBlob(filePath) {
+            try {
+                const fs = require('fs');
+                const data = fs.readFileSync(filePath);
+                return new Blob([data]);
+            } catch (e) {
+                console.error("Failed to read local file:", e);
+                return null;
+            }
+        }
+
+        // Play/Preview Downloaded File inside Modal
+        async function playDownloadedFile(fileId, fileName, ext) {
+            try {
+                let blob = null;
+                if (isElectron) {
+                    const localPath = localStorage.getItem(`fylo-path-${fileId}`);
+                    if (localPath) {
+                        const { shell } = require('electron');
+                        shell.openPath(localPath);
+                        return;
+                    }
+                } else {
+                    blob = await getBlobLocal(fileId);
+                }
+
+                if (!blob) {
+                    alert("File data could not be found locally. Please re-download.");
+                    return;
+                }
+
+                const modal = $('#player-modal');
+                const title = $('#player-title');
+                const content = $('#player-content');
+
+                title.textContent = fileName;
+                content.innerHTML = '';
+
+                const objectUrl = URL.createObjectURL(blob);
+
+                const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
+                const videoExts = ['mp4', 'webm', 'ogg', 'mov'];
+                const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'flac'];
+                const textExts = ['txt', 'js', 'json', 'html', 'css', 'md', 'py', 'java', 'c', 'cpp'];
+
+                if (imageExts.includes(ext)) {
+                    const img = document.createElement('img');
+                    img.src = objectUrl;
+                    content.appendChild(img);
+                } else if (videoExts.includes(ext)) {
+                    const video = document.createElement('video');
+                    video.src = objectUrl;
+                    video.controls = true;
+                    video.autoplay = true;
+                    content.appendChild(video);
+                } else if (audioExts.includes(ext)) {
+                    const audio = document.createElement('audio');
+                    audio.src = objectUrl;
+                    audio.controls = true;
+                    audio.autoplay = true;
+                    content.appendChild(audio);
+                } else if (textExts.includes(ext) || ext === '') {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const textarea = document.createElement('textarea');
+                        textarea.className = 'text-viewer';
+                        textarea.value = e.target.result;
+                        textarea.readOnly = true;
+                        content.appendChild(textarea);
+                    };
+                    reader.readAsText(blob);
+                } else if (ext === 'pdf') {
+                    const iframe = document.createElement('iframe');
+                    iframe.src = objectUrl;
+                    iframe.style.width = '100%';
+                    iframe.style.height = '60vh';
+                    iframe.style.border = 'none';
+                    content.appendChild(iframe);
+                } else {
+                    const link = document.createElement('a');
+                    link.href = objectUrl;
+                    link.download = fileName;
+                    link.textContent = "Preview unsupported. Click here to open file.";
+                    link.className = "btn btn-accent";
+                    content.appendChild(link);
+                }
+
+                modal.classList.add('active');
+
+                const closeBtn = $('#player-close');
+                const onClose = () => {
+                    modal.classList.remove('active');
+                    content.innerHTML = '';
+                    URL.revokeObjectURL(objectUrl);
+                    closeBtn.removeEventListener('click', onClose);
+                };
+                closeBtn.addEventListener('click', onClose);
+            } catch (err) {
+                alert("Player Playback Error: " + err.message + "\nStack: " + err.stack);
+            }
+        }
+
+        // Delete Local Download
+        async function deleteDownloadedFile(fileId) {
+            if (isElectron) {
+                const localPath = localStorage.getItem(`fylo-path-${fileId}`);
+                if (localPath) {
+                    try {
+                        const fs = require('fs');
+                        if (fs.existsSync(localPath)) {
+                            fs.unlinkSync(localPath);
+                        }
+                    } catch (e) {
+                        console.error("Failed to delete local physical file:", e);
+                    }
+                    localStorage.removeItem(`fylo-path-${fileId}`);
+                }
+            } else {
+                await deleteBlobLocal(fileId);
+            }
+            localStorage.removeItem(`fylo-downloaded-${fileId}`);
+            loadFiles();
+        }
+
+        // Cancel Mid-Download Transfer
+        function cancelActiveDownload(fileId) {
+            cancelledTransfers.add(fileId);
+            triggerNotificationAlert("🛑 Cancelling download...");
+
+            // 1. Electron Cancellation
+            if (isElectron && ipcRenderer) {
+                ipcRenderer.send('cancel-download', fileId);
+            }
+
+            // 2. Fetch Stream Cancellation
+            if (downloadAbortControllers[fileId]) {
+                try {
+                    downloadAbortControllers[fileId].abort();
+                } catch (e) { }
+                delete downloadAbortControllers[fileId];
+            }
+
+            // 3. WebRTC Cancellation
+            if (activeWebRTCCancels[fileId]) {
+                try {
+                    activeWebRTCCancels[fileId]();
+                } catch (e) { }
+                delete activeWebRTCCancels[fileId];
+            }
+
+            hideProgressBar(fileId);
+            activeTransfersCount = Math.max(0, activeTransfersCount - 1);
+            delete downloadStartTimes[fileId];
+
+            // Strip ETA suffix text immediately
+            const metaEl = document.querySelector(`#file-row-${fileId} .file-meta`);
+            if (metaEl) {
+                metaEl.textContent = metaEl.textContent.split(' (')[0];
+            }
+
+            // Re-render UI to clean up
+            setTimeout(loadFiles, 400);
+        }
+
+        let sessionId = localStorage.getItem('fylo-session-id');
+        if (!sessionId) {
+            sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+            localStorage.setItem('fylo-session-id', sessionId);
+        }
+
+        const FILE_COLORS = ['#FF8FA3', '#57D9B4', '#A991FF', '#57C4F2', '#FFC24B'];
+        function colorFor(name) {
+            let hash = 0;
+            const str = name || '';
+            for (let i = 0; i < str.length; i++) {
+                hash = (hash * 31 + str.charCodeAt(i)) % FILE_COLORS.length;
+            }
+            return FILE_COLORS[Math.abs(hash) % FILE_COLORS.length];
+        }
+
+        const moonIconPath = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+        const sunIconPath = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+
+        function initTheme() {
+            const saved = localStorage.getItem('fylo-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', saved);
+            const icon = $('#theme-icon');
+            if (icon) {
+                icon.innerHTML = saved === 'dark' ? sunIconPath : moonIconPath;
+            }
+        }
+        $('#theme-toggle').addEventListener('click', () => {
+            const cur = document.documentElement.getAttribute('data-theme');
+            const next = cur === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('fylo-theme', next);
+            const icon = $('#theme-icon');
+            if (icon) {
+                icon.innerHTML = next === 'dark' ? sunIconPath : moonIconPath;
+            }
+        });
+        initTheme();
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
+                item.classList.add('active');
+                $(`#${item.getAttribute('data-target')}`).classList.remove('hidden');
+            });
+        });
+
+        function showKicked() {
+            $('#kicked-screen').classList.remove('hidden');
+            $('#app').classList.add('hidden');
+        }
+
+        function triggerNotificationAlert(message) {
+            // Disabled per user request (no annoying purple toasts)
+        }
+
+        async function apiFetch(url, opts = {}) {
+            opts.headers = opts.headers || {};
+            opts.headers['x-session-id'] = sessionId;
+            const customName = localStorage.getItem('fylo-client-name');
+            if (customName) {
+                opts.headers['x-client-name'] = encodeURIComponent(customName.trim());
+            }
+            const res = await fetch(url, opts);
+            if (res.status === 403) {
+                let body = {};
+                try { body = await res.json(); } catch { }
+                if (body.error === 'kicked') { showKicked(); throw new Error('kicked'); }
+            }
+            return res;
+        }
+
+        async function loadNetworkInfo() {
+            try {
+                const qrRes = await apiFetch('/api/qrcode');
+                const svg = await qrRes.text();
+                $('#qr-img').src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+
+                const shelfQr = $('#sidebar-qrcode');
+                if (shelfQr) shelfQr.innerHTML = svg;
+
+                const info = await (await apiFetch('/api/network-url')).json();
+                $('#lan-url').textContent = info.url;
+
+                const netTypeEl = $('#network-type');
+                if (netTypeEl && info.networkName) {
+                    netTypeEl.textContent = `Live on ${info.networkName}`;
+                }
+
+                const shelfUrl = $('#sidebar-url');
+                if (shelfUrl) {
+                    shelfUrl.textContent = info.networkName ? `${info.url} (${info.networkName})` : info.url;
+                }
+            } catch (e) { }
+        }
+
+        $('#copy-url').addEventListener('click', () => {
+            navigator.clipboard.writeText($('#lan-url').textContent);
+            $('#copy-url').textContent = 'copied!';
+            setTimeout(() => ($('#copy-url').textContent = 'Copy Link'), 1200);
+        });
+
+        async function loadMe() {
+            try {
+                const me = await (await apiFetch('/api/me')).json();
+                isHost = me.isHost;
+                const shelf = $('#sidebar-qr-shelf');
+                if (shelf) {
+                    if (!isHost) {
+                        shelf.classList.add('hidden');
+                    } else {
+                        shelf.classList.remove('hidden');
+                    }
+                }
+
+                const netSelectContainer = $('#network-select-container');
+                if (netSelectContainer) {
+                    if (!isHost) {
+                        netSelectContainer.classList.add('hidden');
+                    } else {
+                        netSelectContainer.classList.remove('hidden');
+                        await loadNetworkInterfaces();
+                    }
+                }
+
+                const hotspotBtn = $('#open-hotspot-btn');
+                if (hotspotBtn) {
+                    if (isHost && isElectron) {
+                        hotspotBtn.classList.remove('hidden');
+                    } else {
+                        hotspotBtn.classList.add('hidden');
+                    }
+                }
+            } catch (e) { }
+        }
+
+        const hotspotBtn = $('#open-hotspot-btn');
+        if (hotspotBtn) {
+            hotspotBtn.addEventListener('click', async () => {
+                try {
+                    const { shell } = require('electron');
+                    shell.openExternal('ms-settings:network-mobilehotspot');
+                    hotspotBtn.textContent = '⏳ Waiting for hotspot...';
+                    setTimeout(async () => {
+                        await loadNetworkInterfaces();
+                        await loadNetworkInfo();
+                        hotspotBtn.textContent = '🔥 Open Hotspot Settings';
+                    }, 5000);
+                } catch (e) { }
+            });
+        }
+
+        async function loadNetworkInterfaces() {
+            if (!isHost) return;
+            try {
+                const res = await apiFetch('/api/network-interfaces');
+                const data = await res.json();
+                const select = $('#network-select');
+                if (select) {
+                    select.innerHTML = '';
+                    for (const item of data.interfaces) {
+                        const opt = document.createElement('option');
+                        opt.value = item.address;
+                        opt.textContent = `${item.name} (${item.address})`;
+                        if (item.address === data.selectedIp) {
+                            opt.selected = true;
+                        }
+                        select.appendChild(opt);
+                    }
+                }
+            } catch (e) { }
+        }
+
+        const selectEl = $('#network-select');
+        if (selectEl) {
+            selectEl.addEventListener('change', async (e) => {
+                try {
+                    await apiFetch('/api/select-interface', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ip: e.target.value })
+                    });
+                    await loadNetworkInfo();
+                } catch (err) { }
+            });
+        }
+
+        const refreshBtn = $('#network-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.textContent = '...';
+                await loadNetworkInterfaces();
+                await loadNetworkInfo();
+                refreshBtn.textContent = '↻ Reload';
+            });
+        }
+
+        function iconLabel(ext) {
+            const map = { pdf: 'PDF', doc: 'DOC', docx: 'DOC', zip: 'ZIP', rar: 'RAR', mp4: 'VID', mov: 'VID', mp3: 'AUD', wav: 'AUD', png: 'IMG', jpg: 'IMG', jpeg: 'IMG', gif: 'IMG', apk: 'APK', txt: 'TXT' };
+            const look = ext || '';
+            return map[look] || (look ? look.toUpperCase().slice(0, 3) : 'FILE');
+        }
+
+        function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+        async function loadFiles() {
+            if (activeTransfersCount > 0) return;
+            try {
+                const res = await apiFetch('/api/files');
+                const text = await res.text();
+
+                // Construct a state payload that captures the files list and local download checkbox states
+                const filesList = JSON.parse(text);
+                const localStates = {};
+                for (const f of filesList) {
+                    localStates[f.id] = localStorage.getItem(`fylo-downloaded-${f.id}`) || 'false';
+                    localStates[`path-${f.id}`] = localStorage.getItem(`fylo-path-${f.id}`) || '';
+                    localStates[`time-${f.id}`] = completedTransferTimes[f.id] || '';
+                }
+                const stateCheck = JSON.stringify({ files: filesList, localStates });
+                if (stateCheck === lastFilesJSON) {
+                    return; // Return early, preventing any DOM clearing or box flickering!
+                }
+                lastFilesJSON = stateCheck;
+
+                const files = filesList;
+                const gallery = $('#gallery');
+
+                if (!Array.isArray(files)) return;
+                $('#file-count').textContent = files.length;
+
+                if (files.length > 0) {
+                    $('#save-all-btn').classList.remove('hidden');
+                    $('#clear-all-btn').classList.remove('hidden');
+                } else {
+                    $('#save-all-btn').classList.add('hidden');
+                    $('#clear-all-btn').classList.add('hidden');
+                }
+
+                gallery.innerHTML = '';
+                if (files.length === 0) {
+                    gallery.innerHTML = '<p class="empty-note">No shared files discovered yet.</p>';
+                    return;
+                }
+
+                for (const f of files) {
+                    const row = document.createElement('div');
+                    row.className = 'file-row';
+                    row.id = `file-row-${f.id}`;
+                    const timeLabel = completedTransferTimes[f.id] ? ` (${completedTransferTimes[f.id]})` : '';
+                    const isDownloaded = localStorage.getItem(`fylo-downloaded-${f.id}`) === 'true';
+                    const checkmark = isDownloaded ? `<span class="downloaded-badge">✓ Saved</span>` : '';
+                    const nameClass = isDownloaded ? 'file-name downloaded' : 'file-name';
+
+                    row.innerHTML = `
+                         <div class="file-info-zone">
+                             <div class="file-icon" style="background:${colorFor(f.name)}">${iconLabel(f.ext)}</div>
+                             <div class="file-details">
+                                 <div class="${nameClass}" data-action="play" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}${checkmark}</div>
+                                 <div class="file-meta">${f.sizeLabel}${timeLabel}</div>
+                                 <div class="download-progress-container" id="p-container-${f.id}" style="display: none; margin-top: 8px; width: 100%;">
+                                      <div style="background: rgba(0,0,0,0.1); height: 6px; border-radius: 3px; overflow: hidden; border: 1px solid var(--border); width: 100%;">
+                                          <div class="download-progress-bar" id="bar-${f.id}" style="width: 0%; height: 100%; background: var(--accent); transition: width 0.1s ease;"></div>
+                                      </div>
+                                      <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+                                          <button class="btn btn-danger cancel-download-btn" data-id="${f.id}" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 8px; margin: 0; line-height: 1.2;">Cancel</button>
+                                      </div>
+                                  </div>
+                             </div>
+                         </div>
+                         <div class="file-actions">
+                             <button data-action="download">⬇ save</button>
+                             <button data-action="delete" class="danger">🗑</button>
+                         </div>`;
+
+                    const nameEl = row.querySelector('[data-action="play"]');
+                    if (nameEl && isDownloaded) {
+                        nameEl.addEventListener('click', () => {
+                            playDownloadedFile(f.id, f.name, f.ext);
+                        });
+                    }
+
+                    row.querySelector('[data-action="download"]').addEventListener('click', () => {
+                        initializeDownload(f.id, f.name, f.size);
+                    });
+
+                    const cancelBtn = row.querySelector('.cancel-download-btn');
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            cancelActiveDownload(f.id);
+                        });
+                    }
+
+                    row.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+                        let confirmMsg = `Remove shared link for "${f.name}"?`;
+                        if (isDownloaded) {
+                            confirmMsg = `Delete "${f.name}" from local storage and remove shared link?`;
+                        }
+                        if (!confirm(confirmMsg)) return;
+
+                        if (isDownloaded) {
+                            await deleteDownloadedFile(f.id);
+                        }
+
+                        await apiFetch(`/api/files/${encodeURIComponent(f.id)}`, { method: 'DELETE' });
+                        memoryRegistry.delete(f.id);
+                        loadFiles();
+                    });
+
+                    gallery.appendChild(row);
+                }
+            } catch (e) { }
+        }
+
+        $('#save-all-btn').addEventListener('click', async () => {
+            try {
+                const files = await (await apiFetch('/api/files')).json();
+                if (!Array.isArray(files)) return;
+                for (const f of files) {
+                    await initializeDownload(f.id, f.name, f.size);
+                    await new Promise(r => setTimeout(r, 800));
+                }
+            } catch (e) { }
+        });
+
+        $('#clear-all-btn').addEventListener('click', async () => {
+            if (!confirm('Completely clear all registered assets?')) return;
+            await apiFetch('/api/files', { method: 'DELETE' });
+            memoryRegistry.clear();
+            loadFiles();
+            triggerNotificationAlert(`🧹 Cleared all application repository assets`);
+        });
+
+        async function queueFiles(fileList) {
+            if (!fileList || !fileList.length) return;
+
+            let currentFiles = [];
+            try {
+                const res = await apiFetch('/api/files');
+                currentFiles = await res.json();
+            } catch (e) { }
+
+            if (!Array.isArray(currentFiles)) currentFiles = [];
+
+            const newFiles = Array.from(fileList).map(file => {
+                const id = Math.random().toString(36).substring(2) + Date.now().toString(36);
+                if (!isElectron) {
+                    memoryRegistry.set(id, file);
+                } else {
+                    memoryRegistry.set(id, { isLocalPath: true, path: file.path, name: file.name, size: file.size });
+                }
+                return {
+                    id: id,
+                    name: file.name,
+                    size: file.size,
+                    sizeLabel: (file.size / (1024 * 1024)).toFixed(1) + 'MB',
+                    ext: file.name.split('.').pop().toLowerCase(),
+                    path: isElectron ? file.path : null
+                };
+            });
+
+            const manifest = [...currentFiles, ...newFiles];
+
+            try {
+                await apiFetch('/api/register-manifest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: manifest })
+                });
+                triggerNotificationAlert(`✨ Successfully registered ${newFiles.length} file links`);
+            } catch (e) { }
+
+            loadFiles();
+            fileInput.value = '';
+        }
+
+        function updateProgressBar(id, received, total) {
+            const container = document.getElementById(`p-container-${id}`);
+            const bar = document.getElementById(`bar-${id}`);
+            if (container && bar) {
+                container.style.display = 'block';
+                const pct = Math.round((received / total) * 100);
+                bar.style.width = `${pct}%`;
+
+                const startTime = downloadStartTimes[id];
+                if (startTime && received > 0) {
+                    const now = Date.now();
+                    const lastUpdate = lastLabelUpdateTimes[id] || 0;
+
+                    if (now - lastUpdate >= 1000 || received === total) {
+                        lastLabelUpdateTimes[id] = now;
+                        const elapsed = (now - startTime) / 1000;
+                        const metaEl = document.querySelector(`#file-row-${id} .file-meta`);
+                        if (metaEl) {
+                            let baseText = metaEl.textContent.split(' (')[0];
+                            if (elapsed < 0.5) {
+                                metaEl.textContent = `${baseText} (calculating remaining...)`;
+                            } else {
+                                const speed = received / elapsed;
+                                let speedLabel = '';
+                                if (speed > 1024 * 1024) {
+                                    speedLabel = `${(speed / (1024 * 1024)).toFixed(1)} MB/s`;
+                                } else if (speed > 1024) {
+                                    speedLabel = `${(speed / 1024).toFixed(1)} KB/s`;
+                                } else {
+                                    speedLabel = `${Math.round(speed)} B/s`;
+                                }
+
+                                const remainingBytes = Math.max(0, total - received);
+                                const remainingSeconds = Math.max(0, Math.round(remainingBytes / speed));
+                                let timeLabel = '';
+                                if (remainingSeconds < 60) {
+                                    timeLabel = `${remainingSeconds}s remaining`;
+                                } else {
+                                    const mins = Math.floor(remainingSeconds / 60);
+                                    const secs = remainingSeconds % 60;
+                                    timeLabel = `${mins}m ${secs}s remaining`;
+                                }
+                                metaEl.textContent = `${baseText} (${speedLabel} · ${timeLabel})`;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function hideProgressBar(id) {
+            const bar = document.getElementById(`bar-${id}`);
+            if (bar) {
+                bar.style.width = '100%';
+                setTimeout(() => {
+                    const container = document.getElementById(`p-container-${id}`);
+                    if (container) container.style.display = 'none';
+                }, 1000);
+            }
+        }
+
+        async function initializeDownload(fileId, fileName, fileSize) {
+            try {
+                cancelledTransfers.delete(fileId);
+                triggerNotificationAlert(`📥 Initializing Download: ${fileName}`);
+                downloadStartTimes[fileId] = Date.now();
+                if (!isElectron) {
+                    const downloadUrl = `/api/download/${encodeURIComponent(fileId)}?x-session-id=${sessionId}&t=${Date.now()}`;
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                    // Mark as downloaded/ticked immediately on mobile click
+                    localStorage.setItem(`fylo-downloaded-${fileId}`, 'true');
+                    loadFiles();
+                } else {
+                    activeTransfersCount++;
+                    const downloadUrl = `${window.location.origin}/api/download/${encodeURIComponent(fileId)}?x-session-id=${sessionId}&t=${Date.now()}`;
+                    ipcRenderer.send('trigger-electron-download', downloadUrl);
+                }
+            } catch (err) {
+                alert("Download Init Error: " + err.message + "\nStack: " + err.stack);
+            }
+        }
+
+        async function tryWebRTCDownload(fileId, fileName, fileSize) {
+            activeTransfersCount++;
+            return new Promise(async (resolve) => {
+                let pc = null;
+                let signalingInterval = null;
+                let timeoutTimer = null;
+                let resolved = false;
+
+                const cleanup = () => {
+                    clearInterval(signalingInterval);
+                    clearTimeout(timeoutTimer);
+                    delete activeWebRTCCancels[fileId];
+                    if (pc) {
+                        try { pc.close(); } catch (e) { }
+                    }
+                };
+
+                const fail = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    cleanup();
+                    activeTransfersCount = Math.max(0, activeTransfersCount - 1);
+                    resolve(false);
+                };
+
+                activeWebRTCCancels[fileId] = () => {
+                    fail();
+                };
+
+                try {
+                    timeoutTimer = setTimeout(() => {
+                        console.log("WebRTC setup timed out.");
+                        triggerNotificationAlert("⚠️ WebRTC connection timed out. Trying standard download...");
+                        fail();
+                    }, 6000);
+
+                    pc = new RTCPeerConnection({
+                        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                    });
+
+                    let receivedChunks = [];
+                    let receivedSize = 0;
+
+                    const dc = pc.createDataChannel("fileTransfer", { ordered: true });
+
+                    dc.onopen = () => {
+                        console.log("WebRTC Data Channel Opened!");
+                        clearTimeout(timeoutTimer);
+                    };
+
+                    dc.onmessage = async (event) => {
+                        if (typeof event.data === 'string') {
+                            try {
+                                const msg = JSON.parse(event.data);
+                                if (msg.type === 'done') {
+                                    resolved = true;
+                                    cleanup();
+
+                                    const blob = new Blob(receivedChunks);
+                                    await saveBlobLocal(fileId, blob);
+
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = fileName;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+
+                                    hideProgressBar(fileId);
+                                    apiFetch(`/api/webrtc/signal/${encodeURIComponent(fileId)}`, { method: 'DELETE' }).catch(() => { });
+                                    activeTransfersCount = Math.max(0, activeTransfersCount - 1);
+                                    const duration = ((Date.now() - (downloadStartTimes[fileId] || Date.now())) / 1000).toFixed(1);
+                                    completedTransferTimes[fileId] = `took ${duration}s`;
+                                    const metaEl = document.querySelector(`#file-row-${fileId} .file-meta`);
+                                    if (metaEl && !metaEl.textContent.includes('took')) {
+                                        metaEl.textContent = `${metaEl.textContent} (took ${duration}s)`;
+                                    }
+                                    delete downloadStartTimes[fileId];
+                                    resolve(true);
+                                }
+                            } catch (e) {
+                                fail();
+                            }
+                        } else {
+                            receivedChunks.push(event.data);
+                            receivedSize += event.data.byteLength;
+                            updateProgressBar(fileId, receivedSize, fileSize);
+                        }
+                    };
+
+                    dc.onerror = () => { fail(); };
+
+                    pc.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            apiFetch(`/api/webrtc/signal/${encodeURIComponent(fileId)}/candidate`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ candidate: event.candidate, role: 'receiver' })
+                            }).catch(() => { });
+                        }
+                    };
+
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+
+                    await apiFetch(`/api/webrtc/signal/${encodeURIComponent(fileId)}/initiate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ offer })
+                    });
+
+                    let addedCandidates = new Set();
+                    signalingInterval = setInterval(async () => {
+                        try {
+                            const ansRes = await apiFetch(`/api/webrtc/signal/${encodeURIComponent(fileId)}/answer`);
+                            const { answer } = await ansRes.json();
+                            if (answer && pc.signalingState !== 'stable') {
+                                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                            }
+
+                            const candRes = await apiFetch(`/api/webrtc/signal/${encodeURIComponent(fileId)}/candidates?role=receiver`);
+                            const { candidates } = await candRes.json();
+                            for (const cand of candidates) {
+                                const candStr = JSON.stringify(cand);
+                                if (!addedCandidates.has(candStr)) {
+                                    addedCandidates.add(candStr);
+                                    await pc.addIceCandidate(new RTCIceCandidate(cand));
+                                }
+                            }
+                        } catch (e) { }
+                    }, 800);
+
+                } catch (err) {
+                    console.error("WebRTC Error:", err);
+                    fail();
+                }
+            });
+        }
+
+        let activeWebRTCSends = new Set();
+
+        async function handleWebRTCSend(fileId) {
+            activeTransfersCount++;
+            let pc = null;
+            let signalingInterval = null;
+            let timeoutTimer = null;
+
+            const cleanup = () => {
+                clearInterval(signalingInterval);
+                clearTimeout(timeoutTimer);
+                activeTransfersCount = Math.max(0, activeTransfersCount - 1);
+            };
+
+            try {
+                const file = memoryRegistry.get(fileId);
+                if (!file) return;
+
+                const offerRes = await apiFetch(`/api/webrtc/signal/${encodeURIComponent(fileId)}/offer`);
+                if (offerRes.status !== 200) return;
+                const { offer } = await offerRes.json();
+
+                pc = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        apiFetch(`/api/webrtc/signal/${encodeURIComponent(fileId)}/candidate`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ candidate: event.candidate, role: 'sender' })
+                        }).catch(() => { });
+                    }
+                };
+
+                pc.ondatachannel = (event) => {
+                    const dc = event.channel;
+                    dc.onopen = () => {
+                        console.log("Sender: WebRTC Data Channel Opened!");
+                        cleanup();
+                        sendFileInChunks(dc, file, fileId);
+                    };
+                };
+
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+
+                await apiFetch(`/api/webrtc/signal/${encodeURIComponent(fileId)}/answer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ answer })
+                });
+
+                let addedCandidates = new Set();
+                signalingInterval = setInterval(async () => {
+                    try {
+                        const candRes = await apiFetch(`/api/webrtc/signal/${encodeURIComponent(fileId)}/candidates?role=sender`);
+                        const { candidates } = await candRes.json();
+                        for (const cand of candidates) {
+                            const candStr = JSON.stringify(cand);
+                            if (!addedCandidates.has(candStr)) {
+                                addedCandidates.add(candStr);
+                                await pc.addIceCandidate(new RTCIceCandidate(cand));
+                            }
+                        }
+                    } catch (e) { }
+                }, 800);
+
+                timeoutTimer = setTimeout(() => {
+                    cleanup();
+                    try { pc.close(); } catch (e) { }
+                }, 10000);
+
+            } catch (err) {
+                console.error("Error setting up WebRTC sender:", err);
+                cleanup();
+                if (pc) {
+                    try { pc.close(); } catch (e) { }
+                }
+            }
+        }
+
+        async function sendFileInChunks(dc, fileInfo, fileId) {
+            const CHUNK_SIZE = 65536; // 64KB chunks for faster throughput
+            let offset = 0;
+            const isLocalPath = fileInfo && fileInfo.isLocalPath;
+            const startTime = Date.now();
+
+            dc.bufferedAmountLowThreshold = 1048576;
+
+            if (isLocalPath) {
+                const fs = require('fs');
+                let fd;
+                try {
+                    fd = fs.openSync(fileInfo.path, 'r');
+                } catch (err) {
+                    console.error("Failed to open local file:", err);
+                    return;
+                }
+
+                const readNextChunk = () => {
+                    if (dc.readyState !== 'open') {
+                        try { fs.closeSync(fd); } catch (e) { }
+                        return;
+                    }
+                    if (offset >= fileInfo.size) {
+                        dc.send(JSON.stringify({ type: 'done' }));
+                        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                        completedTransferTimes[fileId] = `sent in ${duration}s`;
+                        const metaEl = document.querySelector(`#file-row-${fileId} .file-meta`);
+                        if (metaEl && !metaEl.textContent.includes('sent')) {
+                            metaEl.textContent = `${metaEl.textContent} (sent in ${duration}s)`;
+                        }
+                        hideProgressBar(fileId);
+                        try { fs.closeSync(fd); } catch (e) { }
+                        return;
+                    }
+
+                    const buffer = Buffer.alloc(Math.min(CHUNK_SIZE, fileInfo.size - offset));
+                    fs.read(fd, buffer, 0, buffer.length, offset, (err, bytesRead, buf) => {
+                        if (err) {
+                            console.error("Read error:", err);
+                            try { fs.closeSync(fd); } catch (e) { }
+                            return;
+                        }
+                        if (dc.readyState !== 'open') {
+                            try { fs.closeSync(fd); } catch (e) { }
+                            return;
+                        }
+
+                        try {
+                            dc.send(buf.buffer.slice(buf.byteOffset, buf.byteOffset + bytesRead));
+                        } catch (sendErr) {
+                            console.error("Send error:", sendErr);
+                            try { fs.closeSync(fd); } catch (e) { }
+                            return;
+                        }
+
+                        offset += bytesRead;
+                        updateProgressBar(fileId, offset, fileInfo.size);
+
+                        if (dc.bufferedAmount > dc.bufferedAmountLowThreshold) {
+                            dc.onbufferedamountlow = () => {
+                                dc.onbufferedamountlow = null;
+                                readNextChunk();
+                            };
+                        } else {
+                            setTimeout(readNextChunk, 0);
+                        }
+                    });
+                };
+
+                readNextChunk();
+
+            } else {
+                const reader = new FileReader();
+                const readNextChunk = () => {
+                    if (dc.readyState !== 'open') return;
+                    if (offset >= fileInfo.size) {
+                        dc.send(JSON.stringify({ type: 'done' }));
+                        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                        completedTransferTimes[fileId] = `sent in ${duration}s`;
+                        const metaEl = document.querySelector(`#file-row-${fileId} .file-meta`);
+                        if (metaEl && !metaEl.textContent.includes('sent')) {
+                            metaEl.textContent = `${metaEl.textContent} (sent in ${duration}s)`;
+                        }
+                        hideProgressBar(fileId);
+                        return;
+                    }
+                    const slice = fileInfo.slice(offset, offset + CHUNK_SIZE);
+                    reader.readAsArrayBuffer(slice);
+                };
+
+                reader.onload = (e) => {
+                    if (dc.readyState !== 'open') return;
+                    const buffer = e.target.result;
+                    try {
+                        dc.send(buffer);
+                    } catch (err) {
+                        console.error("Data channel send error:", err);
+                        return;
+                    }
+                    offset += buffer.byteLength;
+                    updateProgressBar(fileId, offset, fileInfo.size);
+
+                    if (dc.bufferedAmount > dc.bufferedAmountLowThreshold) {
+                        dc.onbufferedamountlow = () => {
+                            dc.onbufferedamountlow = null;
+                            readNextChunk();
+                        };
+                    } else {
+                        setTimeout(readNextChunk, 0);
+                    }
+                };
+
+                readNextChunk();
+            }
+        }
+
+        async function checkStreamRequests() {
+            try {
+                const res = await apiFetch('/api/poll-streams');
+                const { requestedIds, webrtcPending } = await res.json();
+
+                if (Array.isArray(requestedIds)) {
+                    for (const id of requestedIds) {
+                        if (memoryRegistry.has(id) && !processingStreamIds.has(id)) {
+                            processingStreamIds.add(id);
+                            const file = memoryRegistry.get(id);
+
+                            apiFetch(`/api/stream-ingress/${id}`, {
+                                method: 'POST',
+                                body: file
+                            }).then(() => {
+                                processingStreamIds.delete(id);
+                            }).catch(() => {
+                                processingStreamIds.delete(id);
+                            });
+                        }
+                    }
+                }
+
+                if (Array.isArray(webrtcPending)) {
+                    for (const id of webrtcPending) {
+                        if (memoryRegistry.has(id) && !activeWebRTCSends.has(id)) {
+                            activeWebRTCSends.add(id);
+                            handleWebRTCSend(id).finally(() => {
+                                activeWebRTCSends.delete(id);
+                            });
+                        }
+                    }
+                }
+            } catch (e) { }
+        }
+
+        const dropzone = $('#dropzone');
+        const fileInput = $('#file-input');
+        $('#browse-btn').addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+            queueFiles(fileInput.files);
+        });
+
+        ['dragenter', 'dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropzone.classList.add('drag-over');
+        }));
+        ['dragleave', 'drop'].forEach(evt => dropzone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+        }));
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+            if (e.dataTransfer && e.dataTransfer.files) queueFiles(e.dataTransfer.files);
+        });
+
+        const clipboardEl = $('#clipboard-text');
+
+        async function loadClipboard() {
+            try {
+                const data = await (await apiFetch('/api/clipboard')).json();
+                if (!clipboardDirty && data.text !== clipboardEl.value) {
+                    clipboardEl.value = data.text;
+                    if (isElectron) {
+                        try {
+                            const { clipboard } = require('electron');
+                            if (data.text !== clipboard.readText()) {
+                                clipboard.writeText(data.text);
+                            }
+                        } catch (e) { }
+                    } else {
+                        if (document.hasFocus() && navigator.clipboard && navigator.clipboard.writeText) {
+                            try {
+                                await navigator.clipboard.writeText(data.text);
+                            } catch (e) { }
+                        }
+                    }
+                }
+                $('#clipboard-meta').textContent = data.updatedBy ? `Last edited by ${data.updatedBy}` : 'Text sharing sync block';
+            } catch (e) { }
+        }
+
+        async function tryAutoReadClipboard() {
+            if (isElectron) return;
+            try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    const text = await navigator.clipboard.readText();
+                    if (text && text !== clipboardEl.value) {
+                        clipboardEl.value = text;
+                        await apiFetch('/api/clipboard', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text })
+                        });
+                        loadClipboard();
+                    }
+                }
+            } catch (e) {
+                console.warn("Auto-read clipboard failed:", e);
+            }
+        }
+
+        window.addEventListener('focus', tryAutoReadClipboard);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                tryAutoReadClipboard();
+            }
+        });
+
+        clipboardEl.addEventListener('input', () => {
+            clipboardDirty = true;
+            clearTimeout(clipboardSaveTimer);
+            clipboardSaveTimer = setTimeout(async () => {
+                try {
+                    await apiFetch('/api/clipboard', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: clipboardEl.value })
+                    });
+                    clipboardDirty = false;
+                    loadClipboard();
+                } catch (e) { }
+            }, 500);
+        });
+
+        $('#clipboard-clear').addEventListener('click', async () => {
+            clipboardEl.value = '';
+            try {
+                await apiFetch('/api/clipboard', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: '' })
+                });
+                loadClipboard();
+                triggerNotificationAlert('🧹 Clipboard Cleared');
+            } catch (e) { }
+        });
+
+        $('#clipboard-copy').addEventListener('click', () => {
+            const text = clipboardEl.value;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    handleCopySuccess();
+                }).catch(() => {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        });
+
+        function fallbackCopy(text) {
+            const tmp = document.createElement('textarea');
+            tmp.value = text;
+            tmp.setAttribute('readonly', '');
+            tmp.style.position = 'absolute';
+            tmp.style.left = '-9999px';
+            document.body.appendChild(tmp);
+            tmp.select();
+            try {
+                document.execCommand('copy');
+                handleCopySuccess();
+            } catch (err) {
+                alert('Please manually select text to copy on this connection.');
+            }
+            document.body.removeChild(tmp);
+        }
+
+        function handleCopySuccess() {
+            $('#clipboard-copy').textContent = 'copied!';
+            setTimeout(() => { $('#clipboard-copy').textContent = '📋 Copy to Device'; }, 1200);
+        }
+
+        async function loadDevices() {
+            try {
+                const data = await (await apiFetch('/api/devices')).json();
+                if (!data || !Array.isArray(data.devices)) return;
+
+                $('#device-count').textContent = data.devices.filter(d => d.online).length;
+
+                const list = $('#device-list');
+                list.innerHTML = '';
+                for (const d of data.devices) {
+                    const li = document.createElement('li');
+                    li.className = 'device-item';
+                    li.innerHTML = `
+                        <div class="device-meta">
+                            <span class="device-dot ${d.online ? 'online' : ''}"></span>
+                            <span class="device-title">${escapeHtml(d.name)}${d.isSelf ? ' (you)' : ''}${d.isHost ? ' · host' : ''}</span>
+                        </div>
+                        ${(!d.isSelf && !d.isHost) ? `<button class="kick-btn" data-id="${d.id}">kick</button>` : ''}
+                    `;
+                    const kickBtn = li.querySelector('.kick-btn');
+                    if (kickBtn) {
+                        kickBtn.addEventListener('click', async () => {
+                            await apiFetch(`/api/devices/${encodeURIComponent(d.id)}/kick`, { method: 'POST' });
+                            loadDevices();
+                        });
+                    }
+                    list.appendChild(li);
+                }
+
+                const blockedWrap = $('#blocked-wrap');
+                const blockedList = $('#blocked-list');
+                if (Array.isArray(data.blocked) && data.blocked.length > 0) {
+                    blockedWrap.classList.remove('hidden');
+                    blockedList.innerHTML = '';
+                    for (const b of data.blocked) {
+                        const li = document.createElement('li');
+                        li.className = 'device-item';
+                        li.innerHTML = `
+                            <div class="device-meta">
+                                <span class="device-dot"></span>
+                                <span class="device-title">${escapeHtml(b.name)}</span>
+                            </div>
+                            <button class="kick-btn" data-id="${b.id}">unblock</button>
+                        `;
+                        li.querySelector('.kick-btn').addEventListener('click', async () => {
+                            await apiFetch(`/api/devices/${encodeURIComponent(b.id)}/unblock`, { method: 'POST' });
+                            loadDevices();
+                        });
+                        blockedList.appendChild(li);
+                    }
+                } else {
+                    blockedWrap.classList.add('hidden');
+                }
+            } catch (e) { }
+        }
+
+        const blockedToggle = $('#blocked-toggle');
+        if (blockedToggle) {
+            blockedToggle.addEventListener('click', () => {
+                const list = $('#blocked-list');
+                const nowHidden = list.classList.toggle('hidden');
+                blockedToggle.textContent = nowHidden ? 'Show Blocked Devices' : 'Hide Blocked Devices';
+            });
+        }
+
+        async function initSettingsFolder() {
+            if (ipcRenderer) {
+                const currentFolder = await ipcRenderer.invoke('get-folder');
+                const display = $('#folder-path-display');
+                if (display) display.textContent = currentFolder;
+            } else {
+                const btn = $('#change-folder-btn');
+                if (btn) btn.parentElement.innerHTML = "<em>Managed by System Browser</em>";
+            }
+        }
+
+        function initSettingsClipboardSync() {
+            const toggle = $('#settings-clipboard-sync');
+            if (toggle) {
+                const saved = localStorage.getItem('fylo-clipboard-sync-enabled') !== 'false';
+                toggle.checked = saved;
+                toggle.addEventListener('change', () => {
+                    localStorage.setItem('fylo-clipboard-sync-enabled', toggle.checked);
+                    if (ipcRenderer) {
+                        ipcRenderer.send('toggle-clipboard-sync', toggle.checked);
+                    }
+                });
+                if (ipcRenderer) {
+                    ipcRenderer.send('toggle-clipboard-sync', saved);
+                }
+            }
+        }
+
+        function initSettingsClientName() {
+            const input = $('#settings-client-name');
+            if (input) {
+                const savedName = localStorage.getItem('fylo-client-name') || '';
+                input.value = savedName;
+                input.addEventListener('change', () => {
+                    const val = input.value.trim();
+                    if (val) {
+                        localStorage.setItem('fylo-client-name', val);
+                        input.style.borderColor = 'var(--save-green)';
+                        setTimeout(() => { input.style.borderColor = 'var(--border)'; }, 1000);
+                    } else {
+                        localStorage.removeItem('fylo-client-name');
+                    }
+                    apiFetch('/api/me').catch(() => { });
+                });
+            }
+        }
+
+        if ($('#change-folder-btn')) {
+            $('#change-folder-btn').addEventListener('click', async () => {
+                if (ipcRenderer) {
+                    const newFolder = await ipcRenderer.invoke('select-folder');
+                    const display = $('#folder-path-display');
+                    if (display) display.textContent = newFolder;
+                }
+            });
+        }
+
+        if (ipcRenderer) {
+            ipcRenderer.on('download-progress', (event, data) => {
+                if (cancelledTransfers.has(data.id)) return;
+                if (!downloadStartTimes[data.id]) {
+                    downloadStartTimes[data.id] = Date.now();
+                }
+                updateProgressBar(data.id, data.received, data.total);
+            });
+            ipcRenderer.on('download-done', (event, data) => {
+                hideProgressBar(data.id);
+                activeTransfersCount = Math.max(0, activeTransfersCount - 1);
+                const startTime = downloadStartTimes[data.id];
+                if (startTime) {
+                    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                    if (data.success) {
+                        completedTransferTimes[data.id] = `took ${duration}s`;
+                        const metaEl = document.querySelector(`#file-row-${data.id} .file-meta`);
+                        if (metaEl && !metaEl.textContent.includes('took')) {
+                            metaEl.textContent = `${metaEl.textContent} (took ${duration}s)`;
+                        }
+                    }
+                    delete downloadStartTimes[data.id];
+                }
+                if (data.success && data.savePath) {
+                    localStorage.setItem(`fylo-downloaded-${data.id}`, 'true');
+                    localStorage.setItem(`fylo-path-${data.id}`, data.savePath);
+                    loadFiles();
+                    triggerNotificationAlert(`Download Successfully Completed!`);
+                } else {
+                    const metaEl = document.querySelector(`#file-row-${data.id} .file-meta`);
+                    if (metaEl) {
+                        metaEl.textContent = metaEl.textContent.split(' (')[0];
+                    }
+                    setTimeout(loadFiles, 400);
+                    triggerNotificationAlert(`🛑 Download Cancelled`);
+                }
+                cancelledTransfers.delete(data.id);
+            });
+        }
+
+        async function init() {
+            if (isElectron) {
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && (key.startsWith('fylo-downloaded-') || key.startsWith('fylo-path-'))) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            }
+            try {
+                await loadMe();
+                await loadNetworkInfo();
+                await loadFiles();
+                await loadDevices();
+                await loadClipboard();
+                await initSettingsFolder();
+                initSettingsClipboardSync();
+                initSettingsClientName();
+            } catch (e) {
+                if (e.message === 'kicked') return;
+                console.error(e);
+            }
+
+            setInterval(loadFiles, 4000);
+            setInterval(loadDevices, 5000);
+            setInterval(loadClipboard, 4000);
+            setInterval(checkStreamRequests, 1500);
+        }
+
+        // Interactive magnetized canvas particles grid
+        const canvas = document.getElementById('canvas-bg');
+        const ctx = canvas.getContext('2d');
+        let points = [];
+        const spacing = 45;
+        let mouse = { x: -1000, y: -1000 };
+        let lastMousePos = { x: 0, y: 0 };
+        let mouseSpeed = 0;
+        let ripples = [];
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            initPoints();
+        }
+
+        function initPoints() {
+            points = [];
+            const rows = Math.ceil(canvas.height / spacing) + 1;
+            const cols = Math.ceil(canvas.width / spacing) + 1;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const rand = Math.random();
+                    const colorStr = rand < 0.6 ? '255, 255, 255' : (rand < 0.8 ? '255, 143, 177' : '116, 185, 255');
+                    points.push({
+                        baseX: c * spacing,
+                        baseY: r * spacing,
+                        x: c * spacing,
+                        y: r * spacing,
+                        driftX: (Math.random() - 0.5) * 8,
+                        driftY: (Math.random() - 0.5) * 8,
+                        colorStr: colorStr
+                    });
+                }
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        window.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const currX = e.clientX - rect.left;
+            const currY = e.clientY - rect.top;
+
+            const dx = currX - lastMousePos.x;
+            const dy = currY - lastMousePos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            mouseSpeed = mouseSpeed * 0.7 + dist * 0.3;
+
+            lastMousePos.x = currX;
+            lastMousePos.y = currY;
+            mouse.x = currX;
+            mouse.y = currY;
+
+            const px = (e.clientX / window.innerWidth - 0.5) * 45;
+            const py = (e.clientY / window.innerHeight - 0.5) * 45;
+            document.documentElement.style.setProperty('--mouse-x', `${px}px`);
+            document.documentElement.style.setProperty('--mouse-y', `${py}px`);
+
+            // Generate concentric ripple trigger
+            const lastR = ripples[ripples.length - 1];
+            const distMoved = lastR ? Math.sqrt(Math.pow(mouse.x - lastR.originX, 2) + Math.pow(mouse.y - lastR.originY, 2)) : 999;
+            if (distMoved > 25) {
+                ripples.push({
+                    originX: mouse.x,
+                    originY: mouse.y,
+                    x: mouse.x,
+                    y: mouse.y,
+                    radius: 10,
+                    maxRadius: 200,
+                    speed: 5.5,
+                    opacity: 1
+                });
+            }
+        });
+
+        window.addEventListener('mouseleave', () => {
+            mouse.x = -1000;
+            mouse.y = -1000;
+            mouseSpeed = 0;
+        });
+
+        function animateBg() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update active ripple wave fronts
+            ripples = ripples.filter(r => {
+                r.radius += r.speed;
+                r.opacity = 1 - (r.radius / r.maxRadius);
+                return r.radius < r.maxRadius;
+            });
+
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+            for (const p of points) {
+                let scale = 1;
+                let pushX = 0;
+                let pushY = 0;
+                let onWave = false;
+
+                // Check impact of all passing ripples
+                for (const r of ripples) {
+                    const dx = p.baseX - r.originX;
+                    const dy = p.baseY - r.originY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    const waveDiff = Math.abs(dist - r.radius);
+                    const waveWidth = 40; // Wave impact boundary width
+                    if (waveDiff < waveWidth) {
+                        onWave = true;
+                        const force = (waveWidth - waveDiff) / waveWidth; // Peak at 1.0, 0.0 at edges
+                        const intensity = force * r.opacity;
+                        
+                        // Push outward
+                        if (dist > 0) {
+                            pushX += (dx / dist) * intensity * 15;
+                            pushY += (dy / dist) * intensity * 15;
+                        }
+                        scale += intensity * 0.55;
+                    }
+                }
+
+                // Magnet attraction pulls closest dots slightly to cursor
+                const mdx = mouse.x - p.baseX;
+                const mdy = mouse.y - p.baseY;
+                const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+                if (mdist < 150) {
+                    const mforce = (150 - mdist) / 150;
+                    pushX += (mdx / mdist) * mforce * 8;
+                    pushY += (mdy / mdist) * mforce * 8;
+                    scale += mforce * 0.15;
+                }
+
+                let dotColor = isDark ? `rgba(${p.colorStr}, 0.12)` : 'rgba(0, 0, 0, 0.15)';
+                let waveColor = isDark ? `rgba(${p.colorStr}, 0.8)` : 'rgba(0, 0, 0, 0.75)';
+
+                if (isDark) {
+                    // Firefly drift / floating effect
+                    p.driftX = (p.driftX || 0) + (Math.random() - 0.5) * 0.1;
+                    p.driftY = (p.driftY || 0) + (Math.random() - 0.5) * 0.1;
+                    p.driftX = Math.max(-12, Math.min(12, p.driftX));
+                    p.driftY = Math.max(-12, Math.min(12, p.driftY));
+
+                    if (mdist < 220) {
+                        const proximity = (220 - mdist) / 220; // 0.0 to 1.0
+                        scale += proximity * 1.6; // Scale up size dynamically based on distance
+                        const alpha = 0.12 + proximity * 0.78;
+                        dotColor = `rgba(${p.colorStr}, ${alpha})`;
+                    } else {
+                        // Natural firefly glimmering
+                        const glimmer = Math.sin((Date.now() / 400) + (p.baseX * 0.015) + (p.baseY * 0.015)) * 0.06 + 0.14;
+                        dotColor = `rgba(${p.colorStr}, ${glimmer})`;
+                    }
+                }
+
+                // Springy ease to calculated coordinate offset
+                const targetX = p.baseX + pushX + (isDark ? p.driftX : 0);
+                const targetY = p.baseY + pushY + (isDark ? p.driftY : 0);
+                p.x += (targetX - p.x) * 0.15;
+                p.y += (targetY - p.y) * 0.15;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, (isDark ? 1.4 : 1.5) * scale, 0, Math.PI * 2);
+                ctx.fillStyle = onWave ? waveColor : dotColor;
+                ctx.fill();
+            }
+
+            requestAnimationFrame(animateBg);
+        }
+
+        animateBg();
+
+        init();
+    </script>
+</body>
+
+</html>
