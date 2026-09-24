@@ -4,7 +4,9 @@ const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const qrcode = require('qrcode');
-const { app: electronApp, BrowserWindow, ipcMain, dialog, clipboard } = require('electron');
+const archiver = require('archiver');
+const http = require('http');
+const { app: electronApp, BrowserWindow, ipcMain, dialog, clipboard, shell } = require('electron');
 
 const app = express();
 const PORT = 3000;
@@ -21,6 +23,16 @@ try {
     secretToken = crypto.randomBytes(16).toString('hex');
 }
 
+let adminPassword = "fylo";
+const adminPassPath = path.join(os.homedir(), '.fylo-admin');
+try {
+    if (fs.existsSync(adminPassPath)) {
+        adminPassword = fs.readFileSync(adminPassPath, 'utf8').trim();
+    } else {
+        fs.writeFileSync(adminPassPath, adminPassword, 'utf8');
+    }
+} catch (e) {}
+
 app.use(express.json());
 
 let clipboardText = "";
@@ -28,6 +40,7 @@ let clipboardUpdatedBy = "";
 let maxFileSizeMB = 500;
 let devices = {};
 let blockedDevices = {};
+let mobileDevices = {};
 let fileRegistry = [];
 let pendingDownloads = {};
 let streamRequests = new Set();
@@ -217,6 +230,16 @@ app.get('/api/network-url', (req, res) => {
     res.json({ url: getSecureAccessUrl(), networkName });
 });
 
+app.get('/api/connection-info', (req, res) => {
+    res.json({
+        hostIp: getActiveIp(),
+        port: PORT,
+        auth: secretToken,
+        networkName: getNetworkName(getActiveIp()),
+        version: '4.0.0'
+    });
+});
+
 app.get('/api/network-interfaces', (req, res) => {
     const interfaces = os.networkInterfaces();
     const list = [];
@@ -265,6 +288,65 @@ app.post('/api/register-manifest', (req, res) => {
         return f;
     });
     res.json({ success: true });
+});
+
+// Register a folder for sharing (Electron host only)
+app.post('/api/register-folder', (req, res) => {
+    const { folderPath } = req.body;
+    if (!folderPath) return res.status(400).json({ error: 'Missing folderPath' });
+
+    try {
+        if (!fs.existsSync(folderPath) || !fs.statSync(folderPath).isDirectory()) {
+            return res.status(400).json({ error: 'Path is not a valid directory' });
+        }
+
+        // Walk directory recursively to count files and total size
+        let totalSize = 0;
+        let fileCount = 0;
+        function walkDir(dir) {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    walkDir(fullPath);
+                } else if (entry.isFile()) {
+                    try {
+                        totalSize += fs.statSync(fullPath).size;
+                        fileCount++;
+                    } catch (e) { /* skip inaccessible files */ }
+                }
+            }
+        }
+        walkDir(folderPath);
+
+        const folderName = path.basename(folderPath);
+        const id = crypto.randomBytes(8).toString('hex') + Date.now().toString(36);
+
+        let sizeLabel;
+        if (totalSize >= 1024 * 1024 * 1024) {
+            sizeLabel = (totalSize / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
+        } else {
+            sizeLabel = (totalSize / (1024 * 1024)).toFixed(1) + 'MB';
+        }
+
+        const folderEntry = {
+            id: id,
+            name: folderName,
+            size: totalSize,
+            sizeLabel: sizeLabel,
+            ext: 'folder',
+            type: 'folder',
+            path: folderPath,
+            fileCount: fileCount,
+            ownerSessionId: req.sessionId || 'host'
+        };
+
+        fileRegistry.push(folderEntry);
+        res.json({ success: true, entry: folderEntry });
+    } catch (e) {
+        console.error('Folder registration error:', e);
+        res.status(500).json({ error: 'Failed to register folder' });
+    }
 });
 
 app.get('/api/files', (req, res) => {
@@ -386,15 +468,81 @@ app.get('/api/download/:id', (req, res) => {
         return res.status(404).send('Resource metadata not registered.');
     }
 
+    if (req.socket) {
+        req.socket.setTimeout(0);
+        req.socket.setKeepAlive(true, 10000);
+        req.socket.setNoDelay(true);
+    }
+
+    // Handle folder downloads — zip on-the-fly
+    if (meta.type === 'folder' && meta.path) {
+        try {
+            if (!fs.existsSync(meta.path) || !fs.statSync(meta.path).isDirectory()) {
+                return res.status(404).send('Folder no longer exists on disk.');
+            }
+
+            const zipName = meta.name + '.zip';
+            res.setHeader('Content-Type', 'application/zip');
+            res.setHeader('Content-Disposition', `attachment; filename="${zipName}"; filename*=UTF-8''${encodeURIComponent(zipName)}`);
+            res.setHeader('Cache-Control', 'no-cache, no-transform');
+
+            const archive = archiver('zip', { zlib: { level: 5 } });
+
+            archive.on('error', (err) => {
+                console.error('Archive error:', err);
+                if (!res.headersSent) {
+                    res.status(500).send('Zip creation failed.');
+                }
+            });
+
+            archive.pipe(res);
+            archive.directory(meta.path, meta.name);
+            archive.finalize();
+            return;
+        } catch (e) {
+            console.error('Folder zip stream error:', e);
+            return res.status(500).send('Failed to stream folder as zip.');
+        }
+    }
+
     if (meta.path) {
         try {
             if (fs.existsSync(meta.path)) {
-                res.setHeader('Content-Type', 'application/octet-stream');
-                res.setHeader('Content-Length', meta.size);
-                res.setHeader('Content-Disposition', `attachment; filename="${meta.name}"; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
-                const readStream = fs.createReadStream(meta.path);
-                readStream.pipe(res);
-                return;
+                const stat = fs.statSync(meta.path);
+                const fileSize = stat.size;
+                const range = req.headers.range;
+
+                res.setHeader('Accept-Ranges', 'bytes');
+                res.setHeader('Cache-Control', 'no-cache, no-transform');
+
+                if (range) {
+                    const parts = range.replace(/bytes=/, "").split("-");
+                    const start = parseInt(parts[0], 10);
+                    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+                    if (start >= fileSize || end >= fileSize || start > end) {
+                        res.setHeader('Content-Range', `bytes */${fileSize}`);
+                        return res.status(416).send('Requested Range Not Satisfiable');
+                    }
+
+                    const chunksize = (end - start) + 1;
+                    res.status(206);
+                    res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+                    res.setHeader('Content-Length', chunksize);
+                    res.setHeader('Content-Type', 'application/octet-stream');
+                    res.setHeader('Content-Disposition', `attachment; filename="${meta.name}"; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
+
+                    const readStream = fs.createReadStream(meta.path, { start, end });
+                    readStream.pipe(res);
+                    return;
+                } else {
+                    res.setHeader('Content-Type', 'application/octet-stream');
+                    res.setHeader('Content-Length', fileSize);
+                    res.setHeader('Content-Disposition', `attachment; filename="${meta.name}"; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
+                    const readStream = fs.createReadStream(meta.path);
+                    readStream.pipe(res);
+                    return;
+                }
             }
         } catch (e) {
             console.error("Local disk stream error:", e);
@@ -535,11 +683,558 @@ app.patch('/api/settings', (req, res) => {
     res.json({ maxFileSizeMB });
 });
 
+// ==========================================
+// Fylo v4: Mobile Device Manager & Proxy Endpoints
+// ==========================================
+
+// Register mobile device on QR scan handshake
+app.post('/api/mobile/connect', (req, res) => {
+    const { deviceId, deviceName, model, ip, port, authToken, readOnly, storage, battery } = req.body;
+
+    if (authToken !== secretToken) {
+        return res.status(403).json({ error: 'Invalid authentication token' });
+    }
+
+    if (!deviceId || !ip || !port) {
+        return res.status(400).json({ error: 'Missing device information' });
+    }
+
+    mobileDevices[deviceId] = {
+        id: deviceId,
+        name: deviceName || 'Android Phone',
+        model: model || 'Android Device',
+        ip: ip,
+        port: port,
+        readOnly: readOnly !== undefined ? readOnly : true,
+        storage: storage || { total: 0, free: 0 },
+        battery: battery !== undefined ? battery : null,
+        lastActive: Date.now()
+    };
+
+    console.log(`[Fylo v4] Mobile connected: ${deviceName} (${ip}:${port}), Read-Only: ${readOnly}`);
+    res.json({ success: true, message: 'Paired with Fylo PC', hostIp: getActiveIp() });
+});
+
+// Get connected mobile devices
+app.get('/api/mobile/devices', (req, res) => {
+    const now = Date.now();
+    const list = Object.values(mobileDevices).map(d => ({
+        id: d.id,
+        name: d.name,
+        model: d.model,
+        ip: d.ip,
+        port: d.port,
+        readOnly: d.readOnly,
+        storage: d.storage,
+        battery: d.battery,
+        online: (now - d.lastActive) < 30000
+    }));
+    res.json(list);
+});
+
+// Mobile heartbeat
+app.post('/api/mobile/heartbeat', (req, res) => {
+    const { deviceId, battery, storage, readOnly } = req.body;
+    if (deviceId && mobileDevices[deviceId]) {
+        mobileDevices[deviceId].lastActive = Date.now();
+        if (battery !== undefined) mobileDevices[deviceId].battery = battery;
+        if (storage) mobileDevices[deviceId].storage = storage;
+        if (readOnly !== undefined) mobileDevices[deviceId].readOnly = readOnly;
+        return res.json({ success: true });
+    }
+    res.status(404).json({ error: 'Device not found' });
+});
+
+// Disconnect mobile device
+app.post('/api/mobile/disconnect', (req, res) => {
+    const { deviceId } = req.body;
+    if (deviceId && mobileDevices[deviceId]) {
+        delete mobileDevices[deviceId];
+    }
+    res.json({ success: true });
+});
+
+// Proxy directory listing from mobile
+app.get('/api/mobile/fs/list', (req, res) => {
+    const { deviceId, path: dirPath } = req.query;
+    const device = mobileDevices[deviceId];
+    if (!device) {
+        return res.status(404).json({ error: 'Mobile device not connected' });
+    }
+
+    device.lastActive = Date.now();
+    const targetUrl = `http://${device.ip}:${device.port}/api/fs/list?path=${encodeURIComponent(dirPath || '')}&auth=${secretToken}`;
+
+    const request = http.get(targetUrl, (remoteRes) => {
+        let data = '';
+        remoteRes.on('data', chunk => data += chunk);
+        remoteRes.on('end', () => {
+            try {
+                const parsed = JSON.parse(data);
+                res.status(remoteRes.statusCode).json(parsed);
+            } catch (err) {
+                res.status(502).json({ error: 'Invalid response from mobile device' });
+            }
+        });
+    });
+
+    request.on('error', (err) => {
+        console.error('Mobile fs/list proxy error:', err.message);
+        res.status(502).json({ error: 'Unable to reach mobile device. Verify phone is connected to the same network.' });
+    });
+
+    request.setTimeout(12000, () => {
+        request.destroy();
+        if (!res.headersSent) res.status(504).json({ error: 'Mobile device request timed out.' });
+    });
+});
+
+// Proxy file stream from mobile (with Range support)
+app.get('/api/mobile/fs/file', (req, res) => {
+    const { deviceId, path: filePath, download } = req.query;
+    const device = mobileDevices[deviceId];
+    if (!device) {
+        return res.status(404).send('Mobile device not connected');
+    }
+
+    device.lastActive = Date.now();
+    const fileName = path.basename(filePath || 'file');
+    const targetUrl = `http://${device.ip}:${device.port}/api/fs/file?path=${encodeURIComponent(filePath)}&auth=${secretToken}`;
+
+    const headers = {};
+    if (req.headers.range) {
+        headers['range'] = req.headers.range;
+    }
+
+    const request = http.get(targetUrl, { headers }, (remoteRes) => {
+        res.status(remoteRes.statusCode);
+
+        ['content-type', 'content-length', 'content-range', 'accept-ranges'].forEach(h => {
+            if (remoteRes.headers[h]) {
+                res.setHeader(h, remoteRes.headers[h]);
+            }
+        });
+
+        if (download === '1') {
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+        } else if (remoteRes.headers['content-disposition']) {
+            res.setHeader('Content-Disposition', remoteRes.headers['content-disposition']);
+        }
+
+        remoteRes.pipe(res);
+    });
+
+    request.on('error', (err) => {
+        console.error('Mobile fs/file proxy error:', err.message);
+        if (!res.headersSent) {
+            res.status(502).send('Error streaming file from mobile device.');
+        }
+    });
+
+    req.on('close', () => {
+        request.destroy();
+    });
+});
+
+// Proxy thumbnail from mobile
+app.get('/api/mobile/fs/thumbnail', (req, res) => {
+    const { deviceId, path: filePath } = req.query;
+    const device = mobileDevices[deviceId];
+    if (!device) {
+        return res.status(404).send('Mobile device not connected');
+    }
+
+    const targetUrl = `http://${device.ip}:${device.port}/api/fs/thumbnail?path=${encodeURIComponent(filePath)}&auth=${secretToken}`;
+    const request = http.get(targetUrl, (remoteRes) => {
+        res.status(remoteRes.statusCode);
+        if (remoteRes.headers['content-type']) {
+            res.setHeader('content-type', remoteRes.headers['content-type']);
+        }
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        remoteRes.pipe(res);
+    });
+
+    request.on('error', () => {
+        if (!res.headersSent) res.status(404).end();
+    });
+});
+
+// Direct download from phone into PC download directory (Electron Host feature)
+app.post('/api/mobile/fs/download-direct', (req, res) => {
+    const { deviceId, path: filePath } = req.body;
+    const device = mobileDevices[deviceId];
+    if (!device) {
+        return res.status(404).json({ error: 'Mobile device not connected' });
+    }
+
+    const fileName = path.basename(filePath);
+    const saveDestination = path.join(downloadFolder, fileName);
+    const targetUrl = `http://${device.ip}:${device.port}/api/fs/file?path=${encodeURIComponent(filePath)}&auth=${secretToken}`;
+
+    const fileStream = fs.createWriteStream(saveDestination);
+    const request = http.get(targetUrl, (remoteRes) => {
+        if (remoteRes.statusCode !== 200) {
+            fileStream.close();
+            fs.unlink(saveDestination, () => {});
+            return res.status(remoteRes.statusCode).json({ error: 'Failed to download file from phone' });
+        }
+
+        remoteRes.pipe(fileStream);
+
+        fileStream.on('finish', () => {
+            fileStream.close();
+            res.json({ success: true, savedPath: saveDestination, fileName });
+        });
+    });
+
+    request.on('error', (err) => {
+        fileStream.close();
+        fs.unlink(saveDestination, () => {});
+        res.status(502).json({ error: err.message });
+    });
+});
+
+// Toggle mobile readOnly mode
+app.post('/api/mobile/toggle-readonly', (req, res) => {
+    const { deviceId, readOnly } = req.body;
+    const device = mobileDevices[deviceId];
+    if (!device) {
+        return res.status(404).json({ error: 'Mobile device not connected' });
+    }
+
+    const postData = JSON.stringify({ readOnly: !!readOnly });
+    const reqOptions = {
+        hostname: device.ip,
+        port: device.port,
+        path: `/api/set-readonly?auth=${secretToken}`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    };
+
+    const request = http.request(reqOptions, (remoteRes) => {
+        device.readOnly = !!readOnly;
+        res.json({ success: true, readOnly: device.readOnly });
+    });
+
+    request.on('error', (err) => {
+        res.status(502).json({ error: 'Could not contact mobile to toggle permission: ' + err.message });
+    });
+
+    request.write(postData);
+    request.end();
+});// ==========================================
+// Fylo v4: PC File Explorer Endpoints (for Mobile Companion & Host)
+// ==========================================
+
+function getWindowsDrives() {
+    const drives = [];
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    for (const letter of letters) {
+        const root = `${letter}:\\`;
+        try {
+            if (fs.existsSync(root)) {
+                drives.push({ name: `Local Disk (${letter}:)`, path: root });
+            }
+        } catch (e) {}
+    }
+    return drives;
+}
+
+function getQuickAccessShortcuts() {
+    const home = os.homedir();
+    const candidates = [
+        { name: 'Downloads', paths: [path.join(home, 'Downloads')], icon: 'download' },
+        { name: 'Pictures', paths: [path.join(home, 'Pictures'), path.join(home, 'OneDrive', 'Pictures')], icon: 'image' },
+        { name: 'Screenshots', paths: [
+            path.join(home, 'Pictures', 'Screenshots'),
+            path.join(home, 'OneDrive', 'Pictures', 'Screenshots'),
+            path.join(home, 'Screenshots')
+        ], icon: 'camera' },
+        { name: 'Desktop', paths: [path.join(home, 'Desktop'), path.join(home, 'OneDrive', 'Desktop')], icon: 'desktop' },
+        { name: 'Documents', paths: [path.join(home, 'Documents'), path.join(home, 'OneDrive', 'Documents')], icon: 'file' },
+        { name: 'Videos', paths: [path.join(home, 'Videos')], icon: 'video' },
+        { name: 'Music', paths: [path.join(home, 'Music')], icon: 'music' }
+    ];
+
+    const shortcuts = [];
+    for (const item of candidates) {
+        for (const p of item.paths) {
+            try {
+                if (fs.existsSync(p) && fs.statSync(p).isDirectory()) {
+                    shortcuts.push({ name: item.name, path: p, icon: item.icon });
+                    break;
+                }
+            } catch (e) {}
+        }
+    }
+    return shortcuts;
+}
+
+app.get('/api/pc/explorer/quick-access', (req, res) => {
+    res.json({
+        drives: getWindowsDrives(),
+        shortcuts: getQuickAccessShortcuts()
+    });
+});
+
+app.get('/api/pc/explorer/list', (req, res) => {
+    let targetPath = req.query.path;
+    if (!targetPath) {
+        targetPath = path.join(os.homedir(), 'Downloads');
+    }
+
+    try {
+        if (!fs.existsSync(targetPath)) {
+            return res.status(404).json({ error: 'Folder not found' });
+        }
+
+        const stat = fs.statSync(targetPath);
+        if (!stat.isDirectory()) {
+            return res.status(400).json({ error: 'Path is not a directory' });
+        }
+
+        const entries = fs.readdirSync(targetPath, { withFileTypes: true });
+        const items = [];
+
+        for (const entry of entries) {
+            if (entry.name.startsWith('$') || entry.name.startsWith('.')) continue;
+            const fullPath = path.join(targetPath, entry.name);
+            let size = 0;
+            let mtime = 0;
+            try {
+                const s = fs.statSync(fullPath);
+                size = s.size;
+                mtime = s.mtimeMs;
+            } catch (err) {
+                continue;
+            }
+
+            const isDir = entry.isDirectory();
+            const ext = isDir ? '' : path.extname(entry.name).replace('.', '').toLowerCase();
+
+            items.push({
+                name: entry.name,
+                path: fullPath,
+                isDir: isDir,
+                size: isDir ? 0 : size,
+                ext: ext,
+                modified: mtime
+            });
+        }
+
+        items.sort((a, b) => {
+            if (a.isDir && !b.isDir) return -1;
+            if (!a.isDir && b.isDir) return 1;
+            return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        });
+
+        const parent = path.dirname(targetPath);
+        res.json({
+            path: targetPath,
+            parent: (parent && parent !== targetPath) ? parent : '',
+            items: items
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/pc/explorer/file', (req, res) => {
+    const filePath = req.query.path;
+    const download = req.query.download === '1';
+
+    if (!filePath || !fs.existsSync(filePath)) {
+        return res.status(404).send('File not found');
+    }
+
+    try {
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
+            return res.status(400).send('Path is a directory');
+        }
+
+        const fileName = path.basename(filePath);
+        const fileSize = stat.size;
+        const range = req.headers.range;
+
+        res.setHeader('Accept-Ranges', 'bytes');
+        if (download) {
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+        }
+
+        if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+            if (start >= fileSize || end >= fileSize || start > end) {
+                res.setHeader('Content-Range', `bytes */${fileSize}`);
+                return res.status(416).send('Requested Range Not Satisfiable');
+            }
+
+            const chunksize = (end - start) + 1;
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader('Content-Length', chunksize);
+
+            const stream = fs.createReadStream(filePath, { start, end });
+            stream.pipe(res);
+        } else {
+            res.setHeader('Content-Length', fileSize);
+            const stream = fs.createReadStream(filePath);
+            stream.pipe(res);
+        }
+    } catch (e) {
+        res.status(500).send(e.message);
+    }
+});
+
+// Download batch of mobile files (Zip stream or direct Electron save)
+app.post('/api/mobile/fs/download-batch', async (req, res) => {
+    const { deviceId, paths } = req.body;
+    const device = mobileDevices[deviceId];
+    if (!device) {
+        return res.status(404).json({ error: 'Mobile device not connected' });
+    }
+    if (!Array.isArray(paths) || paths.length === 0) {
+        return res.status(400).json({ error: 'No files specified' });
+    }
+
+    const zipName = `fylo-batch-${Date.now().toString(36)}.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+
+    const archive = archiver('zip', { zlib: { level: 5 } });
+    archive.on('error', err => {
+        if (!res.headersSent) res.status(500).send('Zip failed');
+    });
+    archive.pipe(res);
+
+    for (const filePath of paths) {
+        const fileName = path.basename(filePath);
+        const targetUrl = `http://${device.ip}:${device.port}/api/fs/file?path=${encodeURIComponent(filePath)}&auth=${secretToken}`;
+
+        await new Promise((resolve) => {
+            const getReq = http.get(targetUrl, (fileRes) => {
+                if (fileRes.statusCode === 200) {
+                    archive.append(fileRes, { name: fileName });
+                    fileRes.on('end', resolve);
+                    fileRes.on('error', resolve);
+                } else {
+                    resolve();
+                }
+            });
+            getReq.on('error', resolve);
+            getReq.setTimeout(15000, () => {
+                getReq.destroy();
+                resolve();
+            });
+        });
+    }
+
+    archive.finalize();
+});
+
+// Admin Password Verification
+app.post('/api/admin/verify', (req, res) => {
+    const { password } = req.body;
+    if (password && password === adminPassword) {
+        return res.json({ valid: true });
+    }
+    return res.status(401).json({ valid: false, error: 'Incorrect admin password' });
+});
+
+// Change Admin Password
+app.post('/api/admin/change-password', (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (currentPassword !== adminPassword) {
+        return res.status(401).json({ error: 'Current admin password is incorrect' });
+    }
+    if (!newPassword || newPassword.trim().length < 4) {
+        return res.status(400).json({ error: 'Password must be at least 4 characters long' });
+    }
+    adminPassword = newPassword.trim();
+    try {
+        fs.writeFileSync(adminPassPath, adminPassword, 'utf8');
+    } catch (e) {}
+    res.json({ success: true, message: 'Admin password updated successfully' });
+});
+
+// Safely move PC file to Windows Recycle Bin (Requires Admin Password)
+app.post('/api/pc/trash-file', async (req, res) => {
+    const { filePath, adminPassword: pass } = req.body;
+    if (pass !== adminPassword) {
+        return res.status(401).json({ error: 'Admin security password required or incorrect' });
+    }
+    if (!filePath || !fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File or directory not found' });
+    }
+    try {
+        await shell.trashItem(filePath);
+        res.json({ success: true, trashed: true, message: 'File moved to Recycle Bin' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to move item to Recycle Bin: ' + err.message });
+    }
+});
+
+// Safely move Phone file to Mobile .trash Recycle Bin (Requires Admin Password)
+app.post('/api/mobile/fs/trash-file', (req, res) => {
+    const { deviceId, path: filePath, adminPassword: pass } = req.body;
+    if (pass !== adminPassword) {
+        return res.status(401).json({ error: 'Admin security password required or incorrect' });
+    }
+    const device = mobileDevices[deviceId];
+    if (!device) {
+        return res.status(404).json({ error: 'Mobile device not connected' });
+    }
+
+    const postData = JSON.stringify({ path: filePath });
+    const reqOptions = {
+        hostname: device.ip,
+        port: device.port,
+        path: `/api/fs/trash?auth=${secretToken}`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    };
+
+    const request = http.request(reqOptions, (remoteRes) => {
+        let data = '';
+        remoteRes.on('data', chunk => data += chunk);
+        remoteRes.on('end', () => {
+            try {
+                const parsed = JSON.parse(data);
+                res.status(remoteRes.statusCode).json(parsed);
+            } catch (e) {
+                res.status(remoteRes.statusCode).json({ success: remoteRes.statusCode === 200 });
+            }
+        });
+    });
+
+    request.on('error', (err) => {
+        res.status(502).json({ error: 'Could not contact mobile to trash file: ' + err.message });
+    });
+
+    request.write(postData);
+    request.end();
+});
+
+
 setInterval(() => {
     const now = Date.now();
     for (const id in devices) {
         if (now - devices[id].lastActive > 25000) {
             delete devices[id];
+        }
+    }
+    for (const id in mobileDevices) {
+        if (now - mobileDevices[id].lastActive > 35000) {
+            delete mobileDevices[id];
         }
     }
 }, 10000);
@@ -619,6 +1314,34 @@ function createWindow() {
     ipcMain.handle('get-folder', () => {
         return downloadFolder;
     });
+
+    // Select folders to share
+    ipcMain.handle('select-folders-to-share', async () => {
+        const result = await dialog.showOpenDialog(win, {
+            properties: ['openDirectory', 'multiSelections'],
+            title: 'Select Folders to Share'
+        });
+        if (!result.canceled && result.filePaths.length > 0) {
+            return result.filePaths;
+        }
+        return [];
+    });
+
+    ipcMain.handle('show-in-folder', (event, filePath) => {
+        if (filePath && fs.existsSync(filePath)) {
+            shell.showItemInFolder(filePath);
+            return true;
+        }
+        return false;
+    });
+
+    ipcMain.handle('open-path', (event, filePath) => {
+        if (filePath && fs.existsSync(filePath)) {
+            shell.openPath(filePath);
+            return true;
+        }
+        return false;
+    });
 }
 
 electronApp.whenReady().then(() => {
@@ -630,6 +1353,40 @@ electronApp.whenReady().then(() => {
     });
 });
 
+function teardownConnections() {
+    for (const id in mobileDevices) {
+        const device = mobileDevices[id];
+        try {
+            const req = http.request({
+                hostname: device.ip,
+                port: device.port,
+                path: `/api/host-disconnect?auth=${secretToken}`,
+                method: 'POST',
+                timeout: 800
+            });
+            req.on('error', () => {});
+            req.end();
+        } catch (e) {}
+    }
+    mobileDevices = {};
+    devices = {};
+}
+
+electronApp.on('before-quit', () => {
+    teardownConnections();
+});
+
 electronApp.on('window-all-closed', () => {
+    teardownConnections();
     if (process.platform !== 'darwin') electronApp.quit();
+});
+
+process.on('SIGINT', () => {
+    teardownConnections();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    teardownConnections();
+    process.exit(0);
 });

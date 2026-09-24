@@ -1040,6 +1040,1203 @@
         .nav-item.active svg {
             stroke: var(--accent);
         }
+
+        /* Global Drop Overlay */
+        .global-drop-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 99998;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .global-drop-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .global-drop-overlay-inner {
+            border: 3px dashed var(--accent);
+            border-radius: 36px;
+            padding: 64px 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            background: var(--card-bg);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+            animation: dropPulse 1.8s ease-in-out infinite;
+        }
+
+        @keyframes dropPulse {
+            0%, 100% { border-color: var(--accent); transform: scale(1); }
+            50% { border-color: #ff7675; transform: scale(1.02); }
+        }
+
+        .global-drop-overlay-inner svg {
+            width: 64px;
+            height: 64px;
+            stroke: var(--accent);
+            stroke-width: 2.2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .global-drop-overlay-inner p {
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: var(--text);
+        }
+
+        .global-drop-overlay-inner span {
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+
+        /* ==========================================
+           Fylo v4: Windows Explorer & Google Photos Gallery Styles
+           ========================================== */
+        .phone-device-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 18px 24px;
+            box-shadow: var(--glass-shadow);
+            margin-bottom: 18px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .phone-device-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .phone-device-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: var(--accent-bg);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 16px rgba(0, 210, 211, 0.2);
+        }
+
+        .phone-device-avatar svg {
+            width: 26px;
+            height: 26px;
+            stroke-width: 2.2;
+        }
+
+        .phone-device-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .phone-device-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 600;
+            margin-top: 3px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(46, 213, 115, 0.15);
+            color: #2ed573;
+            border: 1px solid rgba(46, 213, 115, 0.3);
+        }
+
+        .phone-readonly-badge {
+            background: rgba(255, 165, 2, 0.12);
+            color: #ffa502;
+            border: 1px solid rgba(255, 165, 2, 0.3);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .phone-quick-access {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 2px 2px 14px 2px;
+            margin-bottom: 16px;
+            scrollbar-width: thin;
+        }
+
+        .quick-chip {
+            padding: 8px 14px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+        }
+
+        .quick-chip:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+            background: var(--accent-bg);
+            color: var(--accent);
+        }
+
+        /* Windows Explorer Header Navigation Bar */
+        .explorer-nav-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 8px 12px;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .explorer-nav-buttons {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .nav-arrow-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .nav-arrow-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .nav-arrow-btn:hover:not(:disabled) {
+            background: var(--accent-bg);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .nav-arrow-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .explorer-address-bar {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 6px 12px;
+            min-width: 200px;
+            overflow-x: auto;
+        }
+
+        .address-icon {
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+        }
+
+        .address-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .phone-breadcrumbs {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-light);
+            white-space: nowrap;
+        }
+
+        .crumb-item {
+            cursor: pointer;
+            color: var(--text-light);
+            transition: color 0.15s;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        .crumb-item:hover {
+            color: var(--accent);
+            background: var(--accent-bg);
+        }
+
+        .crumb-item.active {
+            color: var(--text);
+            cursor: default;
+            font-weight: 800;
+        }
+
+        .crumb-sep {
+            color: var(--text-light);
+            opacity: 0.35;
+        }
+
+        .explorer-tools {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .explorer-search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .explorer-search-box svg {
+            position: absolute;
+            left: 10px;
+            width: 15px;
+            height: 15px;
+            color: var(--text-light);
+            pointer-events: none;
+        }
+
+        .explorer-search-box input {
+            padding: 7px 28px 7px 32px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.82rem;
+            font-weight: 600;
+            outline: none;
+            width: 170px;
+            transition: all 0.2s;
+        }
+
+        .explorer-search-box input:focus {
+            border-color: var(--accent);
+            width: 220px;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .search-clear-btn {
+            position: absolute;
+            right: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-light);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+
+        .view-mode-toggle {
+            display: flex;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 2px;
+            gap: 2px;
+        }
+
+        .view-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .view-btn svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .view-btn.active {
+            background: var(--accent);
+            color: #000;
+        }
+
+        /* Filter Pills & Select All Row */
+        .phone-filters-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .phone-filters {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            overflow-x: auto;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            border-radius: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .filter-btn.active, .filter-btn:hover {
+            background: var(--accent-bg);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* Phone Items Grid */
+        .phone-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+            gap: 14px;
+            margin-top: 10px;
+        }
+
+        .phone-item-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .phone-item-card:hover {
+            transform: translateY(-5px) scale(1.015);
+            border-color: var(--accent);
+            box-shadow: 0 14px 28px rgba(0, 210, 211, 0.16);
+        }
+
+        .phone-item-card:active {
+            transform: scale(0.97);
+        }
+
+        .phone-item-card.selected {
+            border-color: var(--accent);
+            background: rgba(0, 210, 211, 0.08);
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        .phone-select-checkbox {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0;
+        }
+
+        .phone-item-card:hover .phone-select-checkbox,
+        .phone-item-card.selected .phone-select-checkbox,
+        .phone-select-checkbox.checked {
+            opacity: 1;
+        }
+
+        .phone-select-checkbox.checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .phone-select-checkbox svg {
+            width: 14px;
+            height: 14px;
+            color: #000;
+            display: none;
+        }
+
+        .phone-select-checkbox.checked svg {
+            display: block;
+        }
+
+        .phone-item-preview {
+            height: 120px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .phone-item-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+            transition: transform 0.3s;
+        }
+
+        .phone-item-card:hover .phone-item-thumb {
+            transform: scale(1.04);
+        }
+
+        .phone-media-badge {
+            position: absolute;
+            bottom: 6px;
+            left: 6px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(6px);
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .phone-item-icon svg {
+            width: 44px;
+            height: 44px;
+            opacity: 0.9;
+        }
+
+        .phone-item-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .phone-item-name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .phone-item-meta {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* List View Mode */
+        .phone-grid.list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .phone-grid.list-view .phone-item-card {
+            flex-direction: row;
+            align-items: center;
+            padding: 8px 14px;
+            gap: 12px;
+            height: 52px;
+        }
+
+        .phone-grid.list-view .phone-select-checkbox {
+            position: static;
+            opacity: 1;
+            flex-shrink: 0;
+        }
+
+        .phone-grid.list-view .phone-item-preview {
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+            border-radius: 8px;
+        }
+
+        .phone-grid.list-view .phone-item-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .phone-grid.list-view .phone-item-details {
+            flex: 1;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .phone-grid.list-view .phone-item-name {
+            font-size: 0.88rem;
+            flex: 2;
+        }
+
+        .phone-grid.list-view .phone-item-meta {
+            flex: 1;
+            justify-content: flex-end;
+            gap: 20px;
+        }
+
+        /* Floating Multi-Select Action Bar */
+        .phone-selection-bar {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(0);
+            background: rgba(20, 24, 38, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--accent);
+            border-radius: 30px;
+            padding: 10px 22px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 210, 211, 0.25);
+            z-index: 1000;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .phone-selection-bar.hidden {
+            transform: translateX(-50%) translateY(100px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .selection-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .selection-badge {
+            background: var(--accent);
+            color: #000;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .selection-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .selection-actions button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        /* ==========================================
+           Google Photos Gallery Fullscreen Lightbox
+           ========================================== */
+        .gallery-lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(6, 8, 14, 0.96);
+            backdrop-filter: blur(25px);
+            z-index: 20000;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .gallery-lightbox.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .gallery-topbar {
+            height: 64px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            flex-shrink: 0;
+        }
+
+        .gallery-title-area {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .gallery-title {
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 450px;
+        }
+
+        .gallery-counter {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--accent);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 800;
+        }
+
+        .gallery-tools {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .gallery-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .gallery-btn:hover {
+            background: var(--accent);
+            color: #000000;
+            border-color: var(--accent);
+        }
+
+        .gallery-btn-close {
+            background: rgba(255, 71, 87, 0.15);
+            border-color: #ff4757;
+            color: #ff4757;
+            font-size: 1.2rem;
+            padding: 6px 12px;
+        }
+
+        .gallery-btn-close:hover {
+            background: #ff4757;
+            color: #ffffff;
+        }
+
+        .gallery-stage {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .gallery-media-container {
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .gallery-image {
+            max-width: 90vw;
+            max-height: 74vh;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            transition: transform 0.2s;
+        }
+
+        .gallery-video {
+            max-width: 88vw;
+            max-height: 74vh;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            outline: none;
+        }
+
+        .gallery-audio-card {
+            background: #141826;
+            border: 1px solid var(--accent);
+            border-radius: 24px;
+            padding: 36px 48px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            width: 440px;
+        }
+
+        .gallery-audio-icon {
+            font-size: 54px;
+            margin-bottom: 16px;
+        }
+
+        .gallery-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: rgba(20, 24, 38, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 10;
+        }
+
+        .gallery-nav-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke-width: 2.5;
+        }
+
+        .gallery-nav-btn:hover {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .gallery-nav-btn.prev {
+            left: 24px;
+        }
+
+        .gallery-nav-btn.next {
+            right: 24px;
+        }
+
+        /* Bottom Filmstrip Carousel */
+        .gallery-filmstrip {
+            height: 90px;
+            background: rgba(0, 0, 0, 0.5);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 20px;
+            overflow-x: auto;
+            flex-shrink: 0;
+            scrollbar-width: thin;
+        }
+
+        .filmstrip-thumb {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .filmstrip-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .filmstrip-thumb.active {
+            opacity: 1;
+            border-color: var(--accent);
+            transform: scale(1.08);
+            box-shadow: 0 0 14px rgba(0, 210, 211, 0.4);
+        }
+
+        .filmstrip-thumb:hover {
+            opacity: 0.9;
+        }
+
+        .phone-empty-state {
+            text-align: center;
+            padding: 70px 24px;
+            background: var(--card-bg);
+            border: 1px dashed var(--border);
+            border-radius: 24px;
+        }
+
+        .phone-empty-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 16px auto;
+            color: var(--text-light);
+            opacity: 0.6;
+        }
+
+        /* Windows 11 Yellow Folder Icon */
+        .win11-folder-icon {
+            width: 48px;
+            height: 48px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .phone-item-card:hover .win11-folder-icon {
+            transform: scale(1.08) translateY(-2px);
+        }
+
+        /* Common Folders Shelf */
+        .phone-common-shelf {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 16px 18px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .phone-common-shelf.collapsed {
+            display: none;
+        }
+
+        .phone-common-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .common-folder-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            user-select: none;
+        }
+
+        .common-folder-card:hover {
+            background: var(--accent-bg);
+            border-color: var(--accent);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 20px rgba(0, 210, 211, 0.14);
+        }
+
+        .common-folder-card:active {
+            transform: scale(0.96);
+        }
+
+        .common-folder-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .common-folder-card:hover .common-folder-icon {
+            transform: scale(1.12);
+        }
+
+        .common-folder-info {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .common-folder-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .common-folder-sub {
+            font-size: 0.65rem;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Item Quick Actions (Download & Trash) */
+        .phone-item-actions {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.18s ease;
+            z-index: 5;
+        }
+
+        .phone-item-card:hover .phone-item-actions {
+            opacity: 1;
+        }
+
+        .phone-action-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .phone-action-btn:hover {
+            transform: scale(1.18);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .phone-action-btn:active {
+            transform: scale(0.9);
+        }
+
+        .phone-action-btn.trash-btn:hover {
+            background: #ff4757;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(255, 71, 87, 0.45);
+        }
+
+        .phone-action-btn.download-btn:hover {
+            background: #00d2d3;
+            color: #000;
+            box-shadow: 0 4px 14px rgba(0, 210, 211, 0.45);
+        }
+
+        .phone-action-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Admin Security Password Modal */
+        .admin-security-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .admin-security-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .admin-modal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 30px 28px;
+            width: 90%;
+            max-width: 440px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            transform: scale(0.92);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .admin-security-modal.active .admin-modal-card {
+            transform: scale(1);
+        }
+
+        .admin-modal-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 20px;
+            background: rgba(255, 71, 87, 0.12);
+            color: var(--danger);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px auto;
+        }
+
+        .admin-modal-icon svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .admin-modal-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .admin-modal-desc {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .admin-file-target {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.82rem;
+            font-family: monospace;
+            font-weight: 700;
+            color: var(--text);
+            word-break: break-all;
+            margin-bottom: 18px;
+        }
+
+        .admin-input-group {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 4px 8px;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .admin-input-group:focus-within {
+            border-color: var(--accent);
+        }
+
+        .admin-input-group input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 10px;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 600;
+            outline: none;
+        }
+
+        .admin-error-msg {
+            color: var(--danger);
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        .admin-modal-actions {
+            display: flex;
+            gap: 12px;
+        }
     </style>
 </head>
 
@@ -1056,6 +2253,15 @@
     <div id="kicked-screen" class="hidden">
         <h1>Access Removed</h1>
         <p>You have been disconnected from Fylo by the host.</p>
+    </div>
+
+    <!-- Global Drop Overlay -->
+    <div id="global-drop-overlay" class="global-drop-overlay">
+        <div class="global-drop-overlay-inner">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            <p>Drop files or folders here</p>
+            <span>Release to share instantly</span>
+        </div>
     </div>
 
     <div id="app" class="app-layout">
@@ -1088,6 +2294,13 @@
                     </svg>
                     <span>Devices (<span id="device-count">0</span>)</span>
                 </li>
+                <li class="nav-item" data-target="view-phone" id="nav-phone-item">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                    </svg>
+                    <span>Phone Explorer <span class="badge hidden" id="phone-nav-badge" style="background:var(--accent); color:#fff; font-size:0.7rem; padding:2px 7px; border-radius:10px; margin-left:4px; font-weight:800;">0</span></span>
+                </li>
                 <li class="nav-item" data-target="view-connect">
                     <svg viewBox="0 0 24 24">
                         <path
@@ -1118,13 +2331,16 @@
                             <svg class="cloud-icon" viewBox="0 0 24 24">
                                 <path d="M12 5v14M5 12h14" />
                             </svg>
-                            <p style="font-weight: 800; font-size: 1.1rem; color: var(--text);">Queue files for sharing
+                            <p style="font-weight: 800; font-size: 1.1rem; color: var(--text);">Queue files or folders for sharing
                             </p>
-                            <p style="font-size: 0.85rem; color: var(--text-light); font-weight: 700;">or click to <span
+                            <p style="font-size: 0.85rem; color: var(--text-light); font-weight: 700;">click to <span
                                     id="browse-btn"
-                                    style="text-decoration: underline; color: var(--accent); font-weight: 800;">browse</span>
+                                    style="text-decoration: underline; color: var(--accent); font-weight: 800;">browse files</span> or <span
+                                    id="browse-folder-btn"
+                                    style="text-decoration: underline; color: var(--accent); font-weight: 800;">share a folder</span>
                             </p>
                             <input type="file" id="file-input" multiple>
+                            <input type="file" id="folder-input" webkitdirectory multiple style="display:none;">
                         </div>
                     </div>
 
@@ -1244,18 +2460,280 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Fylo v4: Phone Explorer View -->
+            <div id="view-phone" class="view-panel hidden">
+                <!-- Empty State when no mobile app paired -->
+                <div id="phone-empty-container" class="phone-empty-state">
+                    <svg class="phone-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                    </svg>
+                    <h3 style="font-size: 1.3rem; margin-bottom: 8px; color: var(--text);">No Phone Connected</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-light); max-width: 440px; margin: 0 auto 20px auto; line-height: 1.5;">
+                        Install the <strong>Fylo Mobile App</strong> on your Android phone, grant storage access, and scan the QR code to browse all phone files and folders directly from this PC.
+                    </p>
+                    <button class="btn btn-accent" id="phone-pair-btn" style="padding: 12px 24px; border-radius: 16px; font-size: 0.95rem;">
+                        📱 View Pairing QR Code
+                    </button>
+                </div>
+
+                <!-- Active Phone Explorer Interface -->
+                <div id="phone-active-container" class="hidden">
+                    <!-- Phone Info Bar -->
+                    <div class="phone-device-card" id="phone-device-header-card" style="cursor: pointer;" title="Click to toggle common folders">
+                        <div class="phone-device-left">
+                            <div class="phone-device-avatar">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                                    <line x1="12" y1="18" x2="12.01" y2="18" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="phone-device-title">
+                                    <span id="phone-name-display">Android Device</span>
+                                    <span class="phone-status-pill">● Online</span>
+                                </div>
+                                <div class="phone-device-subtitle">
+                                    <span id="phone-model-display">Model</span>
+                                    <span>•</span>
+                                    <span id="phone-battery-display">🔋 --%</span>
+                                    <span>•</span>
+                                    <span id="phone-storage-display">💾 Storage: --</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="phone-readonly-badge" id="phone-readonly-badge">
+                                🔒 Read-Only Protected
+                            </div>
+                            <button class="btn" id="phone-toggle-shelf-btn" style="padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; gap: 4px;">
+                                📁 <span id="phone-shelf-toggle-label">Common Folders</span> ▾
+                            </button>
+                            <select id="phone-device-selector" style="padding: 8px 12px; border-radius: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); font-weight: 700; font-size: 0.85rem; outline: none; cursor: pointer; display: none;"></select>
+                            <button class="btn" id="phone-refresh-btn" style="padding: 8px 14px; border-radius: 12px; font-size: 0.85rem;">↻ Refresh</button>
+                        </div>
+                    </div>
+
+                    <!-- Common Folders Shelf -->
+                    <div id="phone-common-shelf" class="phone-common-shelf" style="margin-top: 12px; margin-bottom: 12px;">
+                        <div style="font-size: 0.78rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                            <span>📱 Quick Access Folders</span>
+                            <span style="font-size: 0.72rem; text-transform: none; opacity: 0.7;">Click any folder to view contents</span>
+                        </div>
+                        <div class="phone-common-grid">
+                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/DCIM/Camera">
+                                <div class="common-folder-icon" style="background: rgba(255, 107, 129, 0.15); color: #ff6b81;">📸</div>
+                                <div class="common-folder-info">
+                                    <div class="common-folder-title">Camera Photos</div>
+                                    <div class="common-folder-sub">DCIM / Camera</div>
+                                </div>
+                            </div>
+                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Download">
+                                <div class="common-folder-icon" style="background: rgba(0, 210, 211, 0.15); color: #00d2d3;">📥</div>
+                                <div class="common-folder-info">
+                                    <div class="common-folder-title">Downloads</div>
+                                    <div class="common-folder-sub">Download</div>
+                                </div>
+                            </div>
+                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Pictures">
+                                <div class="common-folder-icon" style="background: rgba(254, 202, 87, 0.15); color: #feca57;">🖼️</div>
+                                <div class="common-folder-info">
+                                    <div class="common-folder-title">Pictures</div>
+                                    <div class="common-folder-sub">Screenshots & Media</div>
+                                </div>
+                            </div>
+                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Movies">
+                                <div class="common-folder-icon" style="background: rgba(255, 71, 87, 0.15); color: #ff4757;">🎬</div>
+                                <div class="common-folder-info">
+                                    <div class="common-folder-title">Videos</div>
+                                    <div class="common-folder-sub">Movies & Clips</div>
+                                </div>
+                            </div>
+                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Music">
+                                <div class="common-folder-icon" style="background: rgba(72, 219, 251, 0.15); color: #48dbfb;">🎵</div>
+                                <div class="common-folder-info">
+                                    <div class="common-folder-title">Music</div>
+                                    <div class="common-folder-sub">Audio Tracks</div>
+                                </div>
+                            </div>
+                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Documents">
+                                <div class="common-folder-icon" style="background: rgba(29, 209, 161, 0.15); color: #1dd1a1;">📄</div>
+                                <div class="common-folder-info">
+                                    <div class="common-folder-title">Documents</div>
+                                    <div class="common-folder-sub">PDFs & Docs</div>
+                                </div>
+                            </div>
+                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media">
+                                <div class="common-folder-icon" style="background: rgba(37, 211, 102, 0.15); color: #25d366;">💬</div>
+                                <div class="common-folder-info">
+                                    <div class="common-folder-title">WhatsApp</div>
+                                    <div class="common-folder-sub">Media</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Option to Open Full File Explorer of Phone -->
+                    <div style="margin-bottom: 12px;">
+                        <button id="btn-open-full-phone-explorer" class="btn" style="width: 100%; justify-content: center; padding: 11px 20px; border-radius: 14px; background: rgba(0, 210, 211, 0.08); border: 1px solid var(--accent); color: var(--accent); font-weight: 800; font-size: 0.92rem; gap: 8px; transition: all 0.2s;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                            <span>📂 Open Full Phone File Explorer (Internal Storage)</span>
+                        </button>
+                    </div>
+
+                    <!-- Windows Explorer Container Card -->
+                    <div class="card" style="padding: 18px 20px;">
+                        <!-- Windows Explorer Style Header Navigation Bar -->
+                        <div class="explorer-nav-bar">
+                            <div class="explorer-nav-buttons">
+                                <button class="nav-arrow-btn" id="phone-back-btn" title="Back" disabled>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                                </button>
+                                <button class="nav-arrow-btn" id="phone-fwd-btn" title="Forward" disabled>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
+                                <button class="nav-arrow-btn" id="phone-up-btn" title="Up to parent folder">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                                </button>
+                                <button class="nav-arrow-btn" id="phone-nav-refresh-btn" title="Refresh">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                </button>
+                            </div>
+
+                            <!-- Interactive Address / Breadcrumb Bar -->
+                            <div class="explorer-address-bar">
+                                <div class="address-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
+                                </div>
+                                <div class="phone-breadcrumbs" id="phone-breadcrumbs">
+                                    <span class="crumb-item" data-path="/storage/emulated/0">Storage</span>
+                                </div>
+                            </div>
+
+                            <!-- Tools: Search Box & View Mode Toggle -->
+                            <div class="explorer-tools">
+                                <div class="explorer-search-box">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    <input type="text" id="phone-search-input" placeholder="Search folder...">
+                                    <button id="phone-search-clear" class="search-clear-btn hidden">&times;</button>
+                                </div>
+                                <div class="view-mode-toggle">
+                                    <button id="phone-view-grid" class="view-btn active" title="Grid View">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                                    </button>
+                                    <button id="phone-view-list" class="view-btn" title="List View">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filters & Bulk Select Row -->
+                        <div class="phone-filters-row">
+                            <div class="phone-filters">
+                                <button class="filter-btn active" data-filter="all">All (<span id="phone-count-all">0</span>)</button>
+                                <button class="filter-btn" data-filter="images">📸 Photos (<span id="phone-count-photos">0</span>)</button>
+                                <button class="filter-btn" data-filter="videos">🎬 Videos (<span id="phone-count-videos">0</span>)</button>
+                                <button class="filter-btn" data-filter="audio">🎵 Audio (<span id="phone-count-audio">0</span>)</button>
+                                <button class="filter-btn" data-filter="docs">📄 Docs (<span id="phone-count-docs">0</span>)</button>
+                                <button class="filter-btn" data-filter="folders">📁 Folders</button>
+                            </div>
+                            <div>
+                                <button class="btn" id="phone-select-all-btn" style="padding: 6px 14px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;">Select All</button>
+                            </div>
+                        </div>
+
+                        <!-- File Items Grid / List -->
+                        <div class="phone-grid" id="phone-grid-view">
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-light); font-weight: 600;">
+                                Loading folder contents...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
-    <!-- Media Player Modal -->
-    <div id="player-modal" class="modal-overlay">
-        <div class="modal-container">
-            <div class="modal-header">
-                <div class="modal-title" id="player-title">File Player</div>
-                <button class="modal-close" id="player-close">&times;</button>
+    <!-- Floating Multi-Select Action Bar -->
+    <div id="phone-selection-bar" class="phone-selection-bar hidden">
+        <div class="selection-info">
+            <span class="selection-badge" id="phone-selected-count">0</span>
+            <span id="phone-selected-text">files selected</span>
+        </div>
+        <div class="selection-actions">
+            <button id="phone-download-selected-btn" class="btn btn-accent">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px; height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download Selected (Zip)</span>
+            </button>
+            <button id="phone-clear-selection-btn" class="btn" style="background: rgba(255, 255, 255, 0.08); border-radius: 12px; color: #fff;">Clear</button>
+        </div>
+    </div>
+
+    <!-- Google Photos Fullscreen Lightbox / Media Viewer -->
+    <div id="gallery-lightbox" class="gallery-lightbox">
+        <div class="gallery-topbar">
+            <div class="gallery-title-area">
+                <div class="gallery-title" id="gallery-file-name">Photo</div>
+                <div class="gallery-counter" id="gallery-counter">1 / 1</div>
             </div>
-            <div class="modal-content-area" id="player-content">
-                <!-- Dynamic Player Content goes here -->
+            <div class="gallery-tools">
+                <button class="gallery-btn" id="gallery-zoom-in" title="Zoom in">🔍+</button>
+                <button class="gallery-btn" id="gallery-zoom-out" title="Zoom out">🔍-</button>
+                <button class="gallery-btn" id="gallery-download-btn" title="Download to PC">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Save</span>
+                </button>
+                <button class="gallery-btn" id="gallery-trash-btn" title="Move to Phone Recycle Bin" style="color: var(--danger-text); background: rgba(255, 71, 87, 0.2);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    <span>Trash</span>
+                </button>
+                <button class="gallery-btn gallery-btn-close" id="gallery-close-btn" title="Close (Esc)">&times;</button>
+            </div>
+        </div>
+
+        <div class="gallery-stage" id="gallery-stage">
+            <button class="gallery-nav-btn prev" id="gallery-prev-btn" title="Previous (Left Arrow)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div class="gallery-media-container" id="gallery-media-container">
+                <!-- Image / Video / Audio dynamically mounted -->
+            </div>
+            <button class="gallery-nav-btn next" id="gallery-next-btn" title="Next (Right Arrow)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </div>
+
+        <!-- Google Photos Filmstrip Carousel -->
+        <div class="gallery-filmstrip" id="gallery-filmstrip">
+            <!-- Thumbnails rendered dynamically -->
+        </div>
+    </div>
+
+    <!-- Admin Security Password Modal for Safe File Deletion -->
+    <div id="admin-security-modal" class="admin-security-modal">
+        <div class="admin-modal-card">
+            <div class="admin-modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <h3 class="admin-modal-title">Admin Security Verification</h3>
+            <p class="admin-modal-desc">
+                To prevent unauthorized deletion, enter the Admin Security Password to move this file to the <strong style="color:var(--text);">Recycle Bin</strong>.
+            </p>
+            <div class="admin-file-target" id="admin-trash-file-target">
+                filename.ext
+            </div>
+            <div class="admin-input-group">
+                <input type="password" id="admin-password-input" placeholder="Enter Admin Password..." autocomplete="off">
+                <button type="button" id="admin-pwd-toggle" class="btn" style="padding: 0 10px; min-height: unset; border: none; background: transparent; color: var(--text-light); cursor: pointer;">👁️</button>
+            </div>
+            <div id="admin-error-msg" class="admin-error-msg hidden">Incorrect admin password.</div>
+            <div class="admin-modal-actions">
+                <button id="admin-cancel-btn" class="btn" style="flex: 1; border-radius: 12px; justify-content: center;">Cancel</button>
+                <button id="admin-confirm-trash-btn" class="btn" style="flex: 1; border-radius: 12px; justify-content: center; background: var(--danger); color: var(--danger-text); border: none;">🗑️ Move to Trash</button>
             </div>
         </div>
     </div>
@@ -1280,6 +2758,36 @@
         let lastFilesJSON = '';
         let lastLabelUpdateTimes = {};
         let cancelledTransfers = new Set();
+
+        // Screen Wake Lock & Background Keep-Alive for Android / Mobile
+        let wakeLockSentinel = null;
+        let isWakeLockRequested = false;
+
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator && !wakeLockSentinel) {
+                try {
+                    isWakeLockRequested = true;
+                    wakeLockSentinel = await navigator.wakeLock.request('screen');
+                    wakeLockSentinel.addEventListener('release', () => {
+                        wakeLockSentinel = null;
+                    });
+                } catch (err) {
+                    console.log("WakeLock info:", err);
+                }
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && isWakeLockRequested) {
+                requestWakeLock();
+            }
+        });
+
+        ['touchstart', 'click', 'keydown'].forEach(evt => {
+            window.addEventListener(evt, () => {
+                requestWakeLock();
+            }, { passive: true });
+        });
 
         // Simple IndexedDB Helpers for Offline Phone Storage
         const dbName = "fylo-db";
@@ -1435,20 +2943,22 @@
             }
         }
 
-        // Delete Local Download
+        // Delete Local Download (Safely moves to Recycle Bin with Admin Password)
         async function deleteDownloadedFile(fileId) {
             if (isElectron) {
                 const localPath = localStorage.getItem(`fylo-path-${fileId}`);
                 if (localPath) {
-                    try {
-                        const fs = require('fs');
-                        if (fs.existsSync(localPath)) {
-                            fs.unlinkSync(localPath);
+                    promptAdminTrash({
+                        type: 'pc',
+                        filePath: localPath,
+                        fileName: localPath.split(/[/\\]/).pop(),
+                        onDone: () => {
+                            localStorage.removeItem(`fylo-path-${fileId}`);
+                            localStorage.removeItem(`fylo-downloaded-${fileId}`);
+                            loadFiles();
                         }
-                    } catch (e) {
-                        console.error("Failed to delete local physical file:", e);
-                    }
-                    localStorage.removeItem(`fylo-path-${fileId}`);
+                    });
+                    return;
                 }
             } else {
                 await deleteBlobLocal(fileId);
@@ -1695,7 +3205,8 @@
             });
         }
 
-        function iconLabel(ext) {
+        function iconLabel(ext, type) {
+            if (type === 'folder') return '📁';
             const map = { pdf: 'PDF', doc: 'DOC', docx: 'DOC', zip: 'ZIP', rar: 'RAR', mp4: 'VID', mov: 'VID', mp3: 'AUD', wav: 'AUD', png: 'IMG', jpg: 'IMG', jpeg: 'IMG', gif: 'IMG', apk: 'APK', txt: 'TXT' };
             const look = ext || '';
             return map[look] || (look ? look.toUpperCase().slice(0, 3) : 'FILE');
@@ -1751,13 +3262,18 @@
                     const isDownloaded = localStorage.getItem(`fylo-downloaded-${f.id}`) === 'true';
                     const checkmark = isDownloaded ? `<span class="downloaded-badge">✓ Saved</span>` : '';
                     const nameClass = isDownloaded ? 'file-name downloaded' : 'file-name';
+                    const isFolder = f.type === 'folder';
+                    const folderBadge = isFolder ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:700;color:var(--accent);background:var(--accent-bg);padding:2px 8px;border-radius:8px;margin-left:8px;">📁 ${f.fileCount || 0} files</span>` : '';
+                    const iconBg = isFolder ? 'linear-gradient(135deg, #a29bfe, #6c5ce7)' : colorFor(f.name);
+                    const downloadLabel = isFolder ? '⬇ .zip' : '⬇ save';
+                    const displayName = isFolder ? f.name : f.name;
 
                     row.innerHTML = `
                          <div class="file-info-zone">
-                             <div class="file-icon" style="background:${colorFor(f.name)}">${iconLabel(f.ext)}</div>
+                             <div class="file-icon" style="background:${iconBg}; ${isFolder ? 'font-size:1.3rem;' : ''}">${iconLabel(f.ext, f.type)}</div>
                              <div class="file-details">
-                                 <div class="${nameClass}" data-action="play" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}${checkmark}</div>
-                                 <div class="file-meta">${f.sizeLabel}${timeLabel}</div>
+                                 <div class="${nameClass}" data-action="play" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}${folderBadge}${checkmark}</div>
+                                 <div class="file-meta">${f.sizeLabel}${isFolder ? ' (folder)' : ''}${timeLabel}</div>
                                  <div class="download-progress-container" id="p-container-${f.id}" style="display: none; margin-top: 8px; width: 100%;">
                                       <div style="background: rgba(0,0,0,0.1); height: 6px; border-radius: 3px; overflow: hidden; border: 1px solid var(--border); width: 100%;">
                                           <div class="download-progress-bar" id="bar-${f.id}" style="width: 0%; height: 100%; background: var(--accent); transition: width 0.1s ease;"></div>
@@ -1769,7 +3285,7 @@
                              </div>
                          </div>
                          <div class="file-actions">
-                             <button data-action="download">⬇ save</button>
+                             <button data-action="download">${downloadLabel}</button>
                              <button data-action="delete" class="danger">🗑</button>
                          </div>`;
 
@@ -1874,6 +3390,51 @@
             fileInput.value = '';
         }
 
+        // Share folders
+        async function queueFolders(folderPaths) {
+            if (!folderPaths || !folderPaths.length) return;
+            for (const folderPath of folderPaths) {
+                try {
+                    await apiFetch('/api/register-folder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ folderPath })
+                    });
+                } catch (e) {
+                    console.error('Failed to register folder:', folderPath, e);
+                }
+            }
+            triggerNotificationAlert(`📁 Registered ${folderPaths.length} folder(s) for sharing`);
+            loadFiles();
+        }
+
+        // Handle browser folder input (webkitdirectory)
+        async function queueBrowserFolder(fileList) {
+            if (!fileList || !fileList.length) return;
+
+            // On Electron, the files from webkitdirectory have paths — extract the root folder
+            if (isElectron) {
+                const firstFile = fileList[0];
+                if (firstFile.path) {
+                    const pathModule = require('path');
+                    // webkitRelativePath is like "folderName/sub/file.txt"
+                    const relPath = firstFile.webkitRelativePath || '';
+                    const rootFolderName = relPath.split('/')[0];
+                    // Derive root folder path from the first file's full path
+                    const fullPath = firstFile.path;
+                    const rootIdx = fullPath.lastIndexOf(rootFolderName);
+                    if (rootIdx >= 0) {
+                        const folderPath = fullPath.substring(0, rootIdx + rootFolderName.length);
+                        await queueFolders([folderPath]);
+                        return;
+                    }
+                }
+            }
+
+            // Browser fallback: queue all individual files with folder name prefix in their names
+            await queueFiles(fileList);
+        }
+
         function updateProgressBar(id, received, total) {
             const container = document.getElementById(`p-container-${id}`);
             const bar = document.getElementById(`bar-${id}`);
@@ -1940,6 +3501,8 @@
                 cancelledTransfers.delete(fileId);
                 triggerNotificationAlert(`📥 Initializing Download: ${fileName}`);
                 downloadStartTimes[fileId] = Date.now();
+                requestWakeLock();
+
                 if (!isElectron) {
                     const downloadUrl = `/api/download/${encodeURIComponent(fileId)}?x-session-id=${sessionId}&t=${Date.now()}`;
                     const a = document.createElement('a');
@@ -1947,7 +3510,9 @@
                     a.download = fileName;
                     document.body.appendChild(a);
                     a.click();
-                    document.body.removeChild(a);
+                    setTimeout(() => {
+                        try { document.body.removeChild(a); } catch(e) {}
+                    }, 500);
 
                     // Mark as downloaded/ticked immediately on mobile click
                     localStorage.setItem(`fylo-downloaded-${fileId}`, 'true');
@@ -2342,10 +3907,38 @@
 
         const dropzone = $('#dropzone');
         const fileInput = $('#file-input');
+        const folderInput = $('#folder-input');
+
         $('#browse-btn').addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
-        dropzone.addEventListener('click', () => fileInput.click());
+
+        $('#browse-folder-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (isElectron && ipcRenderer) {
+                // Use native dialog for folder selection
+                const paths = await ipcRenderer.invoke('select-folders-to-share');
+                if (paths && paths.length > 0) {
+                    await queueFolders(paths);
+                }
+            } else {
+                // Browser fallback: use webkitdirectory input
+                folderInput.click();
+            }
+        });
+
+        dropzone.addEventListener('click', (e) => {
+            // Only trigger file input if they didn't click one of the specific buttons
+            if (e.target.id !== 'browse-btn' && e.target.id !== 'browse-folder-btn') {
+                fileInput.click();
+            }
+        });
+
         fileInput.addEventListener('change', () => {
             queueFiles(fileInput.files);
+        });
+
+        folderInput.addEventListener('change', () => {
+            queueBrowserFolder(folderInput.files);
+            folderInput.value = '';
         });
 
         ['dragenter', 'dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => {
@@ -2356,10 +3949,137 @@
             e.preventDefault();
             dropzone.classList.remove('drag-over');
         }));
-        dropzone.addEventListener('drop', (e) => {
+
+        // Shared drop handler — used by both the dropzone and the global overlay
+        async function handleDrop(e) {
+            if (!e.dataTransfer) return;
+
+            // On Electron, detect dropped folders by checking path
+            if (isElectron) {
+                const droppedFiles = e.dataTransfer.files;
+                const folderPaths = [];
+                const regularFiles = [];
+                const fs = require('fs');
+
+                for (let i = 0; i < droppedFiles.length; i++) {
+                    const file = droppedFiles[i];
+                    if (file.path) {
+                        try {
+                            const stat = fs.statSync(file.path);
+                            if (stat.isDirectory()) {
+                                folderPaths.push(file.path);
+                            } else {
+                                regularFiles.push(file);
+                            }
+                        } catch (err) {
+                            regularFiles.push(file);
+                        }
+                    } else {
+                        regularFiles.push(file);
+                    }
+                }
+
+                if (folderPaths.length > 0) {
+                    await queueFolders(folderPaths);
+                }
+                if (regularFiles.length > 0) {
+                    await queueFiles(regularFiles);
+                }
+                return;
+            }
+
+            // Browser: use DataTransferItem entries to detect folders
+            const items = e.dataTransfer.items;
+            if (items && items.length > 0) {
+                let hasFolder = false;
+                for (let i = 0; i < items.length; i++) {
+                    const entry = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
+                    if (entry && entry.isDirectory) {
+                        hasFolder = true;
+                        break;
+                    }
+                }
+
+                if (hasFolder) {
+                    // Collect all files from dropped folder entries
+                    const allFiles = [];
+                    const readEntry = (entry) => {
+                        return new Promise((resolve) => {
+                            if (entry.isFile) {
+                                entry.file(f => {
+                                    allFiles.push(f);
+                                    resolve();
+                                }, () => resolve());
+                            } else if (entry.isDirectory) {
+                                const reader = entry.createReader();
+                                reader.readEntries(async (entries) => {
+                                    for (const e of entries) {
+                                        await readEntry(e);
+                                    }
+                                    resolve();
+                                }, () => resolve());
+                            } else {
+                                resolve();
+                            }
+                        });
+                    };
+
+                    for (let i = 0; i < items.length; i++) {
+                        const entry = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
+                        if (entry) {
+                            await readEntry(entry);
+                        }
+                    }
+
+                    if (allFiles.length > 0) {
+                        await queueFiles(allFiles);
+                    }
+                    return;
+                }
+            }
+
+            // Fallback: regular file drop
+            if (e.dataTransfer.files) queueFiles(e.dataTransfer.files);
+        }
+
+        dropzone.addEventListener('drop', async (e) => {
             e.preventDefault();
             dropzone.classList.remove('drag-over');
-            if (e.dataTransfer && e.dataTransfer.files) queueFiles(e.dataTransfer.files);
+            await handleDrop(e);
+        });
+
+        // Global window-level drag-and-drop
+        const globalOverlay = $('#global-drop-overlay');
+        let globalDragCounter = 0;
+
+        document.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            globalDragCounter++;
+            // Only show overlay if actually dragging files (not text selections, etc.)
+            if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+                globalOverlay.classList.add('active');
+            }
+        });
+
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        document.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            globalDragCounter--;
+            if (globalDragCounter <= 0) {
+                globalDragCounter = 0;
+                globalOverlay.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            globalDragCounter = 0;
+            globalOverlay.classList.remove('active');
+            dropzone.classList.remove('drag-over');
+            await handleDrop(e);
         });
 
         const clipboardEl = $('#clipboard-text');
@@ -2641,6 +4361,947 @@
             });
         }
 
+        // ==========================================
+        // Fylo v4: Mobile Phone Explorer Logic & Google Photos Lightbox
+        // ==========================================
+        let mobileDeviceList = [];
+        let currentPhoneId = null;
+        let currentPhonePath = '/storage/emulated/0';
+        let currentPhoneItems = [];
+        let currentPhoneFilter = 'all';
+        let phoneViewMode = 'grid';
+        let phoneHistory = ['/storage/emulated/0'];
+        let phoneHistoryIdx = 0;
+        let phoneSelectedPaths = new Set();
+
+        // Lightbox Gallery State
+        let galleryMediaList = [];
+        let galleryCurrentIdx = 0;
+        let galleryZoom = 1;
+
+        async function loadMobileDevices() {
+            try {
+                const res = await apiFetch('/api/mobile/devices');
+                if (!res.ok) return;
+                const devices = await res.json();
+                mobileDeviceList = Array.isArray(devices) ? devices : [];
+
+                const onlineDevices = mobileDeviceList.filter(d => d.online);
+                const badge = $('#phone-nav-badge');
+                if (badge) {
+                    if (onlineDevices.length > 0) {
+                        badge.textContent = onlineDevices.length;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+
+                const emptyContainer = $('#phone-empty-container');
+                const activeContainer = $('#phone-active-container');
+
+                if (onlineDevices.length === 0) {
+                    if (emptyContainer) emptyContainer.classList.remove('hidden');
+                    if (activeContainer) activeContainer.classList.add('hidden');
+                    currentPhoneId = null;
+                    return;
+                }
+
+                if (emptyContainer) emptyContainer.classList.add('hidden');
+                if (activeContainer) activeContainer.classList.remove('hidden');
+
+                // If no device currently selected, pick the first
+                if (!currentPhoneId || !onlineDevices.some(d => d.id === currentPhoneId)) {
+                    currentPhoneId = onlineDevices[0].id;
+                    updatePhoneHeader(onlineDevices[0]);
+                    fetchPhoneFolder(currentPhonePath, false);
+                } else {
+                    const currentDev = onlineDevices.find(d => d.id === currentPhoneId);
+                    if (currentDev) updatePhoneHeader(currentDev);
+                }
+
+                // Update device dropdown if multiple phones
+                const selector = $('#phone-device-selector');
+                if (selector && onlineDevices.length > 1) {
+                    selector.style.display = 'block';
+                    selector.innerHTML = '';
+                    onlineDevices.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = `${d.name} (${d.model})`;
+                        opt.selected = (d.id === currentPhoneId);
+                        selector.appendChild(opt);
+                    });
+                } else if (selector) {
+                    selector.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('loadMobileDevices error:', err);
+            }
+        }
+
+        function updatePhoneHeader(device) {
+            if ($('#phone-name-display')) $('#phone-name-display').textContent = device.name || 'Android Phone';
+            if ($('#phone-model-display')) $('#phone-model-display').textContent = device.model || 'Android Device';
+            if ($('#phone-battery-display')) {
+                $('#phone-battery-display').textContent = device.battery !== null ? `🔋 ${device.battery}%` : '🔋 Connected';
+            }
+            if ($('#phone-storage-display')) {
+                if (device.storage && device.storage.total > 0) {
+                    const freeGB = (device.storage.free / (1024 * 1024 * 1024)).toFixed(1);
+                    const totalGB = (device.storage.total / (1024 * 1024 * 1024)).toFixed(1);
+                    $('#phone-storage-display').textContent = `💾 ${freeGB} GB free of ${totalGB} GB`;
+                } else {
+                    $('#phone-storage-display').textContent = `💾 Storage: Active`;
+                }
+            }
+            const roBadge = $('#phone-readonly-badge');
+            if (roBadge) {
+                roBadge.textContent = device.readOnly ? '🔒 Read-Only Protected' : '⚡ Write-Access Active';
+                roBadge.style.color = device.readOnly ? '#ffa502' : '#2ed573';
+            }
+        }
+
+        async function fetchPhoneFolder(folderPath, addToHistory = true) {
+            if (!currentPhoneId) return;
+            const targetPath = folderPath || '/storage/emulated/0';
+            currentPhonePath = targetPath;
+
+            if (addToHistory) {
+                if (phoneHistory[phoneHistoryIdx] !== targetPath) {
+                    phoneHistory = phoneHistory.slice(0, phoneHistoryIdx + 1);
+                    phoneHistory.push(targetPath);
+                    phoneHistoryIdx = phoneHistory.length - 1;
+                }
+            }
+            updateNavButtons();
+
+            const grid = $('#phone-grid-view');
+            if (grid) {
+                grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-light); font-weight: 600;">Loading folder contents...</div>';
+            }
+
+            try {
+                const res = await apiFetch(`/api/mobile/fs/list?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(targetPath)}`);
+                if (!res.ok) {
+                    if (grid) grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--danger-text); font-weight: 700;">Could not load folder from phone. Check connection.</div>';
+                    return;
+                }
+                const data = await res.json();
+                currentPhoneItems = Array.isArray(data.items) ? data.items : [];
+                renderPhoneBreadcrumbs(currentPhonePath);
+                updateCategoryCounts();
+                renderPhoneFiles();
+            } catch (err) {
+                console.error('fetchPhoneFolder error:', err);
+                if (grid) grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--danger-text); font-weight: 700;">Connection lost to phone.</div>';
+            }
+        }
+
+        function updateNavButtons() {
+            const backBtn = $('#phone-back-btn');
+            const fwdBtn = $('#phone-fwd-btn');
+            const upBtn = $('#phone-up-btn');
+
+            if (backBtn) backBtn.disabled = (phoneHistoryIdx <= 0);
+            if (fwdBtn) fwdBtn.disabled = (phoneHistoryIdx >= phoneHistory.length - 1);
+            if (upBtn) upBtn.disabled = (!currentPhonePath || currentPhonePath === '/storage/emulated/0');
+        }
+
+        function updateCategoryCounts() {
+            const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp'];
+            const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', '3gp'];
+            const audioExts = ['mp3', 'wav', 'm4a', 'flac', 'aac', 'ogg'];
+            const docExts = ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'];
+
+            let photos = 0, videos = 0, audio = 0, docs = 0;
+            currentPhoneItems.forEach(i => {
+                if (i.isDir) return;
+                const ext = (i.ext || '').toLowerCase();
+                if (imageExts.includes(ext)) photos++;
+                else if (videoExts.includes(ext)) videos++;
+                else if (audioExts.includes(ext)) audio++;
+                else if (docExts.includes(ext)) docs++;
+            });
+
+            if ($('#phone-count-all')) $('#phone-count-all').textContent = currentPhoneItems.length;
+            if ($('#phone-count-photos')) $('#phone-count-photos').textContent = photos;
+            if ($('#phone-count-videos')) $('#phone-count-videos').textContent = videos;
+            if ($('#phone-count-audio')) $('#phone-count-audio').textContent = audio;
+            if ($('#phone-count-docs')) $('#phone-count-docs').textContent = docs;
+        }
+
+        function renderPhoneBreadcrumbs(pathStr) {
+            const container = $('#phone-breadcrumbs');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const parts = pathStr.split('/').filter(p => p.length > 0);
+            let accumulated = '/storage/emulated/0';
+
+            // Root crumb
+            const rootSpan = document.createElement('span');
+            rootSpan.className = 'crumb-item';
+            rootSpan.textContent = 'Storage';
+            rootSpan.dataset.path = '/storage/emulated/0';
+            rootSpan.onclick = () => fetchPhoneFolder('/storage/emulated/0');
+            container.appendChild(rootSpan);
+
+            const startIndex = (parts[0] === 'storage' && parts[1] === 'emulated' && parts[2] === '0') ? 3 : 0;
+
+            for (let i = startIndex; i < parts.length; i++) {
+                const sep = document.createElement('span');
+                sep.className = 'crumb-sep';
+                sep.textContent = ' / ';
+                container.appendChild(sep);
+
+                accumulated += '/' + parts[i];
+                const crumb = document.createElement('span');
+                crumb.className = (i === parts.length - 1) ? 'crumb-item active' : 'crumb-item';
+                crumb.textContent = parts[i];
+                const target = accumulated;
+                if (i !== parts.length - 1) {
+                    crumb.onclick = () => fetchPhoneFolder(target);
+                }
+                container.appendChild(crumb);
+            }
+        }
+
+        function renderPhoneFiles() {
+            const grid = $('#phone-grid-view');
+            if (!grid) return;
+
+            grid.className = phoneViewMode === 'list' ? 'phone-grid list-view' : 'phone-grid';
+
+            const searchTerm = ($('#phone-search-input')?.value || '').toLowerCase().trim();
+            const clearBtn = $('#phone-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !searchTerm);
+
+            const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp'];
+            const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', '3gp'];
+            const audioExts = ['mp3', 'wav', 'm4a', 'flac', 'aac', 'ogg'];
+            const docExts = ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'];
+
+            let filtered = currentPhoneItems.filter(item => {
+                if (searchTerm && !item.name.toLowerCase().includes(searchTerm)) {
+                    return false;
+                }
+                if (currentPhoneFilter === 'all') return true;
+                if (currentPhoneFilter === 'folders') return item.isDir;
+                if (item.isDir) return false;
+
+                const ext = (item.ext || '').toLowerCase();
+                if (currentPhoneFilter === 'images') return imageExts.includes(ext);
+                if (currentPhoneFilter === 'videos') return videoExts.includes(ext);
+                if (currentPhoneFilter === 'audio') return audioExts.includes(ext);
+                if (currentPhoneFilter === 'docs') return docExts.includes(ext);
+                return true;
+            });
+
+            grid.innerHTML = '';
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-light); font-weight: 600;">No items found in this view.</div>';
+                updateSelectionBar();
+                return;
+            }
+
+            filtered.sort((a, b) => {
+                if (a.isDir && !b.isDir) return -1;
+                if (!a.isDir && b.isDir) return 1;
+                return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+            });
+
+            // Pre-compile media list for lightbox
+            galleryMediaList = filtered.filter(i => {
+                if (i.isDir) return false;
+                const ext = (i.ext || '').toLowerCase();
+                return imageExts.includes(ext) || videoExts.includes(ext) || audioExts.includes(ext);
+            });
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'phone-item-card' + (phoneSelectedPaths.has(item.path) ? ' selected' : '');
+
+                const ext = (item.ext || '').toLowerCase();
+                const isImage = imageExts.includes(ext);
+                const isVideo = videoExts.includes(ext);
+                const isAudio = audioExts.includes(ext);
+                const isMedia = isImage || isVideo || isAudio;
+
+                let previewHtml = '';
+                if (item.isDir) {
+                    previewHtml = `
+                        <div class="phone-item-preview" style="background: rgba(245, 158, 11, 0.08);">
+                            <svg class="win11-folder-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 11C4 8.79086 5.79086 7 8 7H18.5858C19.6466 7 20.664 7.42143 21.4142 8.17157L24.8284 11.5858C25.5786 12.3359 26.596 12.7574 27.6569 12.7574H40C42.2091 12.7574 44 14.5482 44 16.7574V37C44 39.2091 42.2091 41 40 41H8C5.79086 41 4 39.2091 4 37V11Z" fill="#F59E0B"/>
+                                <path d="M4 16.5C4 14.567 5.567 13 7.5 13H40.5C42.433 13 44 14.567 44 16.5V37C44 39.2091 42.2091 41 40 41H8C5.79086 41 4 39.2091 4 37V16.5Z" fill="#FBBF24"/>
+                                <path d="M4 20C4 18.067 5.567 16.5 7.5 16.5H40.5C42.433 16.5 44 18.067 44 20V37C44 39.2091 42.2091 41 40 41H8C5.79086 41 4 39.2091 4 37V20Z" fill="#FCD34D"/>
+                            </svg>
+                        </div>`;
+                } else if (isImage) {
+                    const thumbUrl = `/api/mobile/fs/thumbnail?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
+                    previewHtml = `
+                        <div class="phone-item-preview">
+                            <img class="phone-item-thumb" src="${thumbUrl}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="phone-item-icon" style="display:none; color: var(--accent);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            </div>
+                            <span class="phone-media-badge">📸 Photo</span>
+                        </div>`;
+                } else if (isVideo) {
+                    previewHtml = `
+                        <div class="phone-item-preview" style="background: rgba(255, 71, 87, 0.08);">
+                            <div class="phone-item-icon" style="color: #ff4757;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                            </div>
+                            <span class="phone-media-badge" style="background: rgba(255, 71, 87, 0.7);">🎬 Video</span>
+                        </div>`;
+                } else if (isAudio) {
+                    previewHtml = `
+                        <div class="phone-item-preview" style="background: rgba(116, 185, 255, 0.08);">
+                            <div class="phone-item-icon" style="color: #0984e3;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                            </div>
+                            <span class="phone-media-badge" style="background: rgba(9, 132, 227, 0.7);">🎵 Audio</span>
+                        </div>`;
+                } else {
+                    previewHtml = `
+                        <div class="phone-item-preview">
+                            <div class="phone-item-icon" style="color: var(--text-light);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                            </div>
+                        </div>`;
+                }
+
+                // Checkbox for multi-select
+                const isChecked = phoneSelectedPaths.has(item.path);
+                const checkboxHtml = !item.isDir ? `
+                    <div class="phone-select-checkbox ${isChecked ? 'checked' : ''}" data-path="${escapeHtml(item.path)}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>` : '';
+
+                // Quick Action buttons on hover (Save to PC / Move to Recycle Bin)
+                const actionButtonsHtml = !item.isDir ? `
+                    <div class="phone-item-actions">
+                        <button class="phone-action-btn download-btn" title="Download to PC">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
+                        <button class="phone-action-btn trash-btn" title="Move to Phone Recycle Bin">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>` : '';
+
+                card.innerHTML = `
+                    ${checkboxHtml}
+                    ${actionButtonsHtml}
+                    ${previewHtml}
+                    <div class="phone-item-details">
+                        <div class="phone-item-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+                        <div class="phone-item-meta">
+                            <span>${item.isDir ? 'Folder' : formatBytes(item.size || 0)}</span>
+                            <span>${item.isDir ? '' : (ext.toUpperCase())}</span>
+                        </div>
+                    </div>
+                `;
+
+                // Handle Checkbox Click
+                const chk = card.querySelector('.phone-select-checkbox');
+                if (chk) {
+                    chk.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleItemSelection(item.path);
+                    };
+                }
+
+                // Handle Download Quick Action Click
+                const dlBtn = card.querySelector('.phone-action-btn.download-btn');
+                if (dlBtn) {
+                    dlBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        downloadPhoneFile(item);
+                    };
+                }
+
+                // Handle Trash Quick Action Click (Requires Admin Password)
+                const trBtn = card.querySelector('.phone-action-btn.trash-btn');
+                if (trBtn) {
+                    trBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        promptAdminTrash({
+                            type: 'phone',
+                            filePath: item.path,
+                            fileName: item.name,
+                            deviceId: currentPhoneId,
+                            onDone: () => {
+                                if (currentPhonePath) fetchPhoneFolder(currentPhonePath, false);
+                            }
+                        });
+                    };
+                }
+
+                // Handle Card Click: Folders navigate, Media opens in Google Photos gallery instantly!
+                card.onclick = () => {
+                    if (item.isDir) {
+                        fetchPhoneFolder(item.path);
+                    } else if (isMedia) {
+                        openGallery(item);
+                    } else {
+                        downloadPhoneFile(item);
+                    }
+                };
+
+                grid.appendChild(card);
+            });
+
+            updateSelectionBar();
+        }
+
+        function toggleItemSelection(filePath) {
+            if (phoneSelectedPaths.has(filePath)) {
+                phoneSelectedPaths.delete(filePath);
+            } else {
+                phoneSelectedPaths.add(filePath);
+            }
+            renderPhoneFiles();
+        }
+
+        function updateSelectionBar() {
+            const bar = $('#phone-selection-bar');
+            const countEl = $('#phone-selected-count');
+            const textEl = $('#phone-selected-text');
+            if (!bar || !countEl) return;
+
+            const count = phoneSelectedPaths.size;
+            if (count > 0) {
+                countEl.textContent = count;
+                if (textEl) textEl.textContent = count === 1 ? 'file selected' : 'files selected';
+                bar.classList.remove('hidden');
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        // ==========================================
+        // Google Photos / Lightbox Viewer Logic
+        // ==========================================
+        function openGallery(item) {
+            const modal = $('#gallery-lightbox');
+            if (!modal) return;
+
+            galleryCurrentIdx = galleryMediaList.findIndex(i => i.path === item.path);
+            if (galleryCurrentIdx < 0) {
+                galleryMediaList = [item];
+                galleryCurrentIdx = 0;
+            }
+
+            renderGalleryCurrent();
+            renderGalleryFilmstrip();
+            modal.classList.add('active');
+        }
+
+        function renderGalleryCurrent() {
+            const item = galleryMediaList[galleryCurrentIdx];
+            if (!item) return;
+
+            const nameEl = $('#gallery-file-name');
+            const counterEl = $('#gallery-counter');
+            const stage = $('#gallery-media-container');
+
+            if (nameEl) nameEl.textContent = item.name;
+            if (counterEl) counterEl.textContent = `${galleryCurrentIdx + 1} / ${galleryMediaList.length}`;
+
+            galleryZoom = 1;
+            stage.style.transform = `scale(1)`;
+            stage.innerHTML = '';
+
+            const streamUrl = `/api/mobile/fs/file?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
+            const ext = (item.ext || '').toLowerCase();
+            const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp'];
+            const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', '3gp'];
+
+            if (imageExts.includes(ext)) {
+                const img = document.createElement('img');
+                img.className = 'gallery-image';
+                img.src = streamUrl;
+                stage.appendChild(img);
+            } else if (videoExts.includes(ext)) {
+                const video = document.createElement('video');
+                video.className = 'gallery-video';
+                video.src = streamUrl;
+                video.controls = true;
+                video.autoplay = true;
+                stage.appendChild(video);
+            } else {
+                const audioCard = document.createElement('div');
+                audioCard.className = 'gallery-audio-card';
+                audioCard.innerHTML = `
+                    <div class="gallery-audio-icon">🎵</div>
+                    <div style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 16px;">${escapeHtml(item.name)}</div>
+                    <audio src="${streamUrl}" controls autoplay style="width: 100%; outline: none;"></audio>
+                `;
+                stage.appendChild(audioCard);
+            }
+
+            // Highlight filmstrip item
+            document.querySelectorAll('.filmstrip-thumb').forEach((th, idx) => {
+                th.classList.toggle('active', idx === galleryCurrentIdx);
+                if (idx === galleryCurrentIdx) {
+                    th.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            });
+
+            // Update prev/next button states
+            const prevBtn = $('#gallery-prev-btn');
+            const nextBtn = $('#gallery-next-btn');
+            if (prevBtn) prevBtn.style.display = (galleryMediaList.length > 1) ? 'flex' : 'none';
+            if (nextBtn) nextBtn.style.display = (galleryMediaList.length > 1) ? 'flex' : 'none';
+        }
+
+        function renderGalleryFilmstrip() {
+            const filmstrip = $('#gallery-filmstrip');
+            if (!filmstrip) return;
+            filmstrip.innerHTML = '';
+
+            if (galleryMediaList.length <= 1) {
+                filmstrip.style.display = 'none';
+                return;
+            }
+            filmstrip.style.display = 'flex';
+
+            galleryMediaList.forEach((item, idx) => {
+                const thumb = document.createElement('div');
+                thumb.className = 'filmstrip-thumb' + (idx === galleryCurrentIdx ? ' active' : '');
+                const ext = (item.ext || '').toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+
+                if (isImage) {
+                    const thumbUrl = `/api/mobile/fs/thumbnail?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
+                    thumb.innerHTML = `<img src="${thumbUrl}" loading="lazy" onerror="this.parentElement.textContent='🖼️';">`;
+                } else if (['mp4', 'mov', 'webm'].includes(ext)) {
+                    thumb.innerHTML = `<span style="font-size: 20px;">🎬</span>`;
+                } else {
+                    thumb.innerHTML = `<span style="font-size: 20px;">🎵</span>`;
+                }
+
+                thumb.onclick = () => {
+                    galleryCurrentIdx = idx;
+                    renderGalleryCurrent();
+                };
+                filmstrip.appendChild(thumb);
+            });
+        }
+
+        function galleryNext() {
+            if (galleryMediaList.length <= 1) return;
+            galleryCurrentIdx = (galleryCurrentIdx + 1) % galleryMediaList.length;
+            renderGalleryCurrent();
+        }
+
+        function galleryPrev() {
+            if (galleryMediaList.length <= 1) return;
+            galleryCurrentIdx = (galleryCurrentIdx - 1 + galleryMediaList.length) % galleryMediaList.length;
+            renderGalleryCurrent();
+        }
+
+        function closeGallery() {
+            const modal = $('#gallery-lightbox');
+            if (!modal) return;
+            modal.classList.remove('active');
+            const stage = $('#gallery-media-container');
+            if (stage) stage.innerHTML = '';
+        }
+
+        // Gallery Event Listeners
+        $('#gallery-next-btn')?.addEventListener('click', galleryNext);
+        $('#gallery-prev-btn')?.addEventListener('click', galleryPrev);
+        $('#gallery-close-btn')?.addEventListener('click', closeGallery);
+
+        $('#gallery-zoom-in')?.addEventListener('click', () => {
+            galleryZoom = Math.min(3, galleryZoom + 0.3);
+            const container = $('#gallery-media-container');
+            if (container) container.style.transform = `scale(${galleryZoom})`;
+        });
+
+        $('#gallery-zoom-out')?.addEventListener('click', () => {
+            galleryZoom = Math.max(0.6, galleryZoom - 0.3);
+            const container = $('#gallery-media-container');
+            if (container) container.style.transform = `scale(${galleryZoom})`;
+        });
+
+        $('#gallery-download-btn')?.addEventListener('click', () => {
+            const item = galleryMediaList[galleryCurrentIdx];
+            if (item) downloadPhoneFile(item);
+        });
+
+        // Keyboard Navigation for Gallery
+        window.addEventListener('keydown', (e) => {
+            const modal = $('#gallery-lightbox');
+            if (modal && modal.classList.contains('active')) {
+                if (e.key === 'ArrowRight') galleryNext();
+                if (e.key === 'ArrowLeft') galleryPrev();
+                if (e.key === 'Escape') closeGallery();
+            }
+        });
+
+        // Windows Explorer Toolbar Event Handlers
+        $('#phone-back-btn')?.addEventListener('click', () => {
+            if (phoneHistoryIdx > 0) {
+                phoneHistoryIdx--;
+                fetchPhoneFolder(phoneHistory[phoneHistoryIdx], false);
+            }
+        });
+
+        $('#phone-fwd-btn')?.addEventListener('click', () => {
+            if (phoneHistoryIdx < phoneHistory.length - 1) {
+                phoneHistoryIdx++;
+                fetchPhoneFolder(phoneHistory[phoneHistoryIdx], false);
+            }
+        });
+
+        $('#phone-up-btn')?.addEventListener('click', () => {
+            if (!currentPhonePath || currentPhonePath === '/storage/emulated/0') return;
+            const parent = currentPhonePath.substring(0, currentPhonePath.lastIndexOf('/'));
+            if (parent && parent.length >= '/storage/emulated/0'.length) {
+                fetchPhoneFolder(parent, true);
+            } else {
+                fetchPhoneFolder('/storage/emulated/0', true);
+            }
+        });
+
+        $('#phone-nav-refresh-btn')?.addEventListener('click', () => {
+            fetchPhoneFolder(currentPhonePath, false);
+        });
+
+        $('#phone-view-grid')?.addEventListener('click', () => {
+            phoneViewMode = 'grid';
+            $('#phone-view-grid')?.classList.add('active');
+            $('#phone-view-list')?.classList.remove('active');
+            renderPhoneFiles();
+        });
+
+        $('#phone-view-list')?.addEventListener('click', () => {
+            phoneViewMode = 'list';
+            $('#phone-view-list')?.classList.add('active');
+            $('#phone-view-grid')?.classList.remove('active');
+            renderPhoneFiles();
+        });
+
+        $('#phone-search-input')?.addEventListener('input', () => {
+            renderPhoneFiles();
+        });
+
+        $('#phone-search-clear')?.addEventListener('click', () => {
+            const input = $('#phone-search-input');
+            if (input) input.value = '';
+            renderPhoneFiles();
+        });
+
+        $('#phone-select-all-btn')?.addEventListener('click', () => {
+            const nonDirItems = currentPhoneItems.filter(i => !i.isDir);
+            if (phoneSelectedPaths.size === nonDirItems.length && nonDirItems.length > 0) {
+                phoneSelectedPaths.clear();
+            } else {
+                nonDirItems.forEach(i => phoneSelectedPaths.add(i.path));
+            }
+            renderPhoneFiles();
+        });
+
+        $('#phone-clear-selection-btn')?.addEventListener('click', () => {
+            phoneSelectedPaths.clear();
+            renderPhoneFiles();
+        });
+
+        // Batch Download Selected Items
+        $('#phone-download-selected-btn')?.addEventListener('click', async () => {
+            if (phoneSelectedPaths.size === 0) return;
+            const paths = Array.from(phoneSelectedPaths);
+
+            const btn = $('#phone-download-selected-btn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span>Preparing ${paths.length} files...</span>`;
+
+            try {
+                if (isElectron) {
+                    let successCount = 0;
+                    for (const p of paths) {
+                        try {
+                            const res = await apiFetch('/api/mobile/fs/download-direct', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ deviceId: currentPhoneId, path: p })
+                            });
+                            const data = await res.json();
+                            if (data.success) successCount++;
+                        } catch (e) {}
+                    }
+                    alert(`Saved ${successCount} of ${paths.length} files to PC Downloads folder!`);
+                    phoneSelectedPaths.clear();
+                    renderPhoneFiles();
+                } else {
+                    const link = document.createElement('a');
+                    link.href = `/api/mobile/fs/download-batch`;
+                    // Fetch post to get zip blob
+                    const res = await apiFetch('/api/mobile/fs/download-batch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ deviceId: currentPhoneId, paths })
+                    });
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    link.href = url;
+                    link.download = `fylo-batch-${Date.now().toString(36)}.zip`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                    phoneSelectedPaths.clear();
+                    renderPhoneFiles();
+                }
+            } catch (err) {
+                alert(`Batch download failed: ${err.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        async function downloadPhoneFile(item) {
+            if (isElectron) {
+                try {
+                    const res = await apiFetch('/api/mobile/fs/download-direct', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            deviceId: currentPhoneId,
+                            path: item.path
+                        })
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        alert(`Saved "${item.name}" to Downloads!`);
+                    } else {
+                        alert(`Download failed: ${result.error || 'Unknown error'}`);
+                    }
+                } catch (e) {
+                    alert(`Download failed: ${e.message}`);
+                }
+            } else {
+                const link = document.createElement('a');
+                link.href = `/api/mobile/fs/file?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}&download=1`;
+                link.download = item.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // Quick chip shortcuts
+        document.querySelectorAll('.quick-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const targetPath = chip.getAttribute('data-path');
+                if (targetPath) fetchPhoneFolder(targetPath, true);
+            });
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentPhoneFilter = btn.getAttribute('data-filter') || 'all';
+                renderPhoneFiles();
+            });
+        });
+
+        // Pair button in empty state
+        $('#phone-pair-btn')?.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
+            const connectNav = document.querySelector('.nav-item[data-target="view-connect"]');
+            if (connectNav) connectNav.classList.add('active');
+            $('#view-connect')?.classList.remove('hidden');
+        });
+
+        // Device selector change
+        $('#phone-device-selector')?.addEventListener('change', (e) => {
+            currentPhoneId = e.target.value;
+            const dev = mobileDeviceList.find(d => d.id === currentPhoneId);
+            if (dev) updatePhoneHeader(dev);
+            fetchPhoneFolder('/storage/emulated/0', true);
+        });
+
+        // Refresh button
+        $('#phone-refresh-btn')?.addEventListener('click', () => {
+            loadMobileDevices();
+            if (currentPhonePath) fetchPhoneFolder(currentPhonePath, false);
+        });
+
+        // ==========================================
+        // Admin Security Password Verification & Trashing
+        // ==========================================
+        let pendingTrashItem = null;
+
+        function promptAdminTrash({ type, filePath, fileName, deviceId, onDone }) {
+            pendingTrashItem = { type, filePath, fileName, deviceId, onDone };
+            const modal = $('#admin-security-modal');
+            const targetEl = $('#admin-trash-file-target');
+            const passInput = $('#admin-password-input');
+            const errorMsg = $('#admin-error-msg');
+
+            if (targetEl) targetEl.textContent = fileName || filePath;
+            if (passInput) passInput.value = '';
+            if (errorMsg) errorMsg.classList.add('hidden');
+            if (modal) modal.classList.add('active');
+            setTimeout(() => passInput?.focus(), 50);
+        }
+
+        function closeAdminTrashModal() {
+            const modal = $('#admin-security-modal');
+            if (modal) modal.classList.remove('active');
+            pendingTrashItem = null;
+        }
+
+        $('#admin-cancel-btn')?.addEventListener('click', closeAdminTrashModal);
+
+        $('#admin-pwd-toggle')?.addEventListener('click', () => {
+            const input = $('#admin-password-input');
+            if (!input) return;
+            input.type = input.type === 'password' ? 'text' : 'password';
+        });
+
+        $('#admin-password-input')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                $('#admin-confirm-trash-btn')?.click();
+            } else if (e.key === 'Escape') {
+                closeAdminTrashModal();
+            }
+        });
+
+        $('#admin-confirm-trash-btn')?.addEventListener('click', async () => {
+            if (!pendingTrashItem) return;
+            const passInput = $('#admin-password-input');
+            const errorMsg = $('#admin-error-msg');
+            const password = passInput?.value || '';
+
+            if (!password) {
+                if (errorMsg) {
+                    errorMsg.textContent = 'Admin security password is required.';
+                    errorMsg.classList.remove('hidden');
+                }
+                return;
+            }
+
+            const btn = $('#admin-confirm-trash-btn');
+            const origText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = 'Moving to Recycle Bin...';
+
+            try {
+                let url = '';
+                let body = {};
+                if (pendingTrashItem.type === 'pc') {
+                    url = '/api/pc/trash-file';
+                    body = { filePath: pendingTrashItem.filePath, adminPassword: password };
+                } else {
+                    url = '/api/mobile/fs/trash-file';
+                    body = { deviceId: pendingTrashItem.deviceId, path: pendingTrashItem.filePath, adminPassword: password };
+                }
+
+                const res = await apiFetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    const doneCallback = pendingTrashItem.onDone;
+                    closeAdminTrashModal();
+                    triggerNotificationAlert(`🗑️ Item safely moved to Recycle Bin.`);
+                    if (doneCallback) {
+                        doneCallback();
+                    } else {
+                        if (currentPhonePath) fetchPhoneFolder(currentPhonePath, false);
+                    }
+                } else {
+                    if (errorMsg) {
+                        errorMsg.textContent = data.error || 'Incorrect admin password.';
+                        errorMsg.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                if (errorMsg) {
+                    errorMsg.textContent = 'Failed: ' + err.message;
+                    errorMsg.classList.remove('hidden');
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origText;
+            }
+        });
+
+        // Lightbox Gallery Trash Button
+        $('#gallery-trash-btn')?.addEventListener('click', () => {
+            const item = galleryMediaList[galleryCurrentIdx];
+            if (!item) return;
+            promptAdminTrash({
+                type: 'phone',
+                filePath: item.path,
+                fileName: item.name,
+                deviceId: currentPhoneId,
+                onDone: () => {
+                    galleryMediaList.splice(galleryCurrentIdx, 1);
+                    if (galleryMediaList.length === 0) {
+                        closeGallery();
+                    } else {
+                        galleryCurrentIdx = Math.min(galleryCurrentIdx, galleryMediaList.length - 1);
+                        renderGalleryCurrent();
+                        renderGalleryFilmstrip();
+                    }
+                    if (currentPhonePath) fetchPhoneFolder(currentPhonePath, false);
+                }
+            });
+        });
+
+        // Common Folders Shelf Toggle (Header card or toggle button)
+        function toggleCommonShelf() {
+            const shelf = $('#phone-common-shelf');
+            const label = $('#phone-shelf-toggle-label');
+            if (!shelf) return;
+            shelf.classList.toggle('collapsed');
+            const isCollapsed = shelf.classList.contains('collapsed');
+            if (label) label.textContent = isCollapsed ? 'Show Folders' : 'Hide Folders';
+        }
+
+        $('#phone-device-header-card')?.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('select')) return;
+            toggleCommonShelf();
+        });
+
+        $('#phone-toggle-shelf-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleCommonShelf();
+        });
+
+        // Open Full Phone File Explorer button
+        $('#btn-open-full-phone-explorer')?.addEventListener('click', () => {
+            fetchPhoneFolder('/storage/emulated/0', true);
+            const explorerCard = document.querySelector('.explorer-nav-bar');
+            if (explorerCard) {
+                explorerCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+
+
         async function init() {
             if (isElectron) {
                 for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -2655,6 +5316,7 @@
                 await loadNetworkInfo();
                 await loadFiles();
                 await loadDevices();
+                await loadMobileDevices();
                 await loadClipboard();
                 await initSettingsFolder();
                 initSettingsClipboardSync();
@@ -2666,6 +5328,7 @@
 
             setInterval(loadFiles, 4000);
             setInterval(loadDevices, 5000);
+            setInterval(loadMobileDevices, 4000);
             setInterval(loadClipboard, 4000);
             setInterval(checkStreamRequests, 1500);
         }

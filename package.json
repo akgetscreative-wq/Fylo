@@ -1,12 +1,13 @@
 {
   "name": "fylo",
-  "version": "1.0.0",
+  "version": "4.0.0",
   "main": "server.js",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder"
   },
   "dependencies": {
+    "archiver": "^6.0.2",
     "express": "^4.19.2",
     "qrcode": "^1.5.4"
   },
