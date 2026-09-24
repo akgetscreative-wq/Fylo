@@ -4359,7 +4359,7 @@
 
                     <div style="display: flex; gap: 16px; align-items: center; padding: 10px 14px; background: rgba(255, 255, 255, 0.05); border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.8rem; color: #cbd5e1; flex-wrap: wrap;">
                         <span>🔒 <strong>Protected:</strong> AES Token</span>
-                        <span>⚡ <strong>Speed:</strong> Up to 80 MB/s</span>
+                        <span>⚡ <strong>LAN Direct:</strong> High Speed</span>
                         <span>💻 <strong>Port:</strong> 3000</span>
                     </div>
                 </div>
@@ -4474,7 +4474,7 @@
             <!-- Top System Header Bar -->
             <!-- Top System Header Bar with Pill Navigation (Reference Design) -->
             <header class="top-header-bar">
-                <div class="top-header-left">
+                <div class="top-header-left" style="display: flex; align-items: center; flex-direction: row; gap: 8px;">
                     <div class="top-brand-badge" id="top-brand-btn" title="Fylo Dashboard">
                         <span>F</span>
                     </div>
@@ -5169,6 +5169,8 @@
                                 Loading folder contents...
                             </div>
                         </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Fylo v4: PC Drives & Explorer View -->
@@ -8732,7 +8734,7 @@
                         card.innerHTML = `
                             <div class="drive-icon">💾</div>
                             <div class="drive-info">
-                                <div class="drive-title">${escapeHtml(drive.label || drive.name || 'Local Disk')} (${escapeHtml(displayMount)})</div>
+                                <div class="drive-title">${escapeHtml((drive.label || drive.name || 'Local Disk').includes('(') ? (drive.label || drive.name) : (drive.label || drive.name) + ' (' + displayMount + ')')}</div>
                                 <div class="drive-sub">${formatBytes(drive.free)} free of ${formatBytes(drive.total)}</div>
                                 <div class="drive-meter">
                                     <div class="drive-meter-fill" style="width: ${percentUsed}%;"></div>
@@ -8751,7 +8753,9 @@
                     data.shortcuts.forEach(sc => {
                         const chip = document.createElement('div');
                         chip.className = 'quick-chip';
-                        chip.innerHTML = `<span>${sc.icon || '📁'}</span> <span>${escapeHtml(sc.name)}</span>`;
+                        const iconMap = { download: '📥', image: '🖼️', camera: '📸', desktop: '🖥️', file: '📄', video: '🎬', music: '🎵' };
+                        const emojiIcon = iconMap[sc.icon] || sc.icon || '📁';
+                        chip.innerHTML = `<span>${emojiIcon}</span> <span>${escapeHtml(sc.name)}</span>`;
                         chip.onclick = () => fetchPCFolder(sc.path, true);
                         shortcutsContainer.appendChild(chip);
                     });

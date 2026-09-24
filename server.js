@@ -94,6 +94,16 @@ function parseCookies(cookieHeader) {
     return cookies;
 }
 
+function isLocalHostIp(ip) {
+    if (!ip) return false;
+    const cleanIp = ip.replace(/^.*:/, '');
+    if (cleanIp === '127.0.0.1' || ip === '::1' || ip === 'localhost') return true;
+    const activeIp = getActiveIp();
+    const baselineIp = getLocalIp();
+    if ((activeIp && ip.includes(activeIp)) || (baselineIp && ip.includes(baselineIp))) return true;
+    return false;
+}
+
 app.use((req, res, next) => {
     if (req.socket) req.socket.setNoDelay(true);
 
@@ -107,11 +117,7 @@ app.use((req, res, next) => {
         return res.sendStatus(204);
     }
 
-    const activeIp = getActiveIp();
-    const baselineIp = getLocalIp();
-    const isHost = (req.ip === '127.0.0.1' || req.ip === '::1' || 
-                    (req.ip && (req.ip.includes(activeIp) || req.ip.includes(baselineIp))));
-    
+    const isHost = isLocalHostIp(req.ip);
     if (isHost) {
         return next();
     }
@@ -228,10 +234,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/me', (req, res) => {
-    const activeIp = getActiveIp();
-    const baselineIp = getLocalIp();
-    const isHost = (req.ip === '127.0.0.1' || req.ip === '::1' || 
-                    (req.ip && (req.ip.includes(activeIp) || req.ip.includes(baselineIp))));
+    const isHost = isLocalHostIp(req.ip);
     res.json({ isHost });
 });
 
@@ -1129,8 +1132,13 @@ app.get('/api/pc/explorer/list', (req, res) => {
     }
 
     // Normalize Windows drive paths like "C:" -> "C:\"
+    targetPath = path.normalize(targetPath);
     if (targetPath.length === 2 && targetPath[1] === ':') {
         targetPath += '\\';
+    }
+    // Remove trailing slash for subdirectories so path.dirname resolves the actual parent
+    if (targetPath.length > 3 && (targetPath.endsWith('\\') || targetPath.endsWith('/'))) {
+        targetPath = targetPath.slice(0, -1);
     }
 
     try {
@@ -1414,6 +1422,10 @@ function createWindow() {
             contextIsolation: false
         }
     });
+    win.webContents.on('console-message', (event, level, message, line, sourceId) => {
+        console.log(`[RENDERER] (${level}) ${message} [${sourceId}:${line}]`);
+    });
+
     win.loadURL(`http://localhost:${PORT}`);
 
     let activeDownloads = {};
