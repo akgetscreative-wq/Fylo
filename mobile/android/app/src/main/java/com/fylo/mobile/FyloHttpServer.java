@@ -13,29 +13,34 @@ import android.util.Log;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
 
 public class FyloHttpServer {
     private static final String TAG = "FyloHttpServer";
-    private HttpServer server;
-    private int port;
-    private boolean readOnly = true;
-    private String authToken = null;
-    private Context context;
+    private final Context context;
+    private final int port;
+    private volatile boolean readOnly = true;
+    private volatile String authToken = null;
+    private volatile boolean isRunning = false;
+    private ServerSocket serverSocket;
+    private ExecutorService executor;
 
     public FyloHttpServer(Context context, int port, boolean readOnly) {
         this.context = context;
@@ -59,12 +64,153 @@ public class FyloHttpServer {
         return authToken;
     }
 
-    private boolean isAuthorized(HttpExchange exchange) {
+    public synchronized void start() throws IOException {
+        if (isRunning) return;
+        serverSocket = new ServerSocket(port);
+        serverSocket.setReuseAddress(true);
+        executor = Executors.newCachedThreadPool();
+        isRunning = true;
+
+        executor.execute(() -> {
+            Log.i(TAG, "Fylo HTTP Server listening on port " + port);
+            while (isRunning && !serverSocket.isClosed()) {
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    clientSocket.setTcpNoDelay(true);
+                    executor.execute(() -> handleClient(clientSocket));
+                } catch (IOException e) {
+                    if (!isRunning) break;
+                    Log.w(TAG, "Socket accept error: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public synchronized void stop() {
+        isRunning = false;
+        if (serverSocket != null) {
+            try {
+                serverSocket.close();
+            } catch (IOException ignored) {}
+            serverSocket = null;
+        }
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
+        }
+        Log.i(TAG, "Fylo HTTP Server stopped");
+    }
+
+    private void handleClient(Socket socket) {
+        try (InputStream in = new BufferedInputStream(socket.getInputStream());
+             OutputStream out = new BufferedOutputStream(socket.getOutputStream())) {
+
+            // Read HTTP request line and headers
+            ByteArrayOutputStream headerBuffer = new ByteArrayOutputStream();
+            int b;
+            int consecutiveLf = 0;
+            while ((b = in.read()) != -1) {
+                headerBuffer.write(b);
+                if (b == '\n') {
+                    consecutiveLf++;
+                    if (consecutiveLf == 2 || headerBuffer.toString().endsWith("\r\n\r\n")) {
+                        break;
+                    }
+                } else if (b != '\r') {
+                    consecutiveLf = 0;
+                }
+            }
+
+            String headerText = headerBuffer.toString("UTF-8");
+            String[] headerLines = headerText.split("\r?\n");
+            if (headerLines.length == 0 || headerLines[0].trim().isEmpty()) {
+                return;
+            }
+
+            String[] requestTokens = headerLines[0].split("\\s+");
+            if (requestTokens.length < 2) return;
+            String method = requestTokens[0].toUpperCase();
+            String fullUri = requestTokens[1];
+
+            // Parse headers
+            Map<String, String> headers = new HashMap<>();
+            int contentLength = 0;
+            for (int i = 1; i < headerLines.length; i++) {
+                String line = headerLines[i];
+                int colonIdx = line.indexOf(':');
+                if (colonIdx > 0) {
+                    String key = line.substring(0, colonIdx).trim().toLowerCase();
+                    String val = line.substring(colonIdx + 1).trim();
+                    headers.put(key, val);
+                    if ("content-length".equals(key)) {
+                        try { contentLength = Integer.parseInt(val); } catch (Exception ignored) {}
+                    }
+                }
+            }
+
+            // Read request body if present
+            byte[] bodyBytes = new byte[0];
+            if (contentLength > 0) {
+                bodyBytes = new byte[contentLength];
+                int totalRead = 0;
+                while (totalRead < contentLength) {
+                    int r = in.read(bodyBytes, totalRead, contentLength - totalRead);
+                    if (r == -1) break;
+                    totalRead += r;
+                }
+            }
+
+            // CORS preflight
+            if ("OPTIONS".equals(method)) {
+                sendResponseHeaders(out, 204, "No Content", "text/plain", 0, null);
+                out.flush();
+                return;
+            }
+
+            // Parse path and query
+            String path = fullUri;
+            String query = "";
+            int questionIdx = fullUri.indexOf('?');
+            if (questionIdx != -1) {
+                path = fullUri.substring(0, questionIdx);
+                query = fullUri.substring(questionIdx + 1);
+            }
+
+            // Authorization check
+            if (!isAuthorized(query, headers)) {
+                sendJsonResponse(out, 401, "{\"error\":\"Unauthorized: Invalid or missing auth token\"}");
+                return;
+            }
+
+            // Routing
+            if ("/api/info".equals(path)) {
+                handleInfo(out);
+            } else if ("/api/fs/list".equals(path)) {
+                handleList(out, query);
+            } else if ("/api/fs/file".equals(path)) {
+                handleFile(out, query, headers);
+            } else if ("/api/fs/thumbnail".equals(path)) {
+                handleThumbnail(out, query);
+            } else if ("/api/set-readonly".equals(path) && "POST".equals(method)) {
+                handleSetReadOnly(out, bodyBytes);
+            } else if ("/api/fs/trash".equals(path) && "POST".equals(method)) {
+                handleTrash(out, bodyBytes);
+            } else {
+                sendJsonResponse(out, 404, "{\"error\":\"Endpoint not found\"}");
+            }
+
+        } catch (Exception e) {
+            Log.w(TAG, "Request handling error: " + e.getMessage());
+        } finally {
+            try { socket.close(); } catch (IOException ignored) {}
+        }
+    }
+
+    private boolean isAuthorized(String query, Map<String, String> headers) {
         if (authToken == null || authToken.trim().isEmpty()) {
             return true;
         }
-        String query = exchange.getRequestURI().getQuery();
-        if (query != null) {
+        if (query != null && !query.isEmpty()) {
             for (String param : query.split("&")) {
                 String[] pair = param.split("=");
                 if (pair.length > 1 && "auth".equals(pair[0])) {
@@ -75,445 +221,299 @@ public class FyloHttpServer {
                 }
             }
         }
-        String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+        String authHeader = headers.get("authorization");
         if (authHeader != null) {
-            if (authHeader.startsWith("Bearer ")) {
+            if (authHeader.startsWith("Bearer ") || authHeader.startsWith("bearer ")) {
                 authHeader = authHeader.substring(7).trim();
             }
             if (authToken.equals(authHeader)) return true;
         }
-        String xAuth = exchange.getRequestHeaders().getFirst("X-Auth-Token");
-        if (xAuth != null && authToken.equals(xAuth)) {
-            return true;
-        }
-        return false;
+        String xAuth = headers.get("x-auth-token");
+        return xAuth != null && authToken.equals(xAuth);
     }
 
-    public void start() throws IOException {
-        server = HttpServer.create(new InetSocketAddress(port), 0);
-        server.setExecutor(Executors.newFixedThreadPool(8));
+    private void handleInfo(OutputStream out) throws Exception {
+        JSONObject json = new JSONObject();
+        json.put("appName", "Fylo Mobile");
+        json.put("version", "4.0.0");
+        json.put("readOnly", readOnly);
+        json.put("model", Build.MODEL);
+        json.put("device", Build.DEVICE);
 
-        // Info endpoint
-        server.createContext("/api/info", new InfoHandler());
+        File path = Environment.getExternalStorageDirectory();
+        StatFs stat = new StatFs(path.getPath());
+        long blockSize = stat.getBlockSizeLong();
+        long totalBlocks = stat.getBlockCountLong();
+        long availableBlocks = stat.getAvailableBlocksLong();
 
-        // File system list endpoint
-        server.createContext("/api/fs/list", new ListHandler());
+        JSONObject storage = new JSONObject();
+        storage.put("total", totalBlocks * blockSize);
+        storage.put("free", availableBlocks * blockSize);
+        json.put("storage", storage);
 
-        // File stream endpoint (Supports HTTP Range / 206 Partial Content)
-        server.createContext("/api/fs/file", new FileHandler());
-
-        // Image thumbnail generator
-        server.createContext("/api/fs/thumbnail", new ThumbnailHandler());
-
-        // Set read-only mode endpoint
-        server.createContext("/api/set-readonly", new SetReadOnlyHandler());
-
-        // Safe Trash / Recycle Bin endpoint (Moves file to .trash, never permanently deletes)
-        server.createContext("/api/fs/trash", new TrashHandler());
-
-        server.start();
-        Log.i(TAG, "Fylo HTTP Server started on port " + port);
+        sendJsonResponse(out, 200, json.toString());
     }
 
-    public void stop() {
-        if (server != null) {
-            server.stop(0);
-            server = null;
-            Log.i(TAG, "Fylo HTTP Server stopped");
-        }
-    }
-
-    private class InfoHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                JSONObject json = new JSONObject();
-                json.put("appName", "Fylo Mobile");
-                json.put("version", "4.0.0");
-                json.put("readOnly", readOnly);
-                json.put("model", Build.MODEL);
-                json.put("device", Build.DEVICE);
-
-                File path = Environment.getExternalStorageDirectory();
-                StatFs stat = new StatFs(path.getPath());
-                long blockSize = stat.getBlockSizeLong();
-                long totalBlocks = stat.getBlockCountLong();
-                long availableBlocks = stat.getAvailableBlocksLong();
-
-                JSONObject storage = new JSONObject();
-                storage.put("total", totalBlocks * blockSize);
-                storage.put("free", availableBlocks * blockSize);
-                json.put("storage", storage);
-
-                byte[] response = json.toString().getBytes("UTF-8");
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
-                exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-                exchange.sendResponseHeaders(200, response.length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(response);
-                os.close();
-            } catch (Exception e) {
-                sendError(exchange, 500, e.getMessage());
+    private void handleList(OutputStream out, String query) throws Exception {
+        String targetPath = Environment.getExternalStorageDirectory().getAbsolutePath();
+        if (query != null && !query.isEmpty()) {
+            for (String param : query.split("&")) {
+                String[] pair = param.split("=");
+                if (pair.length > 1 && "path".equals(pair[0])) {
+                    targetPath = URLDecoder.decode(pair[1], "UTF-8");
+                }
             }
         }
-    }
 
-    private class ListHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (!isAuthorized(exchange)) {
-                sendError(exchange, 401, "Unauthorized: Invalid or missing auth token");
-                return;
-            }
-            try {
-                String query = exchange.getRequestURI().getQuery();
-                String targetPath = Environment.getExternalStorageDirectory().getAbsolutePath();
+        File folder = new File(targetPath);
+        if (!folder.exists() || !folder.isDirectory()) {
+            sendJsonResponse(out, 404, "{\"error\":\"Folder not found\"}");
+            return;
+        }
 
-                if (query != null) {
-                    for (String param : query.split("&")) {
-                        String[] pair = param.split("=");
-                        if (pair.length > 1 && "path".equals(pair[0])) {
-                            targetPath = URLDecoder.decode(pair[1], "UTF-8");
-                        }
-                    }
+        File[] files = folder.listFiles();
+        JSONArray items = new JSONArray();
+        if (files != null) {
+            Arrays.sort(files, (a, b) -> {
+                if (a.isDirectory() && !b.isDirectory()) return -1;
+                if (!a.isDirectory() && b.isDirectory()) return 1;
+                return a.getName().compareToIgnoreCase(b.getName());
+            });
+
+            for (File f : files) {
+                if (f.getName().startsWith(".")) continue;
+                JSONObject item = new JSONObject();
+                item.put("name", f.getName());
+                item.put("path", f.getAbsolutePath());
+                item.put("isDir", f.isDirectory());
+                item.put("size", f.isDirectory() ? 0 : f.length());
+                item.put("modified", f.lastModified());
+                String ext = "";
+                int dotIdx = f.getName().lastIndexOf('.');
+                if (dotIdx > 0 && dotIdx < f.getName().length() - 1) {
+                    ext = f.getName().substring(dotIdx + 1).toLowerCase();
                 }
-
-                File dir = new File(targetPath);
-                if (!dir.exists() || !dir.isDirectory()) {
-                    sendError(exchange, 404, "Directory not found: " + targetPath);
-                    return;
-                }
-
-                JSONObject res = new JSONObject();
-                res.put("path", dir.getAbsolutePath());
-                res.put("parent", dir.getParent() != null ? dir.getParent() : "");
-                res.put("isRoot", dir.getAbsolutePath().equals(Environment.getExternalStorageDirectory().getAbsolutePath()));
-                res.put("readOnly", readOnly);
-
-                JSONArray items = new JSONArray();
-                File[] files = dir.listFiles();
-                if (files != null) {
-                    Arrays.sort(files, new Comparator<File>() {
-                        @Override
-                        public int compare(File f1, File f2) {
-                            if (f1.isDirectory() && !f2.isDirectory()) return -1;
-                            if (!f1.isDirectory() && f2.isDirectory()) return 1;
-                            return f1.getName().compareToIgnoreCase(f2.getName());
-                        }
-                    });
-
-                    for (File f : files) {
-                        if (f.getName().startsWith(".")) continue; // Skip hidden files
-
-                        JSONObject item = new JSONObject();
-                        item.put("name", f.getName());
-                        item.put("path", f.getAbsolutePath());
-                        item.put("isDir", f.isDirectory());
-                        item.put("size", f.isDirectory() ? 0 : f.length());
-                        item.put("modified", f.lastModified());
-
-                        String ext = "";
-                        int idx = f.getName().lastIndexOf('.');
-                        if (idx > 0) {
-                            ext = f.getName().substring(idx + 1).toLowerCase();
-                        }
-                        item.put("ext", ext);
-
-                        items.put(item);
-                    }
-                }
-                res.put("items", items);
-
-                byte[] response = res.toString().getBytes("UTF-8");
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
-                exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-                exchange.sendResponseHeaders(200, response.length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(response);
-                os.close();
-            } catch (Exception e) {
-                sendError(exchange, 500, e.getMessage());
+                item.put("ext", ext);
+                items.put(item);
             }
         }
+
+        JSONObject resp = new JSONObject();
+        resp.put("path", folder.getAbsolutePath());
+        File parent = folder.getParentFile();
+        resp.put("parent", parent != null ? parent.getAbsolutePath() : "");
+        resp.put("items", items);
+
+        sendJsonResponse(out, 200, resp.toString());
     }
 
-    private class FileHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (!isAuthorized(exchange)) {
-                sendError(exchange, 401, "Unauthorized: Invalid or missing auth token");
-                return;
+    private void handleFile(OutputStream out, String query, Map<String, String> headers) throws Exception {
+        String targetPath = null;
+        boolean download = false;
+        if (query != null && !query.isEmpty()) {
+            for (String param : query.split("&")) {
+                String[] pair = param.split("=");
+                if (pair.length > 1) {
+                    if ("path".equals(pair[0])) {
+                        targetPath = URLDecoder.decode(pair[1], "UTF-8");
+                    } else if ("download".equals(pair[0])) {
+                        download = "1".equals(pair[1]) || "true".equalsIgnoreCase(pair[1]);
+                    }
+                }
             }
-            try {
-                String query = exchange.getRequestURI().getQuery();
-                String targetPath = null;
+        }
 
-                if (query != null) {
-                    for (String param : query.split("&")) {
-                        String[] pair = param.split("=");
-                        if (pair.length > 1 && "path".equals(pair[0])) {
-                            targetPath = URLDecoder.decode(pair[1], "UTF-8");
-                        }
-                    }
-                }
+        if (targetPath == null) {
+            sendJsonResponse(out, 400, "{\"error\":\"Missing path parameter\"}");
+            return;
+        }
 
-                if (targetPath == null) {
-                    sendError(exchange, 400, "Missing path parameter");
-                    return;
-                }
+        File file = new File(targetPath);
+        if (!file.exists() || file.isDirectory()) {
+            sendJsonResponse(out, 404, "{\"error\":\"File not found\"}");
+            return;
+        }
 
-                File file = new File(targetPath);
-                if (!file.exists() || file.isDirectory()) {
-                    sendError(exchange, 404, "File not found: " + targetPath);
-                    return;
-                }
+        long fileLength = file.length();
+        String contentType = getMimeType(file.getName());
 
-                long fileLength = file.length();
-                String rangeHeader = exchange.getRequestHeaders().getFirst("Range");
+        // Range support
+        String rangeHeader = headers.get("range");
+        long start = 0;
+        long end = fileLength - 1;
+        boolean isPartial = false;
 
-                String mimeType = getMimeType(file.getName());
-                exchange.getResponseHeaders().set("Content-Type", mimeType);
-                exchange.getResponseHeaders().set("Accept-Ranges", "bytes");
-                exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-
-                if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
-                    String[] ranges = rangeHeader.substring(6).split("-");
-                    long start = Long.parseLong(ranges[0]);
-                    long end = ranges.length > 1 && !ranges[1].isEmpty() ? Long.parseLong(ranges[1]) : fileLength - 1;
-
-                    if (start >= fileLength || end >= fileLength || start > end) {
-                        exchange.getResponseHeaders().set("Content-Range", "bytes */" + fileLength);
-                        exchange.sendResponseHeaders(416, -1);
-                        return;
-                    }
-
-                    long contentLength = end - start + 1;
-                    exchange.getResponseHeaders().set("Content-Range", "bytes " + start + "-" + end + "/" + fileLength);
-                    exchange.sendResponseHeaders(206, contentLength);
-
-                    FileInputStream fis = new FileInputStream(file);
-                    fis.skip(start);
-                    OutputStream os = exchange.getResponseBody();
-                    byte[] buffer = new byte[64 * 1024];
-                    long bytesRemaining = contentLength;
-
-                    while (bytesRemaining > 0) {
-                        int toRead = (int) Math.min(buffer.length, bytesRemaining);
-                        int read = fis.read(buffer, 0, toRead);
-                        if (read == -1) break;
-                        os.write(buffer, 0, read);
-                        bytesRemaining -= read;
-                    }
-
-                    fis.close();
-                    os.close();
-                } else {
-                    exchange.sendResponseHeaders(200, fileLength);
-                    FileInputStream fis = new FileInputStream(file);
-                    OutputStream os = exchange.getResponseBody();
-                    byte[] buffer = new byte[64 * 1024];
-                    int read;
-                    while ((read = fis.read(buffer)) != -1) {
-                        os.write(buffer, 0, read);
-                    }
-                    fis.close();
-                    os.close();
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "FileHandler error", e);
-                sendError(exchange, 500, e.getMessage());
+        if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+            String rangeValue = rangeHeader.substring(6).trim();
+            int dashIdx = rangeValue.indexOf('-');
+            if (dashIdx != -1) {
+                try {
+                    String startStr = rangeValue.substring(0, dashIdx).trim();
+                    String endStr = rangeValue.substring(dashIdx + 1).trim();
+                    if (!startStr.isEmpty()) start = Long.parseLong(startStr);
+                    if (!endStr.isEmpty()) end = Long.parseLong(endStr);
+                    isPartial = true;
+                } catch (Exception ignored) {}
             }
+        }
+
+        long contentLength = end - start + 1;
+        Map<String, String> extraHeaders = new HashMap<>();
+        extraHeaders.put("Accept-Ranges", "bytes");
+        if (download) {
+            extraHeaders.put("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
+        }
+
+        if (isPartial) {
+            extraHeaders.put("Content-Range", "bytes " + start + "-" + end + "/" + fileLength);
+            sendResponseHeaders(out, 206, "Partial Content", contentType, contentLength, extraHeaders);
+        } else {
+            sendResponseHeaders(out, 200, "OK", contentType, contentLength, extraHeaders);
+        }
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            if (start > 0) fis.skip(start);
+            byte[] buf = new byte[65536];
+            long remaining = contentLength;
+            while (remaining > 0) {
+                int toRead = (int) Math.min(buf.length, remaining);
+                int r = fis.read(buf, 0, toRead);
+                if (r == -1) break;
+                out.write(buf, 0, r);
+                remaining -= r;
+            }
+            out.flush();
         }
     }
 
-    private class ThumbnailHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (!isAuthorized(exchange)) {
-                sendError(exchange, 401, "Unauthorized: Invalid or missing auth token");
-                return;
-            }
-            try {
-                String query = exchange.getRequestURI().getQuery();
-                String targetPath = null;
-                if (query != null) {
-                    for (String param : query.split("&")) {
-                        String[] pair = param.split("=");
-                        if (pair.length > 1 && "path".equals(pair[0])) {
-                            targetPath = URLDecoder.decode(pair[1], "UTF-8");
-                        }
-                    }
+    private void handleThumbnail(OutputStream out, String query) throws Exception {
+        String targetPath = null;
+        if (query != null && !query.isEmpty()) {
+            for (String param : query.split("&")) {
+                String[] pair = param.split("=");
+                if (pair.length > 1 && "path".equals(pair[0])) {
+                    targetPath = URLDecoder.decode(pair[1], "UTF-8");
                 }
-
-                if (targetPath == null || !new File(targetPath).exists()) {
-                    sendError(exchange, 404, "File not found");
-                    return;
-                }
-
-                BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inSampleSize = 4; // Downsample for fast thumbnail transfer
-                Bitmap bitmap = BitmapFactory.decodeFile(targetPath, options);
-
-                if (bitmap == null) {
-                    sendError(exchange, 404, "Could not generate thumbnail");
-                    return;
-                }
-
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 75, baos);
-                byte[] bytes = baos.toByteArray();
-                bitmap.recycle();
-
-                exchange.getResponseHeaders().set("Content-Type", "image/jpeg");
-                exchange.getResponseHeaders().set("Cache-Control", "public, max-age=86400");
-                exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-                exchange.sendResponseHeaders(200, bytes.length);
-
-                OutputStream os = exchange.getResponseBody();
-                os.write(bytes);
-                os.close();
-            } catch (Exception e) {
-                sendError(exchange, 500, e.getMessage());
             }
         }
+
+        if (targetPath == null) {
+            sendJsonResponse(out, 400, "{\"error\":\"Missing path\"}");
+            return;
+        }
+
+        File file = new File(targetPath);
+        if (!file.exists() || file.isDirectory()) {
+            sendJsonResponse(out, 404, "{\"error\":\"File not found\"}");
+            return;
+        }
+
+        Bitmap bitmap = null;
+        String name = file.getName().toLowerCase();
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp")) {
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = 4;
+            bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
+        } else if (name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".mov")) {
+            bitmap = ThumbnailUtils.createVideoThumbnail(file.getAbsolutePath(), MediaStore.Video.Thumbnails.MICRO_KIND);
+        }
+
+        if (bitmap == null) {
+            sendJsonResponse(out, 404, "{\"error\":\"Thumbnail not supported\"}");
+            return;
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 75, baos);
+        byte[] thumbBytes = baos.toByteArray();
+        bitmap.recycle();
+
+        sendResponseHeaders(out, 200, "OK", "image/jpeg", thumbBytes.length, null);
+        out.write(thumbBytes);
+        out.flush();
     }
 
-    private class SetReadOnlyHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (!isAuthorized(exchange)) {
-                sendError(exchange, 401, "Unauthorized: Invalid or missing auth token");
-                return;
-            }
-            try {
-                if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                    InputStream is = exchange.getRequestBody();
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    byte[] buf = new byte[1024];
-                    int r;
-                    while ((r = is.read(buf)) != -1) baos.write(buf, 0, r);
-                    JSONObject req = new JSONObject(baos.toString("UTF-8"));
-                    readOnly = req.optBoolean("readOnly", true);
+    private void handleSetReadOnly(OutputStream out, byte[] body) throws Exception {
+        String bodyStr = new String(body, StandardCharsets.UTF_8);
+        JSONObject json = new JSONObject(bodyStr);
+        if (json.has("readOnly")) {
+            this.readOnly = json.getBoolean("readOnly");
+            Log.i(TAG, "Server readOnly mode updated to: " + this.readOnly);
+        }
+        JSONObject resp = new JSONObject();
+        resp.put("success", true);
+        resp.put("readOnly", this.readOnly);
+        sendJsonResponse(out, 200, resp.toString());
+    }
 
-                    JSONObject res = new JSONObject();
-                    res.put("success", true);
-                    res.put("readOnly", readOnly);
+    private void handleTrash(OutputStream out, byte[] body) throws Exception {
+        if (this.readOnly) {
+            sendJsonResponse(out, 403, "{\"error\":\"Host is in Read-Only Safe Mode. Modifications disabled.\"}");
+            return;
+        }
 
-                    byte[] respBytes = res.toString().getBytes("UTF-8");
-                    exchange.getResponseHeaders().set("Content-Type", "application/json");
-                    exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-                    exchange.sendResponseHeaders(200, respBytes.length);
-                    OutputStream os = exchange.getResponseBody();
-                    os.write(respBytes);
-                    os.close();
-                } else {
-                    sendError(exchange, 405, "Method Not Allowed");
-                }
-            } catch (Exception e) {
-                sendError(exchange, 500, e.getMessage());
+        String bodyStr = new String(body, StandardCharsets.UTF_8);
+        JSONObject json = new JSONObject(bodyStr);
+        String filePath = json.optString("path", "");
+        File file = new File(filePath);
+
+        if (!file.exists()) {
+            sendJsonResponse(out, 404, "{\"error\":\"File not found\"}");
+            return;
+        }
+
+        File trashDir = new File(Environment.getExternalStorageDirectory(), ".trash");
+        if (!trashDir.exists()) trashDir.mkdirs();
+
+        File destination = new File(trashDir, System.currentTimeMillis() + "_" + file.getName());
+        boolean success = file.renameTo(destination);
+
+        JSONObject resp = new JSONObject();
+        resp.put("success", success);
+        resp.put("trashPath", destination.getAbsolutePath());
+        sendJsonResponse(out, success ? 200 : 500, resp.toString());
+    }
+
+    private void sendJsonResponse(OutputStream out, int status, String json) throws IOException {
+        byte[] data = json.getBytes(StandardCharsets.UTF_8);
+        sendResponseHeaders(out, status, status == 200 ? "OK" : "Error", "application/json; charset=utf-8", data.length, null);
+        out.write(data);
+        out.flush();
+    }
+
+    private void sendResponseHeaders(OutputStream out, int statusCode, String statusText,
+                                    String contentType, long contentLength, Map<String, String> extraHeaders) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        sb.append("HTTP/1.1 ").append(statusCode).append(" ").append(statusText).append("\r\n");
+        sb.append("Content-Type: ").append(contentType).append("\r\n");
+        sb.append("Content-Length: ").append(contentLength).append("\r\n");
+        sb.append("Access-Control-Allow-Origin: *\r\n");
+        sb.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
+        sb.append("Access-Control-Allow-Headers: *\r\n");
+        sb.append("Connection: close\r\n");
+
+        if (extraHeaders != null) {
+            for (Map.Entry<String, String> e : extraHeaders.entrySet()) {
+                sb.append(e.getKey()).append(": ").append(e.getValue()).append("\r\n");
             }
         }
-    }
-
-    private class TrashHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (!isAuthorized(exchange)) {
-                sendError(exchange, 401, "Unauthorized: Invalid or missing auth token");
-                return;
-            }
-            if (readOnly) {
-                sendError(exchange, 403, "Forbidden: Phone is in Read-Only Mode. Turn off Read-Only on the phone to allow file management.");
-                return;
-            }
-
-            try {
-                if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                    InputStream is = exchange.getRequestBody();
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    byte[] buf = new byte[1024];
-                    int r;
-                    while ((r = is.read(buf)) != -1) baos.write(buf, 0, r);
-                    JSONObject req = new JSONObject(baos.toString("UTF-8"));
-                    String targetPath = req.optString("path", null);
-
-                    if (targetPath == null || targetPath.trim().isEmpty()) {
-                        sendError(exchange, 400, "Missing path");
-                        return;
-                    }
-
-                    File file = new File(targetPath);
-                    if (!file.exists()) {
-                        sendError(exchange, 404, "File not found");
-                        return;
-                    }
-
-                    // Move to Recycle Bin (.trash folder on device) - NEVER permanent delete
-                    File trashDir = new File(Environment.getExternalStorageDirectory(), ".trash");
-                    if (!trashDir.exists()) {
-                        trashDir.mkdirs();
-                    }
-
-                    File destFile = new File(trashDir, System.currentTimeMillis() + "_" + file.getName());
-                    boolean success = file.renameTo(destFile);
-
-                    if (success) {
-                        JSONObject res = new JSONObject();
-                        res.put("success", true);
-                        res.put("message", "File moved to Phone Recycle Bin");
-                        res.put("trashPath", destFile.getAbsolutePath());
-
-                        byte[] respBytes = res.toString().getBytes("UTF-8");
-                        exchange.getResponseHeaders().set("Content-Type", "application/json");
-                        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-                        exchange.sendResponseHeaders(200, respBytes.length);
-                        OutputStream os = exchange.getResponseBody();
-                        os.write(respBytes);
-                        os.close();
-                    } else {
-                        sendError(exchange, 500, "Failed to move file to phone trash");
-                    }
-                } else {
-                    sendError(exchange, 405, "Method Not Allowed");
-                }
-            } catch (Exception e) {
-                sendError(exchange, 500, e.getMessage());
-            }
-        }
-    }
-
-    private void sendError(HttpExchange exchange, int code, String msg) throws IOException {
-        byte[] response = (msg != null ? msg : "Error").getBytes("UTF-8");
-        exchange.getResponseHeaders().set("Content-Type", "text/plain");
-        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-        exchange.sendResponseHeaders(code, response.length);
-        OutputStream os = exchange.getResponseBody();
-        os.write(response);
-        os.close();
+        sb.append("\r\n");
+        out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     private String getMimeType(String fileName) {
-        int idx = fileName.lastIndexOf('.');
-        if (idx < 0) return "application/octet-stream";
-        String ext = fileName.substring(idx + 1).toLowerCase();
-
-        switch (ext) {
-            case "jpg":
-            case "jpeg": return "image/jpeg";
-            case "png": return "image/png";
-            case "gif": return "image/gif";
-            case "webp": return "image/webp";
-            case "mp4": return "video/mp4";
-            case "mkv": return "video/x-matroska";
-            case "mov": return "video/quicktime";
-            case "mp3": return "audio/mpeg";
-            case "wav": return "audio/wav";
-            case "m4a": return "audio/mp4";
-            case "pdf": return "application/pdf";
-            case "txt": return "text/plain";
-            case "json": return "application/json";
-            case "apk": return "application/vnd.android.package-archive";
-            default: return "application/octet-stream";
-        }
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".mp4")) return "video/mp4";
+        if (lower.endsWith(".mkv")) return "video/x-matroska";
+        if (lower.endsWith(".mp3")) return "audio/mpeg";
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".json")) return "application/json";
+        if (lower.endsWith(".txt")) return "text/plain; charset=utf-8";
+        if (lower.endsWith(".zip")) return "application/zip";
+        return "application/octet-stream";
     }
 }
