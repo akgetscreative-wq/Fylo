@@ -2577,6 +2577,1611 @@
             font-size: 0.82rem;
             width: fit-content;
         }
+
+        /* ==========================================
+           Fylo v4: Startup Fullscreen Blue Gradient Landing
+           ========================================== */
+        #startup-landing {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 50% 25%, #1e40af 0%, #0f172a 75%, #020617 100%);
+            overflow-y: auto;
+            padding: 24px;
+            box-sizing: border-box;
+            transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #startup-landing.hidden-landing {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: scale(0.96) !important;
+        }
+
+        .landing-ambient-glow {
+            position: absolute;
+            width: 650px;
+            height: 650px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, rgba(30, 64, 175, 0.12) 50%, transparent 70%);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            filter: blur(50px);
+            animation: pulseGlow 7s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
+            100% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+        }
+
+        .landing-floating-card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1.5px solid rgba(255, 255, 255, 0.22);
+            border-radius: 28px;
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            max-width: 860px;
+            width: 100%;
+            padding: 36px 40px;
+            color: #ffffff;
+            z-index: 2;
+            animation: floatLanding 6s ease-in-out infinite alternate;
+        }
+
+        @keyframes floatLanding {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-6px); }
+        }
+
+        .landing-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .landing-logo {
+            font-size: 2.2rem;
+            font-weight: 900;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #00d2d3, #a29bfe, #ff7675);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .landing-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #e2e8f0;
+        }
+
+        .landing-body {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 32px;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .landing-body {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .landing-qr-pane {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .landing-qr-box {
+            background: #ffffff;
+            padding: 14px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+            margin-bottom: 14px;
+            width: 190px;
+            height: 190px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .landing-qr-box svg {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        .landing-steps-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .landing-step-row {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+
+        .landing-step-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #00d2d3, #5f27cd);
+            color: #fff;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 10px rgba(0, 210, 211, 0.3);
+        }
+
+        .landing-step-text strong {
+            display: block;
+            font-size: 0.95rem;
+            color: #ffffff;
+            margin-bottom: 2px;
+        }
+
+        .landing-step-text span {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }
+
+        .landing-footer-actions {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Sidebar Collapsible Mode */
+        sidebar {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+
+        .app-layout.sidebar-collapsed sidebar {
+            width: 0 !important;
+            min-width: 0 !important;
+            max-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            border: none !important;
+        }
+
+        .app-layout.sidebar-collapsed .main-content {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        /* Prominent Back to Dashboard Buttons */
+        .btn-back-dashboard {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none;
+        }
+
+        .btn-back-dashboard:hover {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+            transform: translateX(-2px);
+            box-shadow: 0 4px 14px rgba(0, 210, 211, 0.25);
+        }
+
+        .feature-focus-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Hotspot Modal Styles */
+        .hotspot-card-row {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px 18px;
+            margin-bottom: 14px;
+        }
+
+        .status-pill.clickable {
+            cursor: pointer;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .status-pill.clickable:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+            box-shadow: 0 4px 12px rgba(0, 210, 211, 0.2);
+        }
+    
+        /* ==========================================================================
+           FYLO REDESIGNED BENTO HOMEPAGE & TOP PILL NAVIGATION (REFERENCE DESIGN)
+           ========================================================================== */
+
+        /* Top Brand Mark */
+        .top-brand-badge {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 1.15rem;
+            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .top-brand-badge:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 18px rgba(124, 58, 237, 0.5);
+        }
+
+        /* Centered Top Pill Navigation Bar */
+        .top-nav-pills {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 9999px;
+            padding: 4px 6px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        :root[data-theme="dark"] .top-nav-pills {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .top-nav-pills::-webkit-scrollbar {
+            display: none;
+        }
+
+        .top-nav-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 15px;
+            border-radius: 9999px;
+            border: none;
+            background: transparent;
+            color: var(--text-light);
+            font-size: 0.84rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .top-nav-pill:hover {
+            color: var(--text);
+            background: rgba(0, 0, 0, 0.05);
+            transform: translateY(-1px);
+        }
+
+        :root[data-theme="dark"] .top-nav-pill:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Active Pill: Dark rounded capsule matching reference image */
+        .top-nav-pill.active {
+            background: #181a1b !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        :root[data-theme="dark"] .top-nav-pill.active {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            box-shadow: 0 4px 14px rgba(255, 255, 255, 0.2);
+        }
+
+        .top-nav-pill .pill-icon {
+            font-size: 0.95rem;
+            line-height: 1;
+        }
+
+        .nav-pill-badge {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 2px;
+        }
+
+        /* Top Header Right Cluster */
+        .top-notif-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .top-notif-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #ef4444;
+            color: #ffffff;
+            font-size: 0.65rem;
+            font-weight: 900;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+            pointer-events: none;
+        }
+
+        .top-profile-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 14px 5px 6px;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        :root[data-theme="dark"] .top-profile-pill {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .top-profile-pill:hover {
+            transform: translateY(-1px);
+            border-color: var(--accent);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+        }
+
+        .top-profile-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .top-profile-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            line-height: 1.1;
+        }
+
+        .top-profile-name {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .top-profile-status {
+            font-size: 0.68rem;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .top-profile-pulse {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #2ed573;
+            margin-left: 2px;
+        }
+
+        /* --------------------------------------------------------------------------
+           HOMEPAGE GREETING & SEARCH BAR
+           -------------------------------------------------------------------------- */
+        .dash-greeting-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .dash-greeting-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .dash-greeting-title {
+            font-size: 1.85rem;
+            font-weight: 900;
+            color: var(--text);
+            letter-spacing: -0.6px;
+            margin: 0;
+            line-height: 1.15;
+        }
+
+        .dash-greeting-subtitle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            color: var(--text-light);
+            font-weight: 700;
+            flex-wrap: wrap;
+        }
+
+        .dash-stat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            border: 1px solid transparent;
+        }
+
+        .dash-stat-badge.live {
+            background: rgba(46, 213, 115, 0.12);
+            color: #2ed573;
+            border-color: rgba(46, 213, 115, 0.3);
+        }
+
+        .dash-stat-badge.wifi {
+            background: rgba(0, 210, 211, 0.12);
+            color: #00d2d3;
+            border-color: rgba(0, 210, 211, 0.3);
+        }
+
+        .dash-stat-badge.safe {
+            background: rgba(124, 58, 237, 0.12);
+            color: var(--accent);
+            border-color: rgba(124, 58, 237, 0.3);
+        }
+
+        .dash-greeting-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dash-search-box {
+            display: flex;
+            align-items: center;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 9999px;
+            padding: 6px 14px;
+            gap: 10px;
+            width: 340px;
+            max-width: 100%;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+            transition: all 0.2s ease;
+        }
+
+        .dash-search-box:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 4px 20px rgba(124, 58, 237, 0.18);
+            width: 380px;
+        }
+
+        .dash-search-icon {
+            width: 16px;
+            height: 16px;
+            color: var(--text-light);
+            flex-shrink: 0;
+        }
+
+        .dash-search-box input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 0.85rem;
+            color: var(--text);
+            width: 100%;
+            font-weight: 600;
+        }
+
+        .dash-search-box input::placeholder {
+            color: var(--text-light);
+            opacity: 0.75;
+        }
+
+        .dash-search-filter-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-light);
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: color 0.2s ease;
+        }
+
+        .dash-search-filter-btn:hover {
+            color: var(--text);
+        }
+
+        .dash-search-filter-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* --------------------------------------------------------------------------
+           BENTO GRID CARDS (LANDSCAPE-OPTIMIZED, BEAUTIFUL SOFT SHADOWS)
+           -------------------------------------------------------------------------- */
+        .dash-bento-grid {
+            display: grid;
+            grid-template-columns: 280px 1.25fr 290px 280px;
+            gap: 18px;
+            align-items: stretch;
+            min-height: 600px;
+        }
+
+        .bento-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), var(--inner-shadow);
+            display: flex;
+            flex-direction: column;
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bento-card:hover {
+            box-shadow: 0 14px 38px rgba(0, 0, 0, 0.07), var(--inner-shadow);
+        }
+
+        .bento-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .bento-card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+
+        .card-header-icon {
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .bento-card-caption {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            font-weight: 700;
+        }
+
+        .bento-icon-btn {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .bento-icon-btn {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .bento-icon-btn:hover {
+            color: var(--text);
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        /* 1. LEFT TALL CARD: Activity & Transfer Timeline */
+        .dash-card-timeline {
+            justify-content: space-between;
+        }
+
+        .timeline-filter-tabs {
+            display: flex;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border);
+            padding: 3px;
+            border-radius: 9999px;
+            margin-bottom: 14px;
+        }
+
+        :root[data-theme="dark"] .timeline-filter-tabs {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .timeline-tab {
+            flex: 1;
+            border: none;
+            background: transparent;
+            border-radius: 9999px;
+            padding: 5px 8px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .timeline-tab.active {
+            background: #ffffff;
+            color: var(--text);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        :root[data-theme="dark"] .timeline-tab.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }
+
+        .timeline-date-bar {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .date-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 7px 6px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid var(--border);
+            flex: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        :root[data-theme="dark"] .date-chip {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .date-chip span {
+            font-size: 0.95rem;
+            font-weight: 900;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .date-chip small {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-light);
+            margin-top: 3px;
+        }
+
+        .date-chip.active {
+            background: #f59e0b !important;
+            border-color: #f59e0b !important;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+        }
+
+        .date-chip.active span,
+        .date-chip.active small {
+            color: #ffffff !important;
+        }
+
+        .timeline-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .timeline-node {
+            display: flex;
+            gap: 12px;
+            position: relative;
+        }
+
+        .timeline-node:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 16px;
+            bottom: -16px;
+            width: 2px;
+            background: dashed rgba(160, 174, 192, 0.35);
+            border-left: 2px dashed rgba(160, 174, 192, 0.4);
+        }
+
+        .node-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-top: 4px;
+            flex-shrink: 0;
+            z-index: 2;
+        }
+
+        .node-marker.green {
+            background: #2ed573;
+            box-shadow: 0 0 0 3px rgba(46, 213, 115, 0.25);
+        }
+
+        .node-marker.muted {
+            background: #cbd5e1;
+            box-shadow: 0 0 0 3px rgba(203, 213, 225, 0.25);
+        }
+
+        .node-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .node-time {
+            font-size: 0.68rem;
+            color: var(--text-light);
+            font-weight: 700;
+        }
+
+        .node-title {
+            font-size: 0.82rem;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.2;
+        }
+
+        .node-sub {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            line-height: 1.25;
+        }
+
+        .node-badge {
+            align-self: flex-start;
+            padding: 1px 7px;
+            border-radius: 6px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            margin-top: 3px;
+        }
+
+        .timeline-cta-btn {
+            width: 100%;
+            padding: 11px 16px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 0.86rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        /* 2. CENTER COLUMN */
+        .dash-col-center {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .dash-card-drives {
+            flex: 1;
+        }
+
+        .bento-tiles-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            height: 100%;
+        }
+
+        .bento-tile {
+            border-radius: 20px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 130px;
+            cursor: pointer;
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bento-tile:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        .tile-sky {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(14, 165, 233, 0.06));
+            border: 1px solid rgba(56, 189, 248, 0.28);
+        }
+
+        .tile-peach {
+            background: linear-gradient(135deg, rgba(251, 146, 60, 0.16), rgba(249, 115, 22, 0.06));
+            border: 1px solid rgba(251, 146, 60, 0.28);
+        }
+
+        .tile-mint {
+            background: linear-gradient(135deg, rgba(46, 213, 115, 0.16), rgba(38, 175, 95, 0.06));
+            border: 1px solid rgba(46, 213, 115, 0.28);
+        }
+
+        .tile-lavender {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.16), rgba(147, 51, 234, 0.06));
+            border: 1px solid rgba(168, 85, 247, 0.28);
+        }
+
+        .tile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .tile-title {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .tile-icon-badge {
+            font-size: 1rem;
+        }
+
+        .tile-graphic-wave {
+            height: 8px;
+            background: rgba(56, 189, 248, 0.2);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .tile-wave-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8, #0284c7);
+            border-radius: 9999px;
+            transition: width 0.4s ease;
+        }
+
+        .tile-arc-gauge {
+            height: 8px;
+            background: rgba(251, 146, 60, 0.2);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .tile-arc-fill {
+            height: 100%;
+            width: 72%;
+            background: linear-gradient(90deg, #fb923c, #ea580c);
+            border-radius: 9999px;
+        }
+
+        .tile-ecg-pulse {
+            height: 24px;
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+        }
+
+        .ecg-svg {
+            width: 100%;
+            height: 22px;
+        }
+
+        .tile-shield-gauge {
+            height: 8px;
+            background: rgba(168, 85, 247, 0.2);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .tile-shield-arc {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #a855f7, #7c3aed);
+            border-radius: 9999px;
+        }
+
+        .tile-stat-number {
+            font-size: 1.18rem;
+            font-weight: 900;
+            color: var(--text);
+            letter-spacing: -0.4px;
+            line-height: 1.1;
+        }
+
+        .tile-subtext {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            font-weight: 700;
+            margin-top: 3px;
+        }
+
+        /* Center-Bottom Subgrid */
+        .dash-center-subgrid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .dash-card-quick-access,
+        .dash-card-net-activity {
+            justify-content: space-between;
+        }
+
+        .quick-access-chips {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .quick-chip-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 6px;
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.025);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            gap: 4px;
+        }
+
+        :root[data-theme="dark"] .quick-chip-btn {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .quick-chip-btn:hover {
+            background: var(--accent-bg);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+        }
+
+        .chip-emoji {
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+
+        .chip-name {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--text);
+            text-align: center;
+        }
+
+        /* Network Activity Bars */
+        .net-peak-tag {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: #2ed573;
+            background: rgba(46, 213, 115, 0.12);
+            padding: 2px 8px;
+            border-radius: 9999px;
+        }
+
+        .net-bars-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 65px;
+            margin: 6px 0 10px 0;
+            gap: 8px;
+        }
+
+        .net-bar-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+
+        .net-bar-fill {
+            width: 22px;
+            border-radius: 6px;
+            background: rgba(124, 58, 237, 0.18);
+            transition: height 0.4s ease;
+        }
+
+        .net-bar-fill.highlight {
+            background: linear-gradient(180deg, #7c3aed, #a855f7);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+        }
+
+        .net-bar-col span {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-light);
+        }
+
+        .net-ip-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--text-light);
+            margin-bottom: 10px;
+        }
+
+        .dot-sep {
+            opacity: 0.4;
+        }
+
+        .net-hotspot-btn {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.02);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        :root[data-theme="dark"] .net-hotspot-btn {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .net-hotspot-btn:hover {
+            border-color: #ff7675;
+            color: #ff7675;
+            transform: translateY(-1px);
+        }
+
+        /* 3. RIGHT COLUMN: Quick Share Queue & Hero Card */
+        .dash-col-right {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .dash-card-queue {
+            flex: 1;
+            justify-content: space-between;
+        }
+
+        .queue-checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .queue-item-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        :root[data-theme="dark"] .queue-item-row {
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .queue-item-row:hover {
+            border-color: var(--accent);
+            transform: translateX(2px);
+        }
+
+        .queue-check {
+            width: 18px;
+            height: 18px;
+            border-radius: 6px;
+            border: 2px solid #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 900;
+            color: transparent;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        .queue-check.checked {
+            background: #2ed573;
+            border-color: #2ed573;
+            color: #ffffff;
+        }
+
+        .queue-file-icon {
+            font-size: 1.1rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .queue-file-meta {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .queue-file-name {
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .queue-file-size {
+            font-size: 0.68rem;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        /* Vibrant Golden Yellow CTA Button matching reference image Shop Now button */
+        .btn-golden-cta {
+            width: 100%;
+            padding: 13px 18px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+            color: #1e293b;
+            font-weight: 800;
+            font-size: 0.88rem;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .btn-golden-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5);
+            filter: brightness(1.04);
+        }
+
+        .btn-golden-cta:active {
+            transform: translateY(0);
+        }
+
+        /* Vibrant Purple Hero Card matching reference Got a Recipe That Rocks? */
+        .dash-hero-card {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #7c3aed 100%);
+            border: none;
+            color: #ffffff;
+            padding: 22px 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 12px 32px rgba(99, 102, 241, 0.35);
+        }
+
+        .hero-stars-row {
+            color: #fde047;
+            font-size: 1.15rem;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+            line-height: 1;
+        }
+
+        .hero-card-title {
+            font-size: 1.35rem;
+            font-weight: 900;
+            margin: 0 0 4px 0;
+            color: #ffffff;
+            letter-spacing: -0.4px;
+        }
+
+        .hero-card-desc {
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.88);
+            margin: 0 0 16px 0;
+            line-height: 1.35;
+        }
+
+        .hero-outline-btn {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .hero-outline-btn:hover {
+            background: rgba(255, 255, 255, 0.28);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 4. FAR RIGHT COLUMN: Mobile Companion Preview Panel */
+        .dash-card-companion {
+            border-radius: 26px;
+            padding: 16px;
+            justify-content: space-between;
+        }
+
+        .companion-top-banner {
+            height: 155px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            box-shadow: 0 6px 20px rgba(49, 46, 129, 0.3);
+        }
+
+        .companion-banner-glow {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.5) 0%, transparent 70%);
+            top: 10px;
+            right: 10px;
+        }
+
+        .phone-screen-frame {
+            width: 82px;
+            height: 130px;
+            border-radius: 16px;
+            border: 3px solid rgba(255, 255, 255, 0.35);
+            background: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .screen-notch {
+            width: 26px;
+            height: 4px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.3);
+            margin-bottom: 12px;
+        }
+
+        .screen-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 6px;
+        }
+
+        .screen-logo {
+            font-size: 0.85rem;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        .screen-sync-icon {
+            font-size: 1.3rem;
+            line-height: 1;
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        .screen-status-text {
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: #94a3b8;
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .companion-body {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            justify-content: space-between;
+        }
+
+        .companion-title {
+            font-size: 1.18rem;
+            font-weight: 900;
+            color: var(--text);
+            margin: 0 0 2px 0;
+            letter-spacing: -0.3px;
+        }
+
+        .companion-subtitle {
+            font-size: 0.74rem;
+            color: var(--text-light);
+            margin: 0 0 10px 0;
+            line-height: 1.3;
+        }
+
+        .companion-tags {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .comp-tag {
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.04);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        :root[data-theme="dark"] .comp-tag {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .companion-status-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.025);
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+
+        :root[data-theme="dark"] .companion-status-box {
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .status-indicator-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            flex-shrink: 0;
+        }
+
+        .status-indicator-dot.online {
+            background: #2ed573;
+            box-shadow: 0 0 0 3px rgba(46, 213, 115, 0.25);
+        }
+
+        .status-meta {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .status-heading {
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .status-sub {
+            font-size: 0.68rem;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .companion-specs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .comp-spec-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid var(--border);
+        }
+
+        :root[data-theme="dark"] .comp-spec-item {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .spec-icon {
+            font-size: 0.95rem;
+            line-height: 1;
+        }
+
+        .spec-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.1;
+        }
+
+        .spec-text strong {
+            font-size: 0.72rem;
+            color: var(--text);
+        }
+
+        .spec-text span {
+            font-size: 0.62rem;
+            color: var(--text-light);
+        }
+
+        .companion-action-btn {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 0.84rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        /* --------------------------------------------------------------------------
+           RESPONSIVE LANDSCAPE ADJUSTMENTS
+           -------------------------------------------------------------------------- */
+        @media (max-width: 1420px) {
+            .dash-bento-grid {
+                grid-template-columns: 260px 1.15fr 270px;
+            }
+            .dash-card-companion {
+                grid-column: 1 / -1;
+                flex-direction: row;
+                gap: 20px;
+            }
+            .companion-top-banner {
+                width: 180px;
+                height: auto;
+                margin-bottom: 0;
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .dash-bento-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .dash-card-timeline {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 780px) {
+            .dash-bento-grid {
+                grid-template-columns: 1fr;
+            }
+            .dash-center-subgrid {
+                grid-template-columns: 1fr;
+            }
+            .top-nav-pills {
+                display: none;
+            }
+        }
+
     </style>
 </head>
 
@@ -2604,25 +4209,128 @@
         </div>
     </div>
 
+    <!-- Fylo v4: Startup Fullscreen Blue Gradient Landing Interface -->
+    <div id="startup-landing">
+        <div class="landing-ambient-glow"></div>
+        <div class="landing-floating-card">
+            <!-- Header -->
+            <div class="landing-card-header">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div class="landing-logo">fylo</div>
+                    <div class="landing-pill">
+                        <span class="pill-dot live-pulse"></span>
+                        <span id="landing-beacon-text">Ready to Connect</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="landing-pill" id="landing-network-pill">🌐 <span id="landing-network-name">Wi-Fi</span></span>
+                    <button class="landing-pill clickable" id="landing-hotspot-pill-btn" title="Open Hotspot Setup" style="cursor: pointer; background: rgba(255, 118, 117, 0.2); border-color: rgba(255, 118, 117, 0.4); color: #ff7675;">
+                        🔥 Hotspot
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body: QR box & Connection Steps -->
+            <div class="landing-body">
+                <!-- Left: QR Code -->
+                <div class="landing-qr-pane">
+                    <div class="landing-qr-box">
+                        <div id="landing-qrcode"></div>
+                    </div>
+                    <div style="font-weight: 800; font-size: 0.92rem; color: #ffffff; margin-bottom: 4px; word-break: break-all;" id="landing-url-text">Detecting URL...</div>
+                    <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 12px;">Scan with Android camera or Fylo App</div>
+                    <button class="btn btn-accent" id="landing-copy-btn" style="width: 100%; justify-content: center; padding: 9px 14px; border-radius: 12px; font-size: 0.82rem;">
+                        📋 Copy Link
+                    </button>
+                </div>
+
+                <!-- Right: Steps & Details -->
+                <div class="landing-steps-pane">
+                    <div>
+                        <h2 style="font-size: 1.5rem; font-weight: 900; color: #ffffff; letter-spacing: -0.5px; margin: 0 0 4px 0;">Instant Phone Connection</h2>
+                        <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Connect your Android phone and PC effortlessly over local Wi-Fi or Hotspot</p>
+                    </div>
+
+                    <div class="landing-step-row">
+                        <div class="landing-step-badge">1</div>
+                        <div class="landing-step-text">
+                            <strong>Same Network or Hotspot</strong>
+                            <span>Ensure PC and Phone are on the same Wi-Fi, or turn on Windows Mobile Hotspot for direct 50+ MB/s transfers.</span>
+                        </div>
+                    </div>
+
+                    <div class="landing-step-row">
+                        <div class="landing-step-badge">2</div>
+                        <div class="landing-step-text">
+                            <strong>Scan QR Code</strong>
+                            <span>Open the Fylo Android App and tap <em>"Scan PC QR Code"</em>, or scan the code on the left with your phone's camera.</span>
+                        </div>
+                    </div>
+
+                    <div class="landing-step-row">
+                        <div class="landing-step-badge">3</div>
+                        <div class="landing-step-text">
+                            <strong>Automatic Access & Sync</strong>
+                            <span>Once scanned, browse phone storage & media, transfer files seamlessly, and sync your clipboard in real-time.</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 16px; align-items: center; padding: 10px 14px; background: rgba(255, 255, 255, 0.05); border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.8rem; color: #cbd5e1; flex-wrap: wrap;">
+                        <span>🔒 <strong>Protected:</strong> AES Token</span>
+                        <span>⚡ <strong>Speed:</strong> Up to 80 MB/s</span>
+                        <span>💻 <strong>Port:</strong> 3000</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom: Action Buttons -->
+            <div class="landing-footer-actions">
+                <button class="btn btn-accent" id="landing-enter-dashboard-btn" style="padding: 12px 26px; border-radius: 14px; font-weight: 800; font-size: 0.95rem; gap: 8px;">
+                    🚀 Enter Dashboard & Workspace →
+                </button>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn" id="landing-browse-pc-btn" style="padding: 10px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2);">
+                        💻 Browse PC Drives
+                    </button>
+                    <button class="btn" id="landing-open-hotspot-btn" style="padding: 10px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2);">
+                        🔥 Hotspot Setup
+                    </button>
+                    <button class="btn" id="landing-clipboard-btn" style="padding: 10px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2);">
+                        📋 Clipboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="app" class="app-layout">
         <sidebar>
             <div class="brand-zone">
                 <div class="logo">fylo</div>
-                <button class="btn" id="theme-toggle"
-                    style="padding: 10px; border-radius: 14px; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex-shrink: 0;">
-                    <svg id="theme-icon" viewBox="0 0 24 24"
-                        style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                </button>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <button class="btn" id="theme-toggle"
+                        style="padding: 8px; border-radius: 12px; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex-shrink: 0;" title="Toggle Dark/Light Mode">
+                        <svg id="theme-icon" viewBox="0 0 24 24"
+                            style="width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                    <button class="btn" id="sidebar-hide-btn"
+                        style="padding: 8px; border-radius: 12px; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex-shrink: 0;" title="Collapse Sidebar (☰)">
+                        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <ul class="nav-list">
-                <li class="nav-item active" data-target="view-phone" id="nav-phone-item">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                <li class="nav-item active" data-target="view-dashboard" id="nav-dashboard-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
                     </svg>
-                    <span>Phone Explorer <span class="badge hidden" id="phone-nav-badge" style="background:var(--accent); color:#fff; font-size:0.7rem; padding:2px 7px; border-radius:10px; margin-left:4px; font-weight:800;">0</span></span>
+                    <span>Home</span>
                 </li>
                 <li class="nav-item" data-target="view-pc-explorer" id="nav-pc-item">
                     <svg viewBox="0 0 24 24">
@@ -2649,12 +4357,21 @@
                     </svg>
                     <span>Live Clipboard</span>
                 </li>
+                <li class="nav-item" data-target="view-phone" id="nav-phone-item">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                    </svg>
+                    <span>Phone Sync <span class="badge hidden" id="phone-nav-badge" style="background:var(--accent); color:#fff; font-size:0.7rem; padding:2px 7px; border-radius:10px; margin-left:4px; font-weight:800;">0</span></span>
+                </li>
                 <li class="nav-item" data-target="view-devices" id="nav-devices-item">
                     <svg viewBox="0 0 24 24">
-                        <rect x="4" y="4" width="16" height="12" rx="2" />
-                        <path d="M12 16v4M8 20h8" />
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
-                    <span>Devices (<span id="device-count">0</span>)</span>
+                    <span>LAN Devices</span>
                 </li>
                 <li class="nav-item" data-target="view-settings" id="nav-settings-item">
                     <svg viewBox="0 0 24 24">
@@ -2673,56 +4390,471 @@
 
         <main class="main-content">
             <!-- Top System Header Bar -->
+            <!-- Top System Header Bar with Pill Navigation (Reference Design) -->
             <header class="top-header-bar">
                 <div class="top-header-left">
-                    <div class="top-view-title" id="top-current-view-title">
-                        <span class="top-view-icon" id="top-current-view-icon">📱</span>
-                        <span class="top-view-text" id="top-current-view-text">Phone Explorer</span>
+                    <div class="top-brand-badge" id="top-brand-btn" title="Fylo Dashboard">
+                        <span>F</span>
                     </div>
-                    <div class="top-tagline" id="top-current-view-tagline">Browse and preview Android photos, videos, and folders in real time</div>
+                    <button class="btn-top-icon" id="sidebar-toggle-btn" title="Toggle Sidebar (☰)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width: 17px; height: 17px;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <button class="btn-back-dashboard hidden" id="top-back-dashboard-btn" title="Back to Dashboard">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px; height:13px;"><polyline points="15 18 9 12 15 6"/></svg>
+                        <span>Dashboard</span>
+                    </button>
                 </div>
-                <div class="top-header-center">
-                    <!-- Live IP Address Pill with 1-click Copy -->
-                    <div class="status-pill" id="top-ip-pill" title="Click to copy server link">
-                        <span class="pill-dot live-pulse"></span>
-                        <span style="opacity:0.75; font-size:0.75rem;">LAN</span>
-                        <span id="top-ip-val">Connecting...</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px; opacity:0.75;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    </div>
-                    <!-- Network Mode Pill -->
-                    <div class="status-pill" id="top-mode-pill" title="Network Interface">
-                        <span>🌐</span>
-                        <span id="top-mode-val">Wi-Fi</span>
-                    </div>
-                    <!-- Phone Connection Status Pill -->
-                    <div class="status-pill" id="top-phone-pill" title="Mobile Sync Status">
-                        <span class="pill-dot" id="top-phone-dot"></span>
-                        <span>📱</span>
-                        <span id="top-phone-val">Phone Disconnected</span>
-                    </div>
-                    <!-- Admin Security Badge -->
-                    <div class="status-pill" id="top-admin-pill" title="Protected by Admin Security Password">
-                        <span>🛡️</span>
-                        <span>Protected</span>
-                    </div>
+
+                <!-- Centered Navigation Pill Tabs -->
+                <div class="top-nav-pills" id="top-nav-pills-bar">
+                    <button class="top-nav-pill active" data-target="view-dashboard" id="top-pill-dashboard">
+                        <span class="pill-icon">🏠</span>
+                        <span class="pill-label">Home</span>
+                    </button>
+                    <button class="top-nav-pill" data-target="view-pc-explorer" id="top-pill-pc">
+                        <span class="pill-icon">💻</span>
+                        <span class="pill-label">PC Drives</span>
+                    </button>
+                    <button class="top-nav-pill" data-target="view-hub" id="top-pill-hub">
+                        <span class="pill-icon">⚡</span>
+                        <span class="pill-label">Share Hub</span>
+                    </button>
+                    <button class="top-nav-pill" data-target="view-clipboard" id="top-pill-clipboard">
+                        <span class="pill-icon">📋</span>
+                        <span class="pill-label">Clipboard</span>
+                    </button>
+                    <button class="top-nav-pill" id="top-pill-hotspot">
+                        <span class="pill-icon">🔥</span>
+                        <span class="pill-label">Hotspot</span>
+                    </button>
+                    <button class="top-nav-pill" data-target="view-phone" id="top-pill-phone">
+                        <span class="pill-icon">📱</span>
+                        <span class="pill-label">Phone Sync</span>
+                        <span class="nav-pill-badge hidden" id="top-phone-sync-badge">0</span>
+                    </button>
+                    <button class="top-nav-pill" data-target="view-settings" id="top-pill-settings">
+                        <span class="pill-icon">⚙️</span>
+                        <span class="pill-label">Settings</span>
+                        <span class="nav-pill-badge" style="background: rgba(124, 58, 237, 0.15); color: var(--accent);">+3</span>
+                    </button>
                 </div>
+
+                <!-- Right Cluster: Support/QR, Bell, Theme, User Profile -->
                 <div class="top-header-right">
-                    <button class="btn-top-action" id="top-quick-share-btn" title="Quick Share Files">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:15px; height:15px;"><path d="M12 5v14M5 12h14"/></svg>
-                        <span>Share Files</span>
+                    <button class="btn-top-icon" id="top-qr-toggle-btn" title="Phone Pairing & QR Code">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 17px; height: 17px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                     </button>
-                    <button class="btn-top-icon" id="top-qr-toggle-btn" title="Show Pairing QR Code">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                    </button>
+                    <div class="top-notif-wrapper" id="top-notif-btn" title="System Notifications">
+                        <button class="btn-top-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 17px; height: 17px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        </button>
+                        <span class="top-notif-badge">3</span>
+                    </div>
                     <button class="btn-top-icon" id="top-theme-toggle" title="Toggle Dark/Light Mode">
                         <svg id="top-theme-icon" viewBox="0 0 24 24" style="width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;">
                             <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
                         </svg>
                     </button>
+                    <div class="top-profile-pill" id="top-ip-pill" title="Click to copy LAN server link">
+                        <div class="top-profile-avatar">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px; height:18px; color: #fff;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        </div>
+                        <div class="top-profile-info">
+                            <div class="top-profile-name" id="top-profile-name-text">Fylo PC</div>
+                            <div class="top-profile-status" id="top-ip-val">LAN Ready</div>
+                        </div>
+                        <span class="top-profile-pulse live-pulse"></span>
+                    </div>
                 </div>
             </header>
 
+            <!-- ======================================================================
+                 DEDICATED FYLO HOMEPAGE DASHBOARD (#view-dashboard)
+                 Inspired by the reference landscape Bento design
+                 ====================================================================== -->
+            <div id="view-dashboard" class="view-panel">
+                <!-- Greeting & Live Network Bar -->
+                <div class="dash-greeting-bar">
+                    <div class="dash-greeting-left">
+                        <h1 class="dash-greeting-title">Hello, <span id="dash-greeting-user">Fylo PC</span></h1>
+                        <div class="dash-greeting-subtitle">
+                            <span class="dash-stat-badge live"><span class="pill-dot live-pulse"></span> LAN Online</span>
+                            <span class="dash-stat-badge wifi">🟢 5GHz Ready</span>
+                            <span class="dash-stat-badge safe">🛡️ Safe Mode Active</span>
+                        </div>
+                    </div>
+                    <div class="dash-greeting-right">
+                        <div class="dash-search-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="dash-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="dash-search-input" placeholder="Search files, drives, transfers..." />
+                            <button class="dash-search-filter-btn" title="Search Filters" id="dash-filter-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bento Grid (Landscape-optimized, 0 or minimal scrolling) -->
+                <div class="dash-bento-grid">
+                    <!-- 1. LEFT TALL CARD: Activity & Transfer Timeline -->
+                    <div class="bento-card dash-card-timeline">
+                        <div>
+                            <div class="bento-card-header">
+                                <div class="bento-card-title">
+                                    <span class="card-header-icon">🕒</span>
+                                    <span>Transfer Timeline</span>
+                                </div>
+                                <button class="bento-icon-btn" id="dash-timeline-refresh-btn" title="Refresh Timeline">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                </button>
+                            </div>
+
+                            <!-- Filter Tabs -->
+                            <div class="timeline-filter-tabs">
+                                <button class="timeline-tab active" data-filter="all">All</button>
+                                <button class="timeline-tab" data-filter="active">Active</button>
+                                <button class="timeline-tab" data-filter="recent">Recent</button>
+                            </div>
+
+                            <!-- Date / Calendar Strip -->
+                            <div class="timeline-date-bar">
+                                <div class="date-chip"><span>21</span><small>Sun</small></div>
+                                <div class="date-chip active"><span>22</span><small>Today</small></div>
+                                <div class="date-chip"><span>23</span><small>Tue</small></div>
+                                <div class="date-chip"><span>24</span><small>Wed</small></div>
+                                <div class="date-chip"><span>25</span><small>Thu</small></div>
+                            </div>
+
+                            <!-- Timeline Flow Items -->
+                            <div class="timeline-flow" id="dash-timeline-flow">
+                                <div class="timeline-node" data-type="active">
+                                    <div class="node-marker green"></div>
+                                    <div class="node-content">
+                                        <div class="node-time">Just Now</div>
+                                        <div class="node-title">High-Speed LAN Ready</div>
+                                        <div class="node-sub">Local subnet listening on Port 3000</div>
+                                        <div class="node-badge" style="background: rgba(46, 213, 115, 0.15); color: #2ed573;">5GHz Direct</div>
+                                    </div>
+                                </div>
+                                <div class="timeline-node" data-type="active">
+                                    <div class="node-marker green"></div>
+                                    <div class="node-content">
+                                        <div class="node-time">10:40 AM</div>
+                                        <div class="node-title">Live Shared Clipboard</div>
+                                        <div class="node-sub">Clipboard listener running in background</div>
+                                        <div class="node-badge" style="background: rgba(124, 58, 237, 0.15); color: var(--accent);">Active</div>
+                                    </div>
+                                </div>
+                                <div class="timeline-node" data-type="recent">
+                                    <div class="node-marker muted"></div>
+                                    <div class="node-content">
+                                        <div class="node-time">10:15 AM</div>
+                                        <div class="node-title">PC Explorer Cache Loaded</div>
+                                        <div class="node-sub">Quick Access shortcuts & Windows drives scanned</div>
+                                        <div class="node-badge" style="background: rgba(0, 210, 211, 0.15); color: #00d2d3;">Verified</div>
+                                    </div>
+                                </div>
+                                <div class="timeline-node" data-type="recent">
+                                    <div class="node-marker muted"></div>
+                                    <div class="node-content">
+                                        <div class="node-time">09:30 AM</div>
+                                        <div class="node-title">Admin Password Safeguard</div>
+                                        <div class="node-sub">Protected disk read/write active</div>
+                                        <div class="node-badge" style="background: rgba(255, 159, 67, 0.15); color: #ff9f43;">Secure</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-accent timeline-cta-btn" id="dash-queue-files-btn">
+                            <span>➕</span>
+                            <span>Queue Files to Share</span>
+                        </button>
+                    </div>
+
+                    <!-- 2. CENTER COLUMN: Drives (Top) + Quick Access & Network (Bottom) -->
+                    <div class="dash-col-center">
+                        <!-- Center-Top Card: PC Drives & Storage Health (4 Bento Tiles) -->
+                        <div class="bento-card dash-card-drives">
+                            <div class="bento-card-header">
+                                <div class="bento-card-title">
+                                    <span class="card-header-icon">📊</span>
+                                    <span>PC Storage & Health</span>
+                                </div>
+                                <span class="bento-card-caption">Live Windows Hardware</span>
+                            </div>
+
+                            <div class="bento-tiles-grid">
+                                <!-- Tile A: Drive (C:) -->
+                                <div class="bento-tile tile-sky" id="dash-tile-drive-c" title="Click to browse Drive (C:) in PC Explorer">
+                                    <div class="tile-header">
+                                        <span class="tile-title">Drive (C:)</span>
+                                        <span class="tile-icon-badge">💾</span>
+                                    </div>
+                                    <div class="tile-graphic-wave">
+                                        <div class="tile-wave-fill" id="dash-drive-c-fill" style="width: 65%;"></div>
+                                    </div>
+                                    <div>
+                                        <div class="tile-stat-number" id="dash-drive-c-free">-- GB Free</div>
+                                        <div class="tile-subtext">Click to explore C:\</div>
+                                    </div>
+                                </div>
+
+                                <!-- Tile B: Drive (D:) or RAM Buffer -->
+                                <div class="bento-tile tile-peach" id="dash-tile-drive-d" title="Click to browse Drive (D:) in PC Explorer">
+                                    <div class="tile-header">
+                                        <span class="tile-title" id="dash-drive-d-label">Drive (D:)</span>
+                                        <span class="tile-icon-badge">📂</span>
+                                    </div>
+                                    <div class="tile-arc-gauge">
+                                        <div class="tile-arc-fill" id="dash-drive-d-fill"></div>
+                                    </div>
+                                    <div>
+                                        <div class="tile-stat-number" id="dash-drive-d-free">-- GB Free</div>
+                                        <div class="tile-subtext" id="dash-drive-d-sub">Click to explore D:\</div>
+                                    </div>
+                                </div>
+
+                                <!-- Tile C: High-Speed LAN Speed -->
+                                <div class="bento-tile tile-mint" id="dash-tile-speed" title="High-Speed Wi-Fi & Hotspot">
+                                    <div class="tile-header">
+                                        <span class="tile-title">Peak LAN Speed</span>
+                                        <span class="tile-icon-badge">⚡</span>
+                                    </div>
+                                    <div class="tile-ecg-pulse">
+                                        <svg viewBox="0 0 100 30" class="ecg-svg">
+                                            <path d="M0,15 L30,15 L35,5 L42,25 L48,10 L54,20 L60,15 L100,15" fill="none" stroke="#2ed573" stroke-width="2.5" stroke-linecap="round"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="tile-stat-number">120 MB/s</div>
+                                        <div class="tile-subtext">5GHz Ultra-Low Latency</div>
+                                    </div>
+                                </div>
+
+                                <!-- Tile D: Security & Safe Mode -->
+                                <div class="bento-tile tile-lavender" id="dash-tile-security" title="Admin Security Settings">
+                                    <div class="tile-header">
+                                        <span class="tile-title">Admin Safe Mode</span>
+                                        <span class="tile-icon-badge">🛡️</span>
+                                    </div>
+                                    <div class="tile-shield-gauge">
+                                        <div class="tile-shield-arc"></div>
+                                    </div>
+                                    <div>
+                                        <div class="tile-stat-number">Protected</div>
+                                        <div class="tile-subtext">Recycle Bin Safe Delete</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Center-Bottom Split: Quick Access Folders (Left) & Network Activity (Right) -->
+                        <div class="dash-center-subgrid">
+                            <!-- Center-Bottom Left: Windows Quick Access -->
+                            <div class="bento-card dash-card-quick-access">
+                                <div class="bento-card-header">
+                                    <div class="bento-card-title">
+                                        <span class="card-header-icon">📁</span>
+                                        <span>Windows Quick Access</span>
+                                    </div>
+                                </div>
+                                <div class="quick-access-chips" id="dash-quick-access-chips">
+                                    <button class="quick-chip-btn" data-folder="Downloads" title="Open Downloads">
+                                        <span class="chip-emoji">📥</span>
+                                        <span class="chip-name">Downloads</span>
+                                    </button>
+                                    <button class="quick-chip-btn" data-folder="Pictures" title="Open Pictures">
+                                        <span class="chip-emoji">🖼️</span>
+                                        <span class="chip-name">Pictures</span>
+                                    </button>
+                                    <button class="quick-chip-btn" data-folder="Desktop" title="Open Desktop">
+                                        <span class="chip-emoji">🖥️</span>
+                                        <span class="chip-name">Desktop</span>
+                                    </button>
+                                    <button class="quick-chip-btn" data-folder="Documents" title="Open Documents">
+                                        <span class="chip-emoji">📄</span>
+                                        <span class="chip-name">Documents</span>
+                                    </button>
+                                    <button class="quick-chip-btn" data-folder="Videos" title="Open Videos">
+                                        <span class="chip-emoji">🎬</span>
+                                        <span class="chip-name">Videos</span>
+                                    </button>
+                                    <button class="quick-chip-btn" data-folder="Music" title="Open Music">
+                                        <span class="chip-emoji">🎵</span>
+                                        <span class="chip-name">Music</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Center-Bottom Right: Network & Hotspot Activity -->
+                            <div class="bento-card dash-card-net-activity">
+                                <div class="bento-card-header">
+                                    <div class="bento-card-title">
+                                        <span class="card-header-icon">📶</span>
+                                        <span>Network Activity</span>
+                                    </div>
+                                    <span class="net-peak-tag">85% LAN</span>
+                                </div>
+
+                                <div class="net-bars-chart">
+                                    <div class="net-bar-col"><div class="net-bar-fill" style="height: 45%;"></div><span>Ch 1</span></div>
+                                    <div class="net-bar-col"><div class="net-bar-fill" style="height: 65%;"></div><span>Ch 2</span></div>
+                                    <div class="net-bar-col"><div class="net-bar-fill highlight" style="height: 92%;"></div><span>5G</span></div>
+                                    <div class="net-bar-col"><div class="net-bar-fill" style="height: 50%;"></div><span>Ch 4</span></div>
+                                    <div class="net-bar-col"><div class="net-bar-fill" style="height: 70%;"></div><span>Ch 5</span></div>
+                                </div>
+
+                                <div class="net-ip-row">
+                                    <span id="dash-net-adapter-name">Direct Adapter</span>
+                                    <span class="dot-sep">•</span>
+                                    <span id="dash-net-ip-display">Ready</span>
+                                </div>
+
+                                <button class="net-hotspot-btn" id="dash-open-hotspot-btn">
+                                    <span>🔥 Open Hotspot Settings</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. RIGHT COLUMN: Quick Share Queue & Hero Card -->
+                    <div class="dash-col-right">
+                        <!-- Right-Top Card: Quick Share Queue -->
+                        <div class="bento-card dash-card-queue">
+                            <div>
+                                <div class="bento-card-header">
+                                    <div class="bento-card-title">
+                                        <span class="card-header-icon">⚡</span>
+                                        <span>Quick Share Queue</span>
+                                    </div>
+                                    <button class="bento-icon-btn" id="dash-open-hub-link" title="Open Share Hub">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                                    </button>
+                                </div>
+
+                                <div class="queue-checklist" id="dash-queue-checklist">
+                                    <div class="queue-item-row">
+                                        <span class="queue-check checked">✓</span>
+                                        <span class="queue-file-icon">📄</span>
+                                        <div class="queue-file-meta">
+                                            <span class="queue-file-name">Annual_Financial_Report.pdf</span>
+                                            <span class="queue-file-size">14.2 MB</span>
+                                        </div>
+                                    </div>
+                                    <div class="queue-item-row">
+                                        <span class="queue-check checked">✓</span>
+                                        <span class="queue-file-icon">🖼️</span>
+                                        <div class="queue-file-meta">
+                                            <span class="queue-file-name">Marketing_Photos_Pack.zip</span>
+                                            <span class="queue-file-size">185 MB</span>
+                                        </div>
+                                    </div>
+                                    <div class="queue-item-row">
+                                        <span class="queue-check">✓</span>
+                                        <span class="queue-file-icon">🎬</span>
+                                        <div class="queue-file-meta">
+                                            <span class="queue-file-name">Product_Overview_4K.mp4</span>
+                                            <span class="queue-file-size">420 MB</span>
+                                        </div>
+                                    </div>
+                                    <div class="queue-item-row">
+                                        <span class="queue-check">✓</span>
+                                        <span class="queue-file-icon">📦</span>
+                                        <div class="queue-file-meta">
+                                            <span class="queue-file-name">App_Build_Bundle_v4.apk</span>
+                                            <span class="queue-file-size">38.5 MB</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vibrant warm golden/yellow CTA button matching reference image -->
+                            <button class="btn-golden-cta" id="dash-drop-share-btn">
+                                <span>⚡ Drop & Browse Files to Share</span>
+                            </button>
+                        </div>
+
+                        <!-- Right-Bottom Card: Vibrant Purple Hero Card (like Got a Recipe That Rocks?) -->
+                        <div class="bento-card dash-hero-card">
+                            <div class="hero-stars-row">★★★★★</div>
+                            <h3 class="hero-card-title">Pair Your Phone!</h3>
+                            <p class="hero-card-desc">High-speed 80MB/s peer-to-peer file transfer with your Android phone.</p>
+                            <button class="hero-outline-btn" id="dash-open-pairing-btn">
+                                <span>+ 📱 Open Phone Pairing & QR</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 4. FAR RIGHT COLUMN: Mobile Companion Preview Panel -->
+                    <div class="bento-card dash-card-companion">
+                        <div class="companion-top-banner">
+                            <div class="companion-banner-glow"></div>
+                            <div class="phone-screen-frame">
+                                <div class="screen-notch"></div>
+                                <div class="screen-content">
+                                    <div class="screen-logo">fylo</div>
+                                    <div class="screen-sync-icon">⚡</div>
+                                    <div class="screen-status-text" id="dash-phone-screen-status">Ready to Sync</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="companion-body">
+                            <div>
+                                <h3 class="companion-title">Fylo Mobile Companion</h3>
+                                <p class="companion-subtitle">Zero-cloud local high-speed file transfer & media browsing.</p>
+
+                                <div class="companion-tags">
+                                    <span class="comp-tag">⚡ 80 MB/s</span>
+                                    <span class="comp-tag">🔋 Auto-Sync</span>
+                                    <span class="comp-tag">📶 LAN Direct</span>
+                                </div>
+
+                                <div class="companion-status-box" id="dash-companion-status-box">
+                                    <div class="status-indicator-dot" id="dash-comp-dot"></div>
+                                    <div class="status-meta">
+                                        <div class="status-heading" id="dash-comp-heading">Waiting for Phone</div>
+                                        <div class="status-sub" id="dash-comp-sub">Scan QR Code from Android app</div>
+                                    </div>
+                                </div>
+
+                                <div class="companion-specs-grid">
+                                    <div class="comp-spec-item">
+                                        <span class="spec-icon">📸</span>
+                                        <div class="spec-text"><strong>Photos</strong><span>Instant Preview</span></div>
+                                    </div>
+                                    <div class="comp-spec-item">
+                                        <span class="spec-icon">📋</span>
+                                        <div class="spec-text"><strong>Clipboard</strong><span>Real-time Sync</span></div>
+                                    </div>
+                                    <div class="comp-spec-item">
+                                        <span class="spec-icon">💾</span>
+                                        <div class="spec-text"><strong>Storage</strong><span>Zero Limits</span></div>
+                                    </div>
+                                    <div class="comp-spec-item">
+                                        <span class="spec-icon">🛡️</span>
+                                        <div class="spec-text"><strong>Encrypted</strong><span>Local Subnet</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-accent companion-action-btn" id="dash-explore-phone-btn">
+                                <span>📱 Explore Phone Files →</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="view-hub" class="view-panel view-panel-hub hidden">
+                <div class="feature-focus-header" style="grid-column: 1 / -1; width: 100%;">
+                    <button class="btn-back-dashboard" onclick="returnToDashboard()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
+                        <span>← Back to Dashboard</span>
+                    </button>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">⚡ Local Share Hub & Transfer</span>
+                </div>
                 <div class="hub-left">
                     <div class="card">
                         <div id="dropzone">
@@ -2772,6 +4904,13 @@
             </div>
 
             <div id="view-devices" class="view-panel hidden">
+                <div class="feature-focus-header">
+                    <button class="btn-back-dashboard" onclick="returnToDashboard()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
+                        <span>← Back to Dashboard</span>
+                    </button>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">👥 Connected LAN Subnet Devices</span>
+                </div>
                 <div class="card">
                     <div class="panel-header">👥 Connected Devices</div>
                     <p class="panel-desc">Active instances detected on local LAN subnet</p>
@@ -2822,6 +4961,13 @@
             </div>
 
             <div id="view-settings" class="view-panel hidden">
+                <div class="feature-focus-header">
+                    <button class="btn-back-dashboard" onclick="returnToDashboard()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
+                        <span>← Back to Dashboard</span>
+                    </button>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">⚙️ Settings & Security Control</span>
+                </div>
                 <div class="card">
                     <div class="panel-header">⚙️ Application Settings</div>
                     <p class="panel-desc">Configure local display profile and storage settings</p>
@@ -2876,7 +5022,7 @@
             </div>
 
             <!-- Fylo v4: Phone Explorer View (Default Active) -->
-            <div id="view-phone" class="view-panel">
+            <div id="view-phone" class="view-panel hidden">
                 <!-- Empty State: Interactive Pairing Studio -->
                 <div id="phone-empty-container" class="phone-empty-state" style="padding: 0; background: transparent; border: none;">
                     <div class="pairing-studio-card">
@@ -2947,6 +5093,13 @@
 
                 <!-- Active Phone Explorer Interface -->
                 <div id="phone-active-container" class="hidden">
+                    <div class="feature-focus-header">
+                        <button class="btn-back-dashboard" onclick="returnToDashboard()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
+                            <span>← Back to Dashboard</span>
+                        </button>
+                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">📱 Connected Android Phone Workspace</span>
+                    </div>
                     <!-- Phone Info Bar -->
                     <div class="phone-device-card" id="phone-device-header-card" style="cursor: pointer;" title="Click to toggle common folders">
                         <div class="phone-device-left">
@@ -3121,6 +5274,13 @@
 
             <!-- Fylo v4: PC Drives & Explorer View -->
             <div id="view-pc-explorer" class="view-panel hidden">
+                <div class="feature-focus-header">
+                    <button class="btn-back-dashboard" onclick="returnToDashboard()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
+                        <span>← Back to Dashboard</span>
+                    </button>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">💻 Windows PC Drives & Local Files</span>
+                </div>
                 <!-- Top PC Storage Card -->
                 <div class="card" style="padding: 20px 24px;">
                     <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
@@ -3213,6 +5373,13 @@
 
             <!-- Fylo v4: Dedicated Live Clipboard View -->
             <div id="view-clipboard" class="view-panel hidden">
+                <div class="feature-focus-header">
+                    <button class="btn-back-dashboard" onclick="returnToDashboard()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
+                        <span>← Back to Dashboard</span>
+                    </button>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">📋 Real-Time Shared Clipboard</span>
+                </div>
                 <div class="card" style="padding: 28px;">
                     <div class="panel-header">
                         <div style="display: flex; align-items: center; gap: 10px;">
@@ -3309,6 +5476,94 @@
         <!-- Google Photos Filmstrip Carousel -->
         <div class="gallery-filmstrip" id="gallery-filmstrip">
             <!-- Thumbnails rendered dynamically -->
+        </div>
+    </div>
+
+    <!-- Fylo v4: Mobile Hotspot & High-Speed Wi-Fi Setup Modal -->
+    <div id="hotspot-modal" class="admin-security-modal">
+        <div class="admin-modal-card" style="max-width: 600px; width: 92%; text-align: left; padding: 28px 30px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 14px; background: rgba(255, 118, 117, 0.15); color: #ff7675; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                        🔥
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text); margin: 0;">Mobile Hotspot & Wi-Fi Setup</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-light); margin: 2px 0 0 0;">Ultra-fast offline direct transfer between PC & Phone (50+ MB/s)</p>
+                    </div>
+                </div>
+                <button id="hotspot-modal-close" class="modal-close" style="position: static; font-size: 1.5rem; background: none; border: none; color: var(--text-light); cursor: pointer; padding: 4px 8px;">&times;</button>
+            </div>
+
+            <!-- Diagnostics Card -->
+            <div class="hotspot-card-row">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.8rem; font-weight: 800; color: var(--text-light); text-transform: uppercase;">Active Network Status</span>
+                    <span id="hotspot-status-badge" style="font-size: 0.78rem; font-weight: 800; padding: 4px 10px; border-radius: 9999px; background: rgba(0, 210, 211, 0.15); color: var(--accent);">Checking...</span>
+                </div>
+                <div style="display: flex; gap: 18px; align-items: center; font-size: 0.9rem; font-weight: 700; color: var(--text); flex-wrap: wrap;">
+                    <div>Host IP: <span id="hotspot-ip-val" style="color: var(--accent); font-family: monospace;">...</span></div>
+                    <div>Port: <span style="font-family: monospace;">3000</span></div>
+                    <div>Bandwidth: <span style="color: #2ed573;">Up to 80 MB/s</span></div>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-light); margin-top: 6px; line-height: 1.4;">
+                    💡 Windows Mobile Hotspot creates a direct point-to-point Wi-Fi connection between your PC and phone without router slowdowns or internet usage.
+                </div>
+            </div>
+
+            <!-- Adapter Switcher -->
+            <div class="hotspot-card-row">
+                <label for="hotspot-adapter-select" style="display: block; font-size: 0.8rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; margin-bottom: 8px;">
+                    Active Network Adapter Interface
+                </label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="hotspot-adapter-select" style="flex: 1; padding: 10px 14px; border-radius: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); font-weight: 600; font-size: 0.85rem; outline: none; cursor: pointer;"></select>
+                    <button class="btn" id="hotspot-adapter-refresh-btn" style="padding: 10px 14px; border-radius: 12px; font-size: 0.82rem; margin: 0; min-height: unset;">↻ Refresh</button>
+                </div>
+            </div>
+
+            <!-- Step by Step Instructions -->
+            <div style="margin: 14px 0;">
+                <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; margin-bottom: 10px;">
+                    Step-by-Step Hotspot Guide
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; color: var(--text);">
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</span>
+                        <div>
+                            <strong>Open Settings:</strong> Click the button below to open Windows Mobile Hotspot settings.
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</span>
+                        <div>
+                            <strong>Turn Hotspot On:</strong> Toggle "Mobile Hotspot" to <em>ON</em>. Choose Band <em>5 GHz</em> for up to 80 MB/s transfer speeds!
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</span>
+                        <div>
+                            <strong>Connect Phone:</strong> On your Android phone, connect Wi-Fi to your PC Hotspot name using the password shown in Windows Settings.
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">4</span>
+                        <div>
+                            <strong>Scan & Transfer:</strong> Scan the Fylo QR code on your PC screen. Both devices will pair with zero lag!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Action Buttons -->
+            <div style="display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border);">
+                <button class="btn btn-accent" id="hotspot-launch-settings-btn" style="padding: 10px 18px; border-radius: 12px; font-weight: 800; font-size: 0.88rem; gap: 6px;">
+                    🚀 Open Windows Hotspot Settings
+                </button>
+                <button class="btn" id="hotspot-modal-done-btn" style="padding: 10px 22px; border-radius: 12px; font-size: 0.88rem; font-weight: 700;">
+                    Done
+                </button>
+            </div>
         </div>
     </div>
 
@@ -3682,6 +5937,7 @@
         initTheme();
 
         const viewMeta = {
+            'view-dashboard': { icon: '🏠', title: 'Dashboard', tagline: 'Unified LAN control, storage metrics, and quick share center' },
             'view-phone': { icon: '📱', title: 'Phone Explorer', tagline: 'Real-time Android photos, videos, downloads, and storage preview' },
             'view-pc-explorer': { icon: '💻', title: 'My PC Drives & Files', tagline: 'Browse local Windows drives, folders, and in-app media preview' },
             'view-hub': { icon: '⚡', title: 'Share Hub & Transfer', tagline: 'Drag and drop files to stream and share across local network' },
@@ -3691,12 +5947,21 @@
         };
 
         function switchView(targetId) {
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
+            // Smoothly hide landing when navigating to a view
+            $('#startup-landing')?.classList.add('hidden-landing');
 
+            // Update sidebar nav items
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             const navItem = document.querySelector(`.nav-item[data-target="${targetId}"]`);
             if (navItem) navItem.classList.add('active');
 
+            // Update top nav pill capsules
+            document.querySelectorAll('.top-nav-pill').forEach(p => p.classList.remove('active'));
+            const topPill = document.querySelector(`.top-nav-pill[data-target="${targetId}"]`);
+            if (topPill) topPill.classList.add('active');
+
+            // Show/hide view panels
+            document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
             const targetPanel = $(`#${targetId}`);
             if (targetPanel) targetPanel.classList.remove('hidden');
 
@@ -3707,9 +5972,200 @@
                 if ($('#top-current-view-tagline')) $('#top-current-view-tagline').textContent = meta.tagline;
             }
 
+            // Show prominent Back to Dashboard button on feature views, hide on dashboard
+            const topBackBtn = $('#top-back-dashboard-btn');
+            if (topBackBtn) {
+                if (targetId === 'view-dashboard') {
+                    topBackBtn.classList.add('hidden');
+                } else {
+                    topBackBtn.classList.remove('hidden');
+                }
+            }
+
             if (targetId === 'view-pc-explorer' && (!currentPCPath || currentPCItems.length === 0)) {
                 loadPCQuickAccess();
             }
+
+            if (targetId === 'view-dashboard') {
+                loadDashboardData();
+            }
+        }
+
+        function returnToDashboard() {
+            switchView('view-dashboard');
+        }
+
+        function enterDashboard() {
+            $('#startup-landing')?.classList.add('hidden-landing');
+            switchView('view-dashboard');
+        }
+
+        function openPCFolder(targetPath) {
+            switchView('view-pc-explorer');
+            fetchPCFolder(targetPath, true);
+        }
+
+        async function loadDashboardData() {
+            try {
+                // 1. Fetch drives & quick access
+                const qaRes = await apiFetch('/api/pc/explorer/quick-access');
+                if (qaRes.ok) {
+                    const data = await qaRes.json();
+                    if (Array.isArray(data.drives) && data.drives.length > 0) {
+                        // Populate Drive C:
+                        const driveC = data.drives.find(d => (d.mount && d.mount.toUpperCase().startsWith('C')) || (d.path && d.path.toUpperCase().startsWith('C'))) || data.drives[0];
+                        if (driveC) {
+                            const cFreeGb = Math.round(driveC.free / (1024 * 1024 * 1024));
+                            const cTotalGb = Math.round(driveC.total / (1024 * 1024 * 1024));
+                            const cPercent = driveC.total > 0 ? Math.round((1 - (driveC.free / driveC.total)) * 100) : 55;
+                            const cEl = $('#dash-drive-c-free');
+                            if (cEl) cEl.textContent = `${cFreeGb} GB Free / ${cTotalGb} GB`;
+                            const fillEl = $('#dash-drive-c-fill');
+                            if (fillEl) fillEl.style.width = `${cPercent}%`;
+                            const tileC = $('#dash-tile-drive-c');
+                            if (tileC) tileC.onclick = () => openPCFolder(driveC.path || driveC.mount || 'C:\\');
+                        }
+
+                        // Populate Drive D: (or secondary drive)
+                        const driveD = data.drives.find(d => (d.mount && !d.mount.toUpperCase().startsWith('C')) || (d.path && !d.path.toUpperCase().startsWith('C'))) || (data.drives.length > 1 ? data.drives[1] : null);
+                        if (driveD) {
+                            const dFreeGb = Math.round(driveD.free / (1024 * 1024 * 1024));
+                            const dTotalGb = Math.round(driveD.total / (1024 * 1024 * 1024));
+                            const dMount = driveD.mount || driveD.path || 'D:';
+                            const dLabel = $('#dash-drive-d-label');
+                            if (dLabel) dLabel.textContent = `Drive (${dMount.slice(0, 2)})`;
+                            const dEl = $('#dash-drive-d-free');
+                            if (dEl) dEl.textContent = `${dFreeGb} GB Free / ${dTotalGb} GB`;
+                            const dSub = $('#dash-drive-d-sub');
+                            if (dSub) dSub.textContent = `Click to explore ${dMount.slice(0, 2)}\\`;
+                            const tileD = $('#dash-tile-drive-d');
+                            if (tileD) tileD.onclick = () => openPCFolder(driveD.path || driveD.mount || 'D:\\');
+                        } else {
+                            const dLabel = $('#dash-drive-d-label');
+                            if (dLabel) dLabel.textContent = 'Drive (C:) Cache';
+                            const dEl = $('#dash-drive-d-free');
+                            if (dEl) dEl.textContent = 'System Ready';
+                            const tileD = $('#dash-tile-drive-d');
+                            if (tileD) tileD.onclick = () => openPCFolder('C:\\');
+                        }
+                    }
+
+                    // Map Quick Access folder clicks
+                    if (Array.isArray(data.shortcuts) && data.shortcuts.length > 0) {
+                        document.querySelectorAll('.quick-chip-btn').forEach(btn => {
+                            const folderName = btn.getAttribute('data-folder');
+                            const match = data.shortcuts.find(s => s.name.toLowerCase() === folderName.toLowerCase());
+                            if (match && match.path) {
+                                btn.onclick = () => openPCFolder(match.path);
+                            }
+                        });
+                    }
+                }
+
+                // 2. Fetch Network Info & URL
+                const netRes = await apiFetch('/api/network-url');
+                if (netRes.ok) {
+                    const netInfo = await netRes.json();
+                    const cleanIp = netInfo.url ? netInfo.url.replace(/^https?:\/\//, '') : 'Ready';
+                    const netIpDisplay = $('#dash-net-ip-display');
+                    if (netIpDisplay) netIpDisplay.textContent = cleanIp;
+                    const topProfileStatus = $('#top-ip-val');
+                    if (topProfileStatus) topProfileStatus.textContent = cleanIp;
+                }
+
+                // 3. User & Host Greeting
+                const meRes = await apiFetch('/api/me');
+                if (meRes.ok) {
+                    const meData = await meRes.json();
+                    const greetingUser = $('#dash-greeting-user');
+                    const profileName = $('#top-profile-name-text');
+                    const hostName = meData.name || (meData.isHost ? 'Fylo Host PC' : 'Windows User');
+                    if (greetingUser) greetingUser.textContent = hostName;
+                    if (profileName) profileName.textContent = hostName;
+                }
+
+                // 4. Update Mobile Companion Preview
+                updateCompanionCard();
+            } catch (err) {
+                console.error('Error loading dashboard data:', err);
+            }
+        }
+
+        function updateCompanionCard() {
+            const devices = Object.values(mobileDevices || {});
+            const heading = $('#dash-comp-heading');
+            const sub = $('#dash-comp-sub');
+            const dot = $('#dash-comp-dot');
+            const screenStatus = $('#dash-phone-screen-status');
+            const syncBadge = $('#top-phone-sync-badge');
+
+            if (devices.length > 0) {
+                const dev = devices[0];
+                const name = dev.name || 'Android Phone';
+                if (heading) heading.textContent = `🟢 Connected: ${name}`;
+                if (sub) sub.textContent = `Direct Wi-Fi Sync Active • Battery: ${dev.battery || '96%'}`;
+                if (dot) dot.className = 'status-indicator-dot online';
+                if (screenStatus) screenStatus.textContent = name;
+                if (syncBadge) {
+                    syncBadge.textContent = `${devices.length}`;
+                    syncBadge.classList.remove('hidden');
+                }
+            } else {
+                if (heading) heading.textContent = 'Waiting for Phone';
+                if (sub) sub.textContent = 'Scan QR Code from Android app';
+                if (dot) dot.className = 'status-indicator-dot';
+                if (screenStatus) screenStatus.textContent = 'Ready to Sync';
+                if (syncBadge) syncBadge.classList.add('hidden');
+            }
+        }
+
+        function toggleSidebar() {
+            const appEl = $('#app');
+            if (appEl) {
+                appEl.classList.toggle('sidebar-collapsed');
+                const isCollapsed = appEl.classList.contains('sidebar-collapsed');
+                localStorage.setItem('fylo_sidebar_collapsed', isCollapsed ? '1' : '0');
+            }
+        }
+
+        function initSidebarState() {
+            if (localStorage.getItem('fylo_sidebar_collapsed') === '1') {
+                $('#app')?.classList.add('sidebar-collapsed');
+            }
+        }
+
+        async function openHotspotModal() {
+            const modal = $('#hotspot-modal');
+            if (!modal) return;
+            modal.classList.add('active');
+            await loadNetworkInterfaces();
+            await loadNetworkInfo();
+        }
+
+        function closeHotspotModal() {
+            const modal = $('#hotspot-modal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        async function triggerWindowsHotspotSettings() {
+            const btn = $('#hotspot-launch-settings-btn');
+            if (btn) btn.textContent = '⏳ Launching Windows Hotspot Settings...';
+            try {
+                if (typeof window !== 'undefined' && window.require) {
+                    try {
+                        const { shell } = window.require('electron');
+                        shell.openExternal('ms-settings:network-mobilehotspot');
+                    } catch (e) {}
+                }
+                await apiFetch('/api/open-hotspot-settings', { method: 'POST' });
+            } catch (err) {
+                console.error('Failed to open hotspot settings:', err);
+            }
+            setTimeout(async () => {
+                await loadNetworkInterfaces();
+                await loadNetworkInfo();
+                if (btn) btn.textContent = '🚀 Open Windows Hotspot Settings';
+            }, 3000);
         }
 
         document.querySelectorAll('.nav-item').forEach(item => {
@@ -3720,6 +6176,10 @@
         });
 
         // Top Header Bar Event Bindings
+        $('#sidebar-toggle-btn')?.addEventListener('click', toggleSidebar);
+        $('#sidebar-hide-btn')?.addEventListener('click', toggleSidebar);
+        $('#top-back-dashboard-btn')?.addEventListener('click', returnToDashboard);
+
         $('#top-ip-pill')?.addEventListener('click', () => {
             const url = $('#lan-url')?.textContent || '';
             if (url) {
@@ -3733,13 +6193,55 @@
             }
         });
 
+        $('#top-hotspot-pill')?.addEventListener('click', openHotspotModal);
+        $('#top-mode-pill')?.addEventListener('click', openHotspotModal);
         $('#top-phone-pill')?.addEventListener('click', () => switchView('view-phone'));
         $('#top-admin-pill')?.addEventListener('click', () => switchView('view-settings'));
         $('#top-quick-share-btn')?.addEventListener('click', () => {
             switchView('view-hub');
             setTimeout(() => $('#file-input')?.click(), 80);
         });
-        $('#top-qr-toggle-btn')?.addEventListener('click', () => switchView('view-phone'));
+        $('#top-qr-toggle-btn')?.addEventListener('click', () => {
+            const landing = $('#startup-landing');
+            if (landing) {
+                if (landing.classList.contains('hidden-landing')) {
+                    landing.classList.remove('hidden-landing');
+                    loadNetworkInfo();
+                } else {
+                    landing.classList.add('hidden-landing');
+                }
+            } else {
+                switchView('view-phone');
+            }
+        });
+
+        // Startup Landing Interface Bindings
+        $('#landing-enter-dashboard-btn')?.addEventListener('click', enterDashboard);
+        $('#landing-browse-pc-btn')?.addEventListener('click', () => switchView('view-pc-explorer'));
+        $('#landing-open-hotspot-btn')?.addEventListener('click', openHotspotModal);
+        $('#landing-hotspot-pill-btn')?.addEventListener('click', openHotspotModal);
+        $('#landing-clipboard-btn')?.addEventListener('click', () => switchView('view-clipboard'));
+        $('#landing-copy-btn')?.addEventListener('click', () => {
+            const url = $('#lan-url')?.textContent || '';
+            if (url) {
+                navigator.clipboard.writeText(url);
+                const btn = $('#landing-copy-btn');
+                if (btn) {
+                    btn.textContent = 'Copied! ✨';
+                    setTimeout(() => (btn.textContent = '📋 Copy Link'), 1200);
+                }
+            }
+        });
+
+        // Hotspot Modal Bindings
+        $('#open-hotspot-btn')?.addEventListener('click', openHotspotModal);
+        $('#pairing-hotspot-btn')?.addEventListener('click', openHotspotModal);
+        $('#hotspot-modal-close')?.addEventListener('click', closeHotspotModal);
+        $('#hotspot-modal-done-btn')?.addEventListener('click', closeHotspotModal);
+        $('#hotspot-launch-settings-btn')?.addEventListener('click', triggerWindowsHotspotSettings);
+        $('#hotspot-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'hotspot-modal') closeHotspotModal();
+        });
 
         // Pairing Studio Buttons
         $('#pairing-copy-btn')?.addEventListener('click', () => {
@@ -3753,10 +6255,87 @@
                 }
             }
         });
-        $('#pairing-hotspot-btn')?.addEventListener('click', () => {
-            $('#open-hotspot-btn')?.click();
-        });
         $('#pairing-explore-pc-btn')?.addEventListener('click', () => {
+            switchView('view-pc-explorer');
+        });
+
+        
+        // --- Redesigned Dashboard & Top Pill Navigation Bindings ---
+        document.querySelectorAll('.top-nav-pill[data-target]').forEach(pill => {
+            pill.addEventListener('click', () => {
+                const target = pill.getAttribute('data-target');
+                if (target) switchView(target);
+            });
+        });
+        $('#top-pill-hotspot')?.addEventListener('click', openHotspotModal);
+        $('#top-brand-btn')?.addEventListener('click', () => switchView('view-dashboard'));
+        $('#dash-tile-security')?.addEventListener('click', () => switchView('view-settings'));
+        $('#dash-tile-speed')?.addEventListener('click', openHotspotModal);
+        $('#dash-open-hotspot-btn')?.addEventListener('click', openHotspotModal);
+
+        $('#dash-queue-files-btn')?.addEventListener('click', () => {
+            switchView('view-hub');
+            setTimeout(() => $('#file-input')?.click(), 80);
+        });
+
+        $('#dash-drop-share-btn')?.addEventListener('click', () => {
+            switchView('view-hub');
+            setTimeout(() => $('#file-input')?.click(), 80);
+        });
+
+        $('#dash-open-hub-link')?.addEventListener('click', () => switchView('view-hub'));
+        $('#dash-open-pairing-btn')?.addEventListener('click', () => {
+            const landing = $('#startup-landing');
+            if (landing) {
+                landing.classList.remove('hidden-landing');
+                loadNetworkInfo();
+            } else {
+                switchView('view-phone');
+            }
+        });
+        $('#dash-explore-phone-btn')?.addEventListener('click', () => switchView('view-phone'));
+
+        // Timeline tab filtering
+        document.querySelectorAll('.timeline-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.timeline-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const filter = tab.getAttribute('data-filter');
+                document.querySelectorAll('.timeline-node').forEach(node => {
+                    if (filter === 'all') {
+                        node.style.display = 'flex';
+                    } else if (node.getAttribute('data-type') === filter) {
+                        node.style.display = 'flex';
+                    } else {
+                        node.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // Interactive Checklist toggles
+        document.querySelectorAll('.queue-item-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const check = row.querySelector('.queue-check');
+                if (check) check.classList.toggle('checked');
+            });
+        });
+
+        // Search bar in dashboard
+        $('#dash-search-input')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const query = e.target.value.trim();
+                if (query) {
+                    switchView('view-pc-explorer');
+                    const pcSearch = $('#pc-search-input');
+                    if (pcSearch) {
+                        pcSearch.value = query;
+                        pcSearch.dispatchEvent(new Event('input'));
+                    }
+                }
+            }
+        });
+        $('#dash-filter-btn')?.addEventListener('click', () => {
             switchView('view-pc-explorer');
         });
 
@@ -3789,7 +6368,7 @@
             try {
                 const qrRes = await apiFetch('/api/qrcode');
                 const svg = await qrRes.text();
-                $('#qr-img').src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+                if ($('#qr-img')) $('#qr-img').src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 
                 const shelfQr = $('#sidebar-qrcode');
                 if (shelfQr) shelfQr.innerHTML = svg;
@@ -3797,17 +6376,45 @@
                 const studioQr = $('#phone-pairing-qrcode');
                 if (studioQr) studioQr.innerHTML = svg;
 
+                const landingQr = $('#landing-qrcode');
+                if (landingQr) landingQr.innerHTML = svg;
+
                 const info = await (await apiFetch('/api/network-url')).json();
-                $('#lan-url').textContent = info.url;
+                if ($('#lan-url')) $('#lan-url').textContent = info.url;
 
                 const studioUrl = $('#pairing-studio-url');
                 if (studioUrl) studioUrl.textContent = info.url;
+
+                const landingUrl = $('#landing-url-text');
+                if (landingUrl) landingUrl.textContent = info.url;
 
                 const topIpVal = $('#top-ip-val');
                 if (topIpVal) topIpVal.textContent = info.url ? info.url.replace(/^https?:\/\//, '') : 'Ready';
 
                 const topModeVal = $('#top-mode-val');
                 if (topModeVal) topModeVal.textContent = info.isHotspot ? '🔥 Hotspot' : (info.networkName || 'Wi-Fi');
+
+                const landingNet = $('#landing-network-name');
+                if (landingNet) landingNet.textContent = info.isHotspot ? '🔥 Hotspot' : (info.networkName || 'Wi-Fi');
+
+                const landingBeacon = $('#landing-beacon-text');
+                if (landingBeacon) landingBeacon.textContent = info.isHotspot ? '🔥 Mobile Hotspot Ready' : 'Ready to Connect';
+
+                const hotspotIp = $('#hotspot-ip-val');
+                if (hotspotIp) hotspotIp.textContent = info.activeIp || (info.url ? info.url.replace(/^https?:\/\/([^:/]+).*/, '$1') : '127.0.0.1');
+
+                const hotspotBadge = $('#hotspot-status-badge');
+                if (hotspotBadge) {
+                    if (info.isHotspot) {
+                        hotspotBadge.textContent = '🔥 Hotspot Active (192.168.137.x)';
+                        hotspotBadge.style.background = 'rgba(255, 118, 117, 0.18)';
+                        hotspotBadge.style.color = '#ff7675';
+                    } else {
+                        hotspotBadge.textContent = `🌐 ${info.networkName || 'Wi-Fi / LAN'} Active`;
+                        hotspotBadge.style.background = 'rgba(0, 210, 211, 0.15)';
+                        hotspotBadge.style.color = 'var(--accent)';
+                    }
+                }
 
                 const netTypeEl = $('#network-type');
                 if (netTypeEl && info.networkName) {
@@ -3852,7 +6459,7 @@
 
                 const hotspotBtn = $('#open-hotspot-btn');
                 if (hotspotBtn) {
-                    if (isHost && isElectron) {
+                    if (isHost) {
                         hotspotBtn.classList.remove('hidden');
                     } else {
                         hotspotBtn.classList.add('hidden');
@@ -3861,29 +6468,12 @@
             } catch (e) { }
         }
 
-        const hotspotBtn = $('#open-hotspot-btn');
-        if (hotspotBtn) {
-            hotspotBtn.addEventListener('click', async () => {
-                try {
-                    const { shell } = require('electron');
-                    shell.openExternal('ms-settings:network-mobilehotspot');
-                    hotspotBtn.textContent = '⏳ Waiting for hotspot...';
-                    setTimeout(async () => {
-                        await loadNetworkInterfaces();
-                        await loadNetworkInfo();
-                        hotspotBtn.textContent = '🔥 Open Hotspot Settings';
-                    }, 5000);
-                } catch (e) { }
-            });
-        }
-
         async function loadNetworkInterfaces() {
-            if (!isHost) return;
             try {
                 const res = await apiFetch('/api/network-interfaces');
                 const data = await res.json();
                 const select = $('#network-select');
-                if (select) {
+                if (select && Array.isArray(data.interfaces)) {
                     select.innerHTML = '';
                     for (const item of data.interfaces) {
                         const opt = document.createElement('option');
@@ -3893,6 +6483,21 @@
                             opt.selected = true;
                         }
                         select.appendChild(opt);
+                    }
+                }
+
+                const modalSelect = $('#hotspot-adapter-select');
+                if (modalSelect && Array.isArray(data.interfaces)) {
+                    modalSelect.innerHTML = '';
+                    for (const item of data.interfaces) {
+                        const opt = document.createElement('option');
+                        opt.value = item.address;
+                        const isHotspot = item.address === '192.168.137.1' || item.address === '192.168.173.1' || item.address.startsWith('192.168.137.');
+                        opt.textContent = `${isHotspot ? '🔥 ' : '🌐 '}${item.name || item.adapter || 'Adapter'} (${item.address})`;
+                        if (item.address === data.selectedIp) {
+                            opt.selected = true;
+                        }
+                        modalSelect.appendChild(opt);
                     }
                 }
             } catch (e) { }
@@ -3907,10 +6512,31 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ ip: e.target.value })
                     });
+                    await loadNetworkInterfaces();
                     await loadNetworkInfo();
                 } catch (err) { }
             });
         }
+
+        $('#hotspot-adapter-select')?.addEventListener('change', async (e) => {
+            try {
+                await apiFetch('/api/select-interface', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: e.target.value })
+                });
+                await loadNetworkInterfaces();
+                await loadNetworkInfo();
+            } catch (err) { }
+        });
+
+        $('#hotspot-adapter-refresh-btn')?.addEventListener('click', async () => {
+            const btn = $('#hotspot-adapter-refresh-btn');
+            if (btn) btn.textContent = '...';
+            await loadNetworkInterfaces();
+            await loadNetworkInfo();
+            if (btn) btn.textContent = '↻ Refresh';
+        });
 
         const refreshBtn = $('#network-refresh-btn');
         if (refreshBtn) {
@@ -6159,17 +8785,19 @@
                         card.className = 'drive-card';
                         const percentFree = drive.total > 0 ? Math.round((drive.free / drive.total) * 100) : 0;
                         const percentUsed = 100 - percentFree;
+                        const drivePath = drive.path || (drive.mount ? (drive.mount.endsWith('\\') ? drive.mount : drive.mount + '\\') : 'C:\\');
+                        const displayMount = drive.mount || (drive.path ? drive.path.slice(0, 2) : 'C:');
                         card.innerHTML = `
                             <div class="drive-icon">💾</div>
                             <div class="drive-info">
-                                <div class="drive-title">${escapeHtml(drive.label || 'Local Disk')} (${escapeHtml(drive.mount)})</div>
+                                <div class="drive-title">${escapeHtml(drive.label || drive.name || 'Local Disk')} (${escapeHtml(displayMount)})</div>
                                 <div class="drive-sub">${formatBytes(drive.free)} free of ${formatBytes(drive.total)}</div>
                                 <div class="drive-meter">
                                     <div class="drive-meter-fill" style="width: ${percentUsed}%;"></div>
                                 </div>
                             </div>
                         `;
-                        card.onclick = () => fetchPCFolder(drive.mount + '\\', true);
+                        card.onclick = () => fetchPCFolder(drivePath, true);
                         drivesContainer.appendChild(card);
                     });
                 }
@@ -6189,7 +8817,8 @@
 
                 // Initial folder load if none loaded
                 if (!currentPCPath) {
-                    const defaultTarget = (data.shortcuts && data.shortcuts[0]) ? data.shortcuts[0].path : (data.drives && data.drives[0] ? data.drives[0].mount + '\\' : 'C:\\');
+                    const firstDrivePath = (data.drives && data.drives[0]) ? (data.drives[0].path || (data.drives[0].mount ? (data.drives[0].mount.endsWith('\\') ? data.drives[0].mount : data.drives[0].mount + '\\') : 'C:\\')) : 'C:\\';
+                    const defaultTarget = (data.shortcuts && data.shortcuts[0]) ? data.shortcuts[0].path : firstDrivePath;
                     fetchPCFolder(defaultTarget, true);
                 }
             } catch (err) {
@@ -6198,7 +8827,9 @@
         }
 
         async function fetchPCFolder(targetPath, addToHistory = true) {
-            if (!targetPath) return;
+            if (!targetPath || targetPath === 'undefined' || targetPath.startsWith('undefined')) {
+                targetPath = 'C:\\';
+            }
             currentPCPath = targetPath;
 
             if (addToHistory) {
@@ -6634,9 +9265,11 @@
                 await loadMobileDevices();
                 await loadClipboard();
                 await loadPCQuickAccess();
+                await loadDashboardData();
                 await initSettingsFolder();
                 initSettingsClipboardSync();
                 initSettingsClientName();
+                initSidebarState();
             } catch (e) {
                 if (e.message === 'kicked') return;
                 console.error(e);
@@ -6645,6 +9278,7 @@
             setInterval(loadFiles, 4000);
             setInterval(loadDevices, 5000);
             setInterval(loadMobileDevices, 4000);
+            setInterval(loadDashboardData, 8000);
             setInterval(loadClipboard, 4000);
             setInterval(checkStreamRequests, 1500);
         }

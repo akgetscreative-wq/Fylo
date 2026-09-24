@@ -285,15 +285,19 @@ function getNetworkName(ip) {
 app.get('/api/network-url', (req, res) => {
     const activeIp = getActiveIp();
     const networkName = getNetworkName(activeIp);
-    res.json({ url: getSecureAccessUrl(), networkName });
+    const isHotspot = (activeIp === '192.168.137.1' || activeIp === '192.168.173.1' || activeIp.startsWith('192.168.137.'));
+    res.json({ url: getSecureAccessUrl(), networkName, activeIp, isHotspot });
 });
 
 app.get('/api/connection-info', (req, res) => {
+    const activeIp = getActiveIp();
+    const isHotspot = (activeIp === '192.168.137.1' || activeIp === '192.168.173.1' || activeIp.startsWith('192.168.137.'));
     res.json({
-        hostIp: getActiveIp(),
+        hostIp: activeIp,
         port: PORT,
         auth: secretToken,
-        networkName: getNetworkName(getActiveIp()),
+        networkName: getNetworkName(activeIp),
+        isHotspot,
         version: '4.0.0'
     });
 });
@@ -307,12 +311,15 @@ app.get('/api/network-interfaces', (req, res) => {
                 const nameLabel = getNetworkName(iface.address);
                 list.push({
                     address: iface.address,
-                    name: nameLabel
+                    name: nameLabel,
+                    adapter: name
                 });
             }
         }
     }
-    res.json({ interfaces: list, selectedIp: getActiveIp() });
+    const activeIp = getActiveIp();
+    const isHotspot = (activeIp === '192.168.137.1' || activeIp === '192.168.173.1' || activeIp.startsWith('192.168.137.'));
+    res.json({ interfaces: list, selectedIp: activeIp, activeIp, networkName: getNetworkName(activeIp), isHotspot });
 });
 
 app.post('/api/select-interface', (req, res) => {
@@ -331,10 +338,31 @@ app.post('/api/select-interface', (req, res) => {
         if (valid) {
             selectedIp = ip;
             const activeIp = getActiveIp();
-            return res.json({ success: true, url: getSecureAccessUrl(), networkName: getNetworkName(activeIp) });
+            const isHotspot = (activeIp === '192.168.137.1' || activeIp === '192.168.173.1' || activeIp.startsWith('192.168.137.'));
+            return res.json({ success: true, url: getSecureAccessUrl(), networkName: getNetworkName(activeIp), activeIp, isHotspot });
         }
     }
     res.status(400).json({ error: 'Invalid IP address' });
+});
+
+app.post('/api/open-hotspot-settings', (req, res) => {
+    try {
+        if (shell && typeof shell.openExternal === 'function') {
+            shell.openExternal('ms-settings:network-mobilehotspot');
+            return res.json({ success: true, method: 'electron-shell' });
+        }
+        if (process.platform === 'win32') {
+            const { exec } = require('child_process');
+            exec('start ms-settings:network-mobilehotspot', (err) => {
+                if (err) console.error('Failed to open hotspot settings:', err);
+            });
+            return res.json({ success: true, method: 'win32-cmd' });
+        }
+        res.json({ success: false, message: 'Not supported on this platform' });
+    } catch (e) {
+        console.error('Error opening hotspot settings:', e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/api/register-manifest', (req, res) => {
@@ -997,17 +1025,63 @@ app.post('/api/mobile/toggle-readonly', (req, res) => {
 // Fylo v4: PC File Explorer Endpoints (for Mobile Companion & Host)
 // ==========================================
 
+let cachedDriveMetrics = null;
+let lastDriveMetricsTime = 0;
+
 function getWindowsDrives() {
     const drives = [];
+    const now = Date.now();
+    if (cachedDriveMetrics && (now - lastDriveMetricsTime < 20000)) {
+        return cachedDriveMetrics;
+    }
+
+    let psDrives = {};
+    if (process.platform === 'win32') {
+        try {
+            const stdout = execSync('powershell.exe -NoProfile -Command "Get-PSDrive -PSProvider FileSystem | Select-Object Root, Free, Used | ConvertTo-Json -Compress"', {
+                encoding: 'utf8',
+                timeout: 3000,
+                stdio: ['pipe', 'pipe', 'ignore']
+            });
+            const parsed = JSON.parse(stdout.trim());
+            const list = Array.isArray(parsed) ? parsed : [parsed];
+            for (const d of list) {
+                if (d && d.Root) {
+                    const rootKey = d.Root.toUpperCase();
+                    const free = Number(d.Free) || 0;
+                    const used = Number(d.Used) || 0;
+                    psDrives[rootKey] = {
+                        free: free,
+                        used: used,
+                        total: free + used
+                    };
+                }
+            }
+        } catch (e) {}
+    }
+
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     for (const letter of letters) {
         const root = `${letter}:\\`;
         try {
             if (fs.existsSync(root)) {
-                drives.push({ name: `Local Disk (${letter}:)`, path: root });
+                const rootKey = root.toUpperCase();
+                const metrics = psDrives[rootKey] || { free: 0, used: 0, total: 0 };
+                drives.push({
+                    name: `Local Disk (${letter}:)`,
+                    label: `Local Disk (${letter}:)`,
+                    mount: `${letter}:`,
+                    path: root,
+                    free: metrics.free,
+                    used: metrics.used,
+                    total: metrics.total
+                });
             }
         } catch (e) {}
     }
+
+    cachedDriveMetrics = drives;
+    lastDriveMetricsTime = now;
     return drives;
 }
 
@@ -1050,13 +1124,19 @@ app.get('/api/pc/explorer/quick-access', (req, res) => {
 
 app.get('/api/pc/explorer/list', (req, res) => {
     let targetPath = req.query.path;
-    if (!targetPath) {
+    if (!targetPath || targetPath === 'undefined' || targetPath === 'undefined\\') {
         targetPath = path.join(os.homedir(), 'Downloads');
+    }
+
+    // Normalize Windows drive paths like "C:" -> "C:\"
+    if (targetPath.length === 2 && targetPath[1] === ':') {
+        targetPath += '\\';
     }
 
     try {
         if (!fs.existsSync(targetPath)) {
-            return res.status(404).json({ error: 'Folder not found' });
+            // Fallback to user home directory if target path not found
+            targetPath = os.homedir();
         }
 
         const stat = fs.statSync(targetPath);
@@ -1077,6 +1157,7 @@ app.get('/api/pc/explorer/list', (req, res) => {
                 size = s.size;
                 mtime = s.mtimeMs;
             } catch (err) {
+                // Inaccessible file / folder
                 continue;
             }
 
@@ -1099,7 +1180,9 @@ app.get('/api/pc/explorer/list', (req, res) => {
             return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
         });
 
-        const parent = path.dirname(targetPath);
+        const isRootDrive = (targetPath.length === 3 && targetPath[1] === ':' && targetPath[2] === '\\');
+        const parent = isRootDrive ? '' : path.dirname(targetPath);
+
         res.json({
             path: targetPath,
             parent: (parent && parent !== targetPath) ? parent : '',
@@ -1127,6 +1210,19 @@ app.get('/api/pc/explorer/file', (req, res) => {
         const fileName = path.basename(filePath);
         const fileSize = stat.size;
         const range = req.headers.range;
+
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeMap = {
+            '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif',
+            '.webp': 'image/webp', '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+            '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.mkv': 'video/x-matroska',
+            '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.flac': 'audio/flac',
+            '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8', '.json': 'application/json',
+            '.zip': 'application/zip'
+        };
+        if (mimeMap[ext]) {
+            res.setHeader('Content-Type', mimeMap[ext]);
+        }
 
         res.setHeader('Accept-Ranges', 'bytes');
         if (download) {
@@ -1412,14 +1508,29 @@ function createWindow() {
     });
 }
 
-electronApp.whenReady().then(() => {
+if (electronApp && typeof electronApp.whenReady === 'function') {
+    electronApp.whenReady().then(() => {
+        app.listen(PORT, () => {
+            createWindow();
+        });
+        electronApp.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) createWindow();
+        });
+    });
+
+    electronApp.on('before-quit', () => {
+        teardownConnections();
+    });
+
+    electronApp.on('window-all-closed', () => {
+        teardownConnections();
+        if (process.platform !== 'darwin') electronApp.quit();
+    });
+} else if (!module.parent) {
     app.listen(PORT, () => {
-        createWindow();
+        console.log(`Fylo server running on http://127.0.0.1:${PORT}`);
     });
-    electronApp.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
-});
+}
 
 function teardownConnections() {
     for (const id in mobileDevices) {
@@ -1440,15 +1551,6 @@ function teardownConnections() {
     devices = {};
 }
 
-electronApp.on('before-quit', () => {
-    teardownConnections();
-});
-
-electronApp.on('window-all-closed', () => {
-    teardownConnections();
-    if (process.platform !== 'darwin') electronApp.quit();
-});
-
 process.on('SIGINT', () => {
     teardownConnections();
     process.exit(0);
@@ -1458,3 +1560,5 @@ process.on('SIGTERM', () => {
     teardownConnections();
     process.exit(0);
 });
+
+module.exports = app;
