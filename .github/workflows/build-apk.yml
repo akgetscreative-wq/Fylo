@@ -1,0 +1,32 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd mobile && npm install
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.6'
+      - run: |
+          mkdir -p mobile/android/app
+          keytool -genkey -v -keystore mobile/android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+      - run: cd mobile/android && gradle wrapper --gradle-version 8.6 && ./gradlew assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fylo-v4.0.0.apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
