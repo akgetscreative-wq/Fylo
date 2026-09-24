@@ -389,17 +389,7 @@ export default function App() {
         // Mock fallback for browser / development preview
         setPhoneCurrentPath(folderPath || '/storage/emulated/0');
         setPhoneParentPath(folderPath ? '/storage/emulated/0' : '');
-        setPhoneItems([
-          { name: 'DCIM', path: '/storage/emulated/0/DCIM', isDir: true, size: 0, ext: '' },
-          { name: 'Pictures', path: '/storage/emulated/0/Pictures', isDir: true, size: 0, ext: '' },
-          { name: 'Download', path: '/storage/emulated/0/Download', isDir: true, size: 0, ext: '' },
-          { name: 'Documents', path: '/storage/emulated/0/Documents', isDir: true, size: 0, ext: '' },
-          { name: 'Movies', path: '/storage/emulated/0/Movies', isDir: true, size: 0, ext: '' },
-          { name: 'Music', path: '/storage/emulated/0/Music', isDir: true, size: 0, ext: '' },
-          { name: 'vacation_shot.jpg', path: '/storage/emulated/0/vacation_shot.jpg', isDir: false, size: 3450000, ext: 'jpg' },
-          { name: 'drone_flyover.mp4', path: '/storage/emulated/0/drone_flyover.mp4', isDir: false, size: 24500000, ext: 'mp4' },
-          { name: 'project_brief.pdf', path: '/storage/emulated/0/project_brief.pdf', isDir: false, size: 1200000, ext: 'pdf' },
-        ]);
+        setPhoneItems([]);
       }
       setPhoneSelectedPaths(new Set());
     } catch (err) {
@@ -1245,6 +1235,8 @@ export default function App() {
                       }}>
                       {item.isDir ? (
                         <Win11FolderIcon size={34} />
+                      ) : ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp'].includes((item.ext || '').toLowerCase()) ? (
+                        <Image source={{ uri: 'file://' + item.path }} style={styles.gridThumbImage} resizeMode="cover" />
                       ) : (
                         <Text style={styles.gridTileIcon}>{getFileIcon(item.ext, false)}</Text>
                       )}
@@ -2924,6 +2916,12 @@ const styles = StyleSheet.create({
   gridTileSelected: {
     borderColor: '#06b6d4',
     backgroundColor: 'rgba(6, 182, 212, 0.12)',
+  },
+  gridThumbImage: {
+    width: '100%',
+    height: 48,
+    borderRadius: 8,
+    marginBottom: 6,
   },
   gridTileIcon: {
     fontSize: 28,

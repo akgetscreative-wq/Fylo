@@ -128,6 +128,58 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void listDirectory(String targetPath, Promise promise) {
+        try {
+            if (targetPath == null || targetPath.trim().isEmpty()) {
+                targetPath = Environment.getExternalStorageDirectory().getAbsolutePath();
+            }
+            File folder = new File(targetPath);
+            if (!folder.exists() || !folder.isDirectory()) {
+                promise.reject("NOT_FOUND", "Folder not found or is not a directory");
+                return;
+            }
+
+            File[] files = folder.listFiles();
+            com.facebook.react.bridge.WritableArray items = Arguments.createArray();
+            if (files != null) {
+                java.util.Arrays.sort(files, (a, b) -> {
+                    if (a.isDirectory() && !b.isDirectory()) return -1;
+                    if (!a.isDirectory() && b.isDirectory()) return 1;
+                    return a.getName().compareToIgnoreCase(b.getName());
+                });
+
+                for (File f : files) {
+                    if (f.getName().startsWith(".")) continue;
+                    WritableMap item = Arguments.createMap();
+                    item.putString("name", f.getName());
+                    item.putString("path", f.getAbsolutePath());
+                    item.putBoolean("isDir", f.isDirectory());
+                    item.putDouble("size", f.isDirectory() ? 0 : f.length());
+                    item.putDouble("modified", f.lastModified());
+                    
+                    String ext = "";
+                    int dotIdx = f.getName().lastIndexOf('.');
+                    if (dotIdx > 0 && dotIdx < f.getName().length() - 1) {
+                        ext = f.getName().substring(dotIdx + 1).toLowerCase();
+                    }
+                    item.putString("ext", ext);
+                    items.pushMap(item);
+                }
+            }
+
+            WritableMap result = Arguments.createMap();
+            result.putString("path", folder.getAbsolutePath());
+            File parent = folder.getParentFile();
+            result.putString("parent", parent != null ? parent.getAbsolutePath() : "");
+            result.putArray("items", items);
+
+            promise.resolve(result);
+        } catch (Exception e) {
+            promise.reject("LIST_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
     public void requestStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {

@@ -66,8 +66,9 @@ public class FyloHttpServer {
 
     public synchronized void start() throws IOException {
         if (isRunning) return;
-        serverSocket = new ServerSocket(port);
+        serverSocket = new ServerSocket();
         serverSocket.setReuseAddress(true);
+        serverSocket.bind(new java.net.InetSocketAddress(port));
         executor = Executors.newCachedThreadPool();
         isRunning = true;
 

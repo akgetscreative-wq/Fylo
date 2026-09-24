@@ -3202,16 +3202,69 @@
             transform: scale(1.02);
         }
 
-        .dash-hero-drop .drop-zone-content h2 {
-            font-size: 1.2rem;
-            margin: 10px 0 4px;
-            color: var(--text);
+        .drop-hero-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            width: 100%;
         }
 
-        .dash-hero-drop .drop-zone-content p {
+        .drop-hero-icon-wrap {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(var(--accent-rgb), 0.12);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+
+        .drop-hero-svg {
+            width: 30px;
+            height: 30px;
+        }
+
+        .drop-hero-title {
+            font-size: 1.12rem;
+            font-weight: 800;
+            color: var(--text);
+            margin: 0 0 6px;
+        }
+
+        .drop-hero-sub {
+            font-size: 0.8rem;
             color: var(--text-light);
-            font-size: 0.9rem;
-            margin: 0;
+            margin: 0 0 16px;
+            max-width: 230px;
+            line-height: 1.4;
+        }
+
+        .drop-hero-btn-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            max-width: 210px;
+        }
+
+        .dash-shared-list .queue-item-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .dash-shared-list .queue-item-row:hover {
+            background: rgba(var(--accent-rgb), 0.08);
+            border-color: var(--accent);
         }
 
         .bento-card {
@@ -4499,377 +4552,194 @@
 
             <!-- ======================================================================
                  DEDICATED FYLO HOMEPAGE DASHBOARD (#view-dashboard)
-                 Inspired by the reference landscape Bento design
+                 Clean, Minimalist, Real-Data Bento Grid
                  ====================================================================== -->
             <div id="view-dashboard" class="view-panel">
-                <!-- Greeting & Live Network Bar -->
+                <!-- Greeting & Live Status Bar -->
                 <div class="dash-greeting-bar">
                     <div class="dash-greeting-left">
                         <h1 class="dash-greeting-title">Hello, <span id="dash-greeting-user">Fylo PC</span></h1>
                         <div class="dash-greeting-subtitle">
-                            <span class="dash-stat-badge live"><span class="pill-dot live-pulse"></span> LAN Online</span>
-                            <span class="dash-stat-badge wifi">🟢 5GHz Ready</span>
-                            <span class="dash-stat-badge safe">🛡️ Safe Mode Active</span>
+                            <span class="dash-stat-badge live"><span class="pill-dot live-pulse"></span> LAN Active</span>
+                            <span class="dash-stat-badge" style="background: rgba(14, 165, 233, 0.12); color: #38bdf8;">🌐 <span id="dash-greeting-ip">Connecting...</span></span>
                         </div>
                     </div>
                     <div class="dash-greeting-right">
                         <div class="dash-search-box">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="dash-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                            <input type="text" id="dash-search-input" placeholder="Search files, drives, transfers..." />
-                            <button class="dash-search-filter-btn" title="Search Filters" id="dash-filter-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                            </button>
+                            <input type="text" id="dash-search-input" placeholder="Search shared files, PC drives..." />
                         </div>
                     </div>
                 </div>
 
-                <!-- Bento Grid (Landscape-optimized, 0 or minimal scrolling) -->
+                <!-- Bento Grid (Landscape-optimized, clean cards, real data only) -->
                 <div class="dash-bento-grid">
-                    <!-- 1. LEFT TALL CARD: Activity & Transfer Timeline -->
-                    <div class="bento-card dash-card-timeline">
-                        <div>
-                            <div class="bento-card-header">
-                                <div class="bento-card-title">
-                                    <span class="card-header-icon">🕒</span>
-                                    <span>Transfer Timeline</span>
-                                </div>
-                                <button class="bento-icon-btn" id="dash-timeline-refresh-btn" title="Refresh Timeline">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    <!-- 1. HERO DROP ZONE: Drag & Drop files anywhere to share instantly -->
+                    <div class="bento-card dash-hero-drop" id="dash-drop-hero" onclick="$('#file-input').click()">
+                        <div class="drop-hero-content">
+                            <div class="drop-hero-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="drop-hero-svg">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </div>
+                            <h2 class="drop-hero-title">Drag & drop files here to share</h2>
+                            <p class="drop-hero-sub">Drop files anywhere across the app or click to browse files from your computer</p>
+                            <div class="drop-hero-btn-row">
+                                <button class="btn btn-accent" style="padding: 10px 20px; border-radius: 14px; font-weight: 700; pointer-events: none;">
+                                    <span>📂 Browse Files to Share</span>
+                                </button>
+                                <button class="btn" style="padding: 9px 16px; border-radius: 14px; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);" onclick="event.stopPropagation(); $('#folder-input').click();">
+                                    <span>📁 Share Entire Folder</span>
                                 </button>
                             </div>
-
-                            <!-- Filter Tabs -->
-                            <div class="timeline-filter-tabs">
-                                <button class="timeline-tab active" data-filter="all">All</button>
-                                <button class="timeline-tab" data-filter="active">Active</button>
-                                <button class="timeline-tab" data-filter="recent">Recent</button>
-                            </div>
-
-                            <!-- Date / Calendar Strip -->
-                            <div class="timeline-date-bar">
-                                <div class="date-chip"><span>21</span><small>Sun</small></div>
-                                <div class="date-chip active"><span>22</span><small>Today</small></div>
-                                <div class="date-chip"><span>23</span><small>Tue</small></div>
-                                <div class="date-chip"><span>24</span><small>Wed</small></div>
-                                <div class="date-chip"><span>25</span><small>Thu</small></div>
-                            </div>
-
-                            <!-- Timeline Flow Items -->
-                            <div class="timeline-flow" id="dash-timeline-flow">
-                                <div class="timeline-node" data-type="active">
-                                    <div class="node-marker green"></div>
-                                    <div class="node-content">
-                                        <div class="node-time">Just Now</div>
-                                        <div class="node-title">High-Speed LAN Ready</div>
-                                        <div class="node-sub">Local subnet listening on Port 3000</div>
-                                        <div class="node-badge" style="background: rgba(46, 213, 115, 0.15); color: #2ed573;">5GHz Direct</div>
-                                    </div>
-                                </div>
-                                <div class="timeline-node" data-type="active">
-                                    <div class="node-marker green"></div>
-                                    <div class="node-content">
-                                        <div class="node-time">10:40 AM</div>
-                                        <div class="node-title">Live Shared Clipboard</div>
-                                        <div class="node-sub">Clipboard listener running in background</div>
-                                        <div class="node-badge" style="background: rgba(124, 58, 237, 0.15); color: var(--accent);">Active</div>
-                                    </div>
-                                </div>
-                                <div class="timeline-node" data-type="recent">
-                                    <div class="node-marker muted"></div>
-                                    <div class="node-content">
-                                        <div class="node-time">10:15 AM</div>
-                                        <div class="node-title">PC Explorer Cache Loaded</div>
-                                        <div class="node-sub">Quick Access shortcuts & Windows drives scanned</div>
-                                        <div class="node-badge" style="background: rgba(0, 210, 211, 0.15); color: #00d2d3;">Verified</div>
-                                    </div>
-                                </div>
-                                <div class="timeline-node" data-type="recent">
-                                    <div class="node-marker muted"></div>
-                                    <div class="node-content">
-                                        <div class="node-time">09:30 AM</div>
-                                        <div class="node-title">Admin Password Safeguard</div>
-                                        <div class="node-sub">Protected disk read/write active</div>
-                                        <div class="node-badge" style="background: rgba(255, 159, 67, 0.15); color: #ff9f43;">Secure</div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-
-                        <button class="btn btn-accent timeline-cta-btn" id="dash-queue-files-btn">
-                            <span>➕</span>
-                            <span>Queue Files to Share</span>
-                        </button>
                     </div>
 
-                    <!-- 2. CENTER COLUMN: Drives (Top) + Quick Access & Network (Bottom) -->
+                    <!-- 2. PC STORAGE DRIVES & QUICK ACCESS -->
                     <div class="dash-col-center">
-                        <!-- Center-Top Card: PC Drives & Storage Health (4 Bento Tiles) -->
+                        <!-- Real PC Drives Card -->
                         <div class="bento-card dash-card-drives">
                             <div class="bento-card-header">
                                 <div class="bento-card-title">
-                                    <span class="card-header-icon">📊</span>
-                                    <span>PC Storage & Health</span>
+                                    <span class="card-header-icon">💻</span>
+                                    <span>My PC Drives</span>
                                 </div>
-                                <span class="bento-card-caption">Live Windows Hardware</span>
+                                <button class="bento-icon-btn" onclick="switchView('view-pc-explorer')" title="Browse All PC Drives">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
                             </div>
 
-                            <div class="bento-tiles-grid">
+                            <div class="bento-tiles-grid" style="grid-template-columns: 1fr 1fr;">
                                 <!-- Tile A: Drive (C:) -->
-                                <div class="bento-tile tile-sky" id="dash-tile-drive-c" title="Click to browse Drive (C:) in PC Explorer">
+                                <div class="bento-tile tile-sky" id="dash-tile-drive-c" title="Browse Drive (C:)">
                                     <div class="tile-header">
                                         <span class="tile-title">Drive (C:)</span>
                                         <span class="tile-icon-badge">💾</span>
                                     </div>
                                     <div class="tile-graphic-wave">
-                                        <div class="tile-wave-fill" id="dash-drive-c-fill" style="width: 65%;"></div>
+                                        <div class="tile-wave-fill" id="dash-drive-c-fill" style="width: 50%;"></div>
                                     </div>
                                     <div>
-                                        <div class="tile-stat-number" id="dash-drive-c-free">-- GB Free</div>
+                                        <div class="tile-stat-number" id="dash-drive-c-free">Checking...</div>
                                         <div class="tile-subtext">Click to explore C:\</div>
                                     </div>
                                 </div>
 
-                                <!-- Tile B: Drive (D:) or RAM Buffer -->
-                                <div class="bento-tile tile-peach" id="dash-tile-drive-d" title="Click to browse Drive (D:) in PC Explorer">
+                                <!-- Tile B: Drive (D:) or Secondary -->
+                                <div class="bento-tile tile-peach" id="dash-tile-drive-d" title="Browse Secondary Drive">
                                     <div class="tile-header">
                                         <span class="tile-title" id="dash-drive-d-label">Drive (D:)</span>
                                         <span class="tile-icon-badge">📂</span>
                                     </div>
-                                    <div class="tile-arc-gauge">
-                                        <div class="tile-arc-fill" id="dash-drive-d-fill"></div>
+                                    <div class="tile-graphic-wave">
+                                        <div class="tile-wave-fill" id="dash-drive-d-fill" style="width: 50%; background: #f59e0b;"></div>
                                     </div>
                                     <div>
-                                        <div class="tile-stat-number" id="dash-drive-d-free">-- GB Free</div>
+                                        <div class="tile-stat-number" id="dash-drive-d-free">Checking...</div>
                                         <div class="tile-subtext" id="dash-drive-d-sub">Click to explore D:\</div>
-                                    </div>
-                                </div>
-
-                                <!-- Tile C: High-Speed LAN Speed -->
-                                <div class="bento-tile tile-mint" id="dash-tile-speed" title="High-Speed Wi-Fi & Hotspot">
-                                    <div class="tile-header">
-                                        <span class="tile-title">Peak LAN Speed</span>
-                                        <span class="tile-icon-badge">⚡</span>
-                                    </div>
-                                    <div class="tile-ecg-pulse">
-                                        <svg viewBox="0 0 100 30" class="ecg-svg">
-                                            <path d="M0,15 L30,15 L35,5 L42,25 L48,10 L54,20 L60,15 L100,15" fill="none" stroke="#2ed573" stroke-width="2.5" stroke-linecap="round"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <div class="tile-stat-number">120 MB/s</div>
-                                        <div class="tile-subtext">5GHz Ultra-Low Latency</div>
-                                    </div>
-                                </div>
-
-                                <!-- Tile D: Security & Safe Mode -->
-                                <div class="bento-tile tile-lavender" id="dash-tile-security" title="Admin Security Settings">
-                                    <div class="tile-header">
-                                        <span class="tile-title">Admin Safe Mode</span>
-                                        <span class="tile-icon-badge">🛡️</span>
-                                    </div>
-                                    <div class="tile-shield-gauge">
-                                        <div class="tile-shield-arc"></div>
-                                    </div>
-                                    <div>
-                                        <div class="tile-stat-number">Protected</div>
-                                        <div class="tile-subtext">Recycle Bin Safe Delete</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Center-Bottom Split: Quick Access Folders (Left) & Network Activity (Right) -->
-                        <div class="dash-center-subgrid">
-                            <!-- Center-Bottom Left: Windows Quick Access -->
-                            <div class="bento-card dash-card-quick-access">
-                                <div class="bento-card-header">
-                                    <div class="bento-card-title">
-                                        <span class="card-header-icon">📁</span>
-                                        <span>Windows Quick Access</span>
-                                    </div>
+                        <!-- Windows Quick Access Folders -->
+                        <div class="bento-card dash-card-quick-access">
+                            <div class="bento-card-header">
+                                <div class="bento-card-title">
+                                    <span class="card-header-icon">📁</span>
+                                    <span>Quick Access Folders</span>
                                 </div>
-                                <div class="quick-access-chips" id="dash-quick-access-chips">
-                                    <button class="quick-chip-btn" data-folder="Downloads" title="Open Downloads">
-                                        <span class="chip-emoji">📥</span>
-                                        <span class="chip-name">Downloads</span>
-                                    </button>
-                                    <button class="quick-chip-btn" data-folder="Pictures" title="Open Pictures">
-                                        <span class="chip-emoji">🖼️</span>
-                                        <span class="chip-name">Pictures</span>
-                                    </button>
-                                    <button class="quick-chip-btn" data-folder="Desktop" title="Open Desktop">
-                                        <span class="chip-emoji">🖥️</span>
-                                        <span class="chip-name">Desktop</span>
-                                    </button>
-                                    <button class="quick-chip-btn" data-folder="Documents" title="Open Documents">
-                                        <span class="chip-emoji">📄</span>
-                                        <span class="chip-name">Documents</span>
-                                    </button>
-                                    <button class="quick-chip-btn" data-folder="Videos" title="Open Videos">
-                                        <span class="chip-emoji">🎬</span>
-                                        <span class="chip-name">Videos</span>
-                                    </button>
-                                    <button class="quick-chip-btn" data-folder="Music" title="Open Music">
-                                        <span class="chip-emoji">🎵</span>
-                                        <span class="chip-name">Music</span>
-                                    </button>
-                                </div>
+                                <span class="bento-card-caption">Windows Shortcuts</span>
                             </div>
-
-                            <!-- Center-Bottom Right: Network & Hotspot Activity -->
-                            <div class="bento-card dash-card-net-activity">
-                                <div class="bento-card-header">
-                                    <div class="bento-card-title">
-                                        <span class="card-header-icon">📶</span>
-                                        <span>Network Activity</span>
-                                    </div>
-                                    <span class="net-peak-tag">85% LAN</span>
-                                </div>
-
-                                <div class="net-bars-chart">
-                                    <div class="net-bar-col"><div class="net-bar-fill" style="height: 45%;"></div><span>Ch 1</span></div>
-                                    <div class="net-bar-col"><div class="net-bar-fill" style="height: 65%;"></div><span>Ch 2</span></div>
-                                    <div class="net-bar-col"><div class="net-bar-fill highlight" style="height: 92%;"></div><span>5G</span></div>
-                                    <div class="net-bar-col"><div class="net-bar-fill" style="height: 50%;"></div><span>Ch 4</span></div>
-                                    <div class="net-bar-col"><div class="net-bar-fill" style="height: 70%;"></div><span>Ch 5</span></div>
-                                </div>
-
-                                <div class="net-ip-row">
-                                    <span id="dash-net-adapter-name">Direct Adapter</span>
-                                    <span class="dot-sep">•</span>
-                                    <span id="dash-net-ip-display">Ready</span>
-                                </div>
-
-                                <button class="net-hotspot-btn" id="dash-open-hotspot-btn">
-                                    <span>🔥 Open Hotspot Settings</span>
+                            <div class="quick-access-chips" id="dash-quick-access-chips">
+                                <button class="quick-chip-btn" data-folder="Downloads" title="Open Downloads">
+                                    <span class="chip-emoji">📥</span>
+                                    <span class="chip-name">Downloads</span>
+                                </button>
+                                <button class="quick-chip-btn" data-folder="Pictures" title="Open Pictures">
+                                    <span class="chip-emoji">🖼️</span>
+                                    <span class="chip-name">Pictures</span>
+                                </button>
+                                <button class="quick-chip-btn" data-folder="Desktop" title="Open Desktop">
+                                    <span class="chip-emoji">🖥️</span>
+                                    <span class="chip-name">Desktop</span>
+                                </button>
+                                <button class="quick-chip-btn" data-folder="Documents" title="Open Documents">
+                                    <span class="chip-emoji">📄</span>
+                                    <span class="chip-name">Documents</span>
+                                </button>
+                                <button class="quick-chip-btn" data-folder="Videos" title="Open Videos">
+                                    <span class="chip-emoji">🎬</span>
+                                    <span class="chip-name">Videos</span>
+                                </button>
+                                <button class="quick-chip-btn" data-folder="Music" title="Open Music">
+                                    <span class="chip-emoji">🎵</span>
+                                    <span class="chip-name">Music</span>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 3. RIGHT COLUMN: Quick Share Queue & Hero Card -->
-                    <div class="dash-col-right">
-                        <!-- Right-Top Card: Quick Share Queue -->
-                        <div class="bento-card dash-card-queue">
-                            <div>
-                                <div class="bento-card-header">
-                                    <div class="bento-card-title">
-                                        <span class="card-header-icon">⚡</span>
-                                        <span>Quick Share Queue</span>
-                                    </div>
-                                    <button class="bento-icon-btn" id="dash-open-hub-link" title="Open Share Hub">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-                                    </button>
-                                </div>
-
-                                <div class="queue-checklist" id="dash-queue-checklist">
-                                    <div class="queue-item-row">
-                                        <span class="queue-check checked">✓</span>
-                                        <span class="queue-file-icon">📄</span>
-                                        <div class="queue-file-meta">
-                                            <span class="queue-file-name">Annual_Financial_Report.pdf</span>
-                                            <span class="queue-file-size">14.2 MB</span>
-                                        </div>
-                                    </div>
-                                    <div class="queue-item-row">
-                                        <span class="queue-check checked">✓</span>
-                                        <span class="queue-file-icon">🖼️</span>
-                                        <div class="queue-file-meta">
-                                            <span class="queue-file-name">Marketing_Photos_Pack.zip</span>
-                                            <span class="queue-file-size">185 MB</span>
-                                        </div>
-                                    </div>
-                                    <div class="queue-item-row">
-                                        <span class="queue-check">✓</span>
-                                        <span class="queue-file-icon">🎬</span>
-                                        <div class="queue-file-meta">
-                                            <span class="queue-file-name">Product_Overview_4K.mp4</span>
-                                            <span class="queue-file-size">420 MB</span>
-                                        </div>
-                                    </div>
-                                    <div class="queue-item-row">
-                                        <span class="queue-check">✓</span>
-                                        <span class="queue-file-icon">📦</span>
-                                        <div class="queue-file-meta">
-                                            <span class="queue-file-name">App_Build_Bundle_v4.apk</span>
-                                            <span class="queue-file-size">38.5 MB</span>
-                                        </div>
-                                    </div>
-                                </div>
+                    <!-- 3. REAL SHARED FILES QUEUE -->
+                    <div class="bento-card dash-card-shared" style="display: flex; flex-direction: column;">
+                        <div class="bento-card-header">
+                            <div class="bento-card-title">
+                                <span class="card-header-icon">⚡</span>
+                                <span>Active Shared Files</span>
                             </div>
-
-                            <!-- Vibrant warm golden/yellow CTA button matching reference image -->
-                            <button class="btn-golden-cta" id="dash-drop-share-btn">
-                                <span>⚡ Drop & Browse Files to Share</span>
+                            <button class="bento-icon-btn" onclick="switchView('view-hub')" title="Open Share Hub">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
                             </button>
                         </div>
-
-                        <!-- Right-Bottom Card: Vibrant Purple Hero Card (like Got a Recipe That Rocks?) -->
-                        <div class="bento-card dash-hero-card">
-                            <div class="hero-stars-row">★★★★★</div>
-                            <h3 class="hero-card-title">Pair Your Phone!</h3>
-                            <p class="hero-card-desc">High-speed 80MB/s peer-to-peer file transfer with your Android phone.</p>
-                            <button class="hero-outline-btn" id="dash-open-pairing-btn">
-                                <span>+ 📱 Open Phone Pairing & QR</span>
+                        <div class="dash-shared-list" id="dash-shared-list" style="flex: 1; overflow-y: auto; max-height: 380px;">
+                            <div style="text-align: center; padding: 40px 16px; color: var(--text-light); font-size: 0.85rem;">
+                                <div style="font-size: 2rem; margin-bottom: 8px; opacity: 0.6;">📦</div>
+                                <strong>No files shared yet</strong>
+                                <p style="font-size: 0.78rem; opacity: 0.7; margin-top: 4px;">Drop files anywhere to start sharing across your LAN</p>
+                            </div>
+                        </div>
+                        <div style="padding-top: 12px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+                            <span id="dash-shared-count" style="font-size: 0.8rem; font-weight: 700; color: var(--text-light);">0 files active</span>
+                            <button class="btn btn-accent" style="padding: 6px 14px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;" onclick="switchView('view-hub')">
+                                Share Hub →
                             </button>
                         </div>
                     </div>
 
-                    <!-- 4. FAR RIGHT COLUMN: Mobile Companion Preview Panel -->
-                    <div class="bento-card dash-card-companion">
-                        <div class="companion-top-banner">
-                            <div class="companion-banner-glow"></div>
-                            <div class="phone-screen-frame">
-                                <div class="screen-notch"></div>
-                                <div class="screen-content">
-                                    <div class="screen-logo">fylo</div>
-                                    <div class="screen-sync-icon">⚡</div>
-                                    <div class="screen-status-text" id="dash-phone-screen-status">Ready to Sync</div>
+                    <!-- 4. NETWORK & CONNECTED DEVICES -->
+                    <div class="dash-col-right" style="display: flex; flex-direction: column; gap: 16px;">
+                        <!-- Connected Devices Card -->
+                        <div class="bento-card" style="padding: 18px 20px;">
+                            <div class="bento-card-header">
+                                <div class="bento-card-title">
+                                    <span class="card-header-icon">📱</span>
+                                    <span>Connected Devices</span>
                                 </div>
+                                <span class="dash-stat-badge live" id="dash-connected-badge" style="font-size: 0.72rem;">0 Active</span>
                             </div>
+                            <div id="dash-devices-list" style="margin-top: 8px; font-size: 0.82rem; color: var(--text-light);">
+                                No devices connected yet. Scan QR code from phone to link.
+                            </div>
+                            <button class="btn" style="width: 100%; margin-top: 12px; padding: 8px 14px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);" onclick="showQRModal()">
+                                <span>📱 Show Connection QR Code</span>
+                            </button>
                         </div>
 
-                        <div class="companion-body">
-                            <div>
-                                <h3 class="companion-title">Fylo Mobile Companion</h3>
-                                <p class="companion-subtitle">Zero-cloud local high-speed file transfer & media browsing.</p>
-
-                                <div class="companion-tags">
-                                    <span class="comp-tag">⚡ 80 MB/s</span>
-                                    <span class="comp-tag">🔋 Auto-Sync</span>
-                                    <span class="comp-tag">📶 LAN Direct</span>
-                                </div>
-
-                                <div class="companion-status-box" id="dash-companion-status-box">
-                                    <div class="status-indicator-dot" id="dash-comp-dot"></div>
-                                    <div class="status-meta">
-                                        <div class="status-heading" id="dash-comp-heading">Waiting for Phone</div>
-                                        <div class="status-sub" id="dash-comp-sub">Scan QR Code from Android app</div>
-                                    </div>
-                                </div>
-
-                                <div class="companion-specs-grid">
-                                    <div class="comp-spec-item">
-                                        <span class="spec-icon">📸</span>
-                                        <div class="spec-text"><strong>Photos</strong><span>Instant Preview</span></div>
-                                    </div>
-                                    <div class="comp-spec-item">
-                                        <span class="spec-icon">📋</span>
-                                        <div class="spec-text"><strong>Clipboard</strong><span>Real-time Sync</span></div>
-                                    </div>
-                                    <div class="comp-spec-item">
-                                        <span class="spec-icon">💾</span>
-                                        <div class="spec-text"><strong>Storage</strong><span>Zero Limits</span></div>
-                                    </div>
-                                    <div class="comp-spec-item">
-                                        <span class="spec-icon">🛡️</span>
-                                        <div class="spec-text"><strong>Encrypted</strong><span>Local Subnet</span></div>
-                                    </div>
+                        <!-- Local Hotspot Quick Access -->
+                        <div class="bento-card" style="padding: 18px 20px;">
+                            <div class="bento-card-header">
+                                <div class="bento-card-title">
+                                    <span class="card-header-icon">🔥</span>
+                                    <span>Mobile Hotspot</span>
                                 </div>
                             </div>
-
-                            <button class="btn btn-accent companion-action-btn" id="dash-explore-phone-btn">
-                                <span>📱 Explore Phone Files →</span>
+                            <p style="font-size: 0.78rem; color: var(--text-light); line-height: 1.5; margin-bottom: 12px;">
+                                For maximum LAN file transfer speed without a router, enable Windows Mobile Hotspot.
+                            </p>
+                            <button class="net-hotspot-btn" id="dash-open-hotspot-btn" style="width: 100%;" onclick="triggerWindowsHotspotSettings()">
+                                <span>⚙️ Open Windows Hotspot Settings</span>
                             </button>
                         </div>
                     </div>
@@ -6080,15 +5950,18 @@
                     }
 
                     // Map Quick Access folder clicks
-                    if (Array.isArray(data.shortcuts) && data.shortcuts.length > 0) {
-                        document.querySelectorAll('.quick-chip-btn').forEach(btn => {
-                            const folderName = btn.getAttribute('data-folder');
-                            const match = data.shortcuts.find(s => s.name.toLowerCase() === folderName.toLowerCase());
+                    const shortcuts = Array.isArray(data.shortcuts) ? data.shortcuts : [];
+                    document.querySelectorAll('.quick-chip-btn').forEach(btn => {
+                        const folderName = btn.getAttribute('data-folder');
+                        const match = shortcuts.find(s => s.name.toLowerCase() === folderName.toLowerCase());
+                        btn.onclick = () => {
                             if (match && match.path) {
-                                btn.onclick = () => openPCFolder(match.path);
+                                openPCFolder(match.path);
+                            } else {
+                                openPCFolder('C:\\Users\\' + (folderName || ''));
                             }
-                        });
-                    }
+                        };
+                    });
                 }
 
                 // 2. Fetch Network Info & URL
@@ -6098,6 +5971,8 @@
                     const cleanIp = netInfo.url ? netInfo.url.replace(/^https?:\/\//, '') : 'Ready';
                     const netIpDisplay = $('#dash-net-ip-display');
                     if (netIpDisplay) netIpDisplay.textContent = cleanIp;
+                    const greetingIp = $('#dash-greeting-ip');
+                    if (greetingIp) greetingIp.textContent = cleanIp;
                     const topProfileStatus = $('#top-ip-val');
                     if (topProfileStatus) topProfileStatus.textContent = cleanIp;
                 }
@@ -6113,38 +5988,78 @@
                     if (profileName) profileName.textContent = hostName;
                 }
 
-                // 4. Update Mobile Companion Preview
-                updateCompanionCard();
+                // 4. Populate Real Active Shared Files
+                const filesRes = await apiFetch('/api/files');
+                if (filesRes.ok) {
+                    const filesData = await filesRes.json();
+                    const sharedFiles = Array.isArray(filesData) ? filesData : (filesData.files || []);
+                    const listEl = $('#dash-shared-list');
+                    const countEl = $('#dash-shared-count');
+                    if (countEl) countEl.textContent = `${sharedFiles.length} file${sharedFiles.length === 1 ? '' : 's'} active`;
+
+                    if (listEl) {
+                        if (sharedFiles.length === 0) {
+                            listEl.innerHTML = `
+                                <div style="text-align: center; padding: 36px 16px; color: var(--text-light); font-size: 0.85rem;">
+                                    <div style="font-size: 2rem; margin-bottom: 8px; opacity: 0.6;">📦</div>
+                                    <strong>No files shared yet</strong>
+                                    <p style="font-size: 0.78rem; opacity: 0.7; margin-top: 4px;">Drop files anywhere to start sharing across your LAN</p>
+                                </div>
+                            `;
+                        } else {
+                            listEl.innerHTML = '';
+                            sharedFiles.slice(0, 10).forEach(file => {
+                                const row = document.createElement('div');
+                                row.className = 'queue-item-row';
+                                row.style.cursor = 'pointer';
+                                row.onclick = () => switchView('view-hub');
+                                const ext = (file.name || '').split('.').pop().toLowerCase();
+                                const icon = typeof getFileIcon === 'function' ? getFileIcon(ext) : '📄';
+                                row.innerHTML = `
+                                    <span style="font-size: 1.2rem; margin-right: 8px;">${icon}</span>
+                                    <div class="queue-file-meta" style="flex: 1; min-width: 0;">
+                                        <div class="queue-file-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700;">${escapeHtml(file.name)}</div>
+                                        <div class="queue-file-size" style="font-size: 0.75rem; color: var(--text-light);">${formatBytes(file.size || 0)}</div>
+                                    </div>
+                                    <span style="color: var(--accent); font-size: 0.8rem; font-weight: 700;">Ready</span>
+                                `;
+                                listEl.appendChild(row);
+                            });
+                        }
+                    }
+                }
+
+                // 5. Populate Connected Devices Count
+                const devRes = await apiFetch('/api/devices');
+                const mDevRes = await apiFetch('/api/mobile/devices');
+                let totalDevices = 0;
+                let deviceNames = [];
+
+                if (devRes.ok) {
+                    const dData = await devRes.json();
+                    const devs = Array.isArray(dData) ? dData : (dData.devices || []);
+                    totalDevices += devs.length;
+                    devs.forEach(d => deviceNames.push(d.name || d.ip || 'LAN Device'));
+                }
+                if (mDevRes.ok) {
+                    const mData = await mDevRes.json();
+                    const mDevs = Object.values(mData || {});
+                    totalDevices += mDevs.length;
+                    mDevs.forEach(d => deviceNames.push(d.name || 'Android Phone'));
+                }
+
+                const badgeEl = $('#dash-connected-badge');
+                const devListEl = $('#dash-devices-list');
+                if (badgeEl) badgeEl.textContent = `${totalDevices} Active`;
+                if (devListEl) {
+                    if (totalDevices === 0) {
+                        devListEl.innerHTML = '<span style="opacity: 0.7;">No devices connected yet. Scan QR code from phone to link.</span>';
+                    } else {
+                        devListEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 4px;">${deviceNames.map(name => `<span style="display: flex; align-items: center; gap: 6px;"><span class="pill-dot live-pulse"></span> ${escapeHtml(name)}</span>`).join('')}</div>`;
+                    }
+                }
             } catch (err) {
                 console.error('Error loading dashboard data:', err);
-            }
-        }
-
-        function updateCompanionCard() {
-            const devices = Object.values(mobileDevices || {});
-            const heading = $('#dash-comp-heading');
-            const sub = $('#dash-comp-sub');
-            const dot = $('#dash-comp-dot');
-            const screenStatus = $('#dash-phone-screen-status');
-            const syncBadge = $('#top-phone-sync-badge');
-
-            if (devices.length > 0) {
-                const dev = devices[0];
-                const name = dev.name || 'Android Phone';
-                if (heading) heading.textContent = `🟢 Connected: ${name}`;
-                if (sub) sub.textContent = `Direct Wi-Fi Sync Active • Battery: ${dev.battery || '96%'}`;
-                if (dot) dot.className = 'status-indicator-dot online';
-                if (screenStatus) screenStatus.textContent = name;
-                if (syncBadge) {
-                    syncBadge.textContent = `${devices.length}`;
-                    syncBadge.classList.remove('hidden');
-                }
-            } else {
-                if (heading) heading.textContent = 'Waiting for Phone';
-                if (sub) sub.textContent = 'Scan QR Code from Android app';
-                if (dot) dot.className = 'status-indicator-dot';
-                if (screenStatus) screenStatus.textContent = 'Ready to Sync';
-                if (syncBadge) syncBadge.classList.add('hidden');
             }
         }
 
@@ -6300,7 +6215,7 @@
         $('#top-brand-btn')?.addEventListener('click', () => switchView('view-dashboard'));
         $('#dash-tile-security')?.addEventListener('click', () => switchView('view-settings'));
         $('#dash-tile-speed')?.addEventListener('click', openHotspotModal);
-        $('#dash-open-hotspot-btn')?.addEventListener('click', openHotspotModal);
+        $('#dash-open-hotspot-btn')?.addEventListener('click', triggerWindowsHotspotSettings);
 
         $('#dash-queue-files-btn')?.addEventListener('click', () => {
             switchView('view-hub');
@@ -8990,7 +8905,7 @@
             filtered.forEach((item, idx) => {
                 const card = document.createElement('div');
                 const isSelected = pcSelectedPaths.has(item.path);
-                card.className = 'phone-file-card' + (isSelected ? ' selected' : '');
+                card.className = 'phone-item-card' + (isSelected ? ' selected' : '');
 
                 const ext = (item.ext || '').toLowerCase();
                 const isImage = imageExts.includes(ext);
@@ -9000,7 +8915,7 @@
                 // Multi-select checkbox
                 const check = document.createElement('input');
                 check.type = 'checkbox';
-                check.className = 'file-select-check';
+                check.className = 'phone-select-checkbox';
                 check.checked = isSelected;
                 check.onclick = (e) => {
                     e.stopPropagation();
@@ -9013,7 +8928,7 @@
 
                 // Visual Preview / Icon
                 const previewWrap = document.createElement('div');
-                previewWrap.className = 'phone-file-thumb-wrap';
+                previewWrap.className = 'phone-item-preview';
 
                 if (item.isDir) {
                     previewWrap.innerHTML = `
@@ -9034,7 +8949,7 @@
                     `;
                 } else if (isImage) {
                     const img = document.createElement('img');
-                    img.className = 'phone-file-thumb';
+                    img.className = 'phone-item-thumb';
                     img.loading = 'lazy';
                     img.src = `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}`;
                     img.onerror = () => { img.style.display = 'none'; previewWrap.innerHTML = '<span style="font-size: 32px;">🖼️</span>'; };
@@ -9050,16 +8965,16 @@
 
                 // File metadata details
                 const meta = document.createElement('div');
-                meta.className = 'phone-file-meta';
+                meta.className = 'phone-item-details';
                 meta.innerHTML = `
-                    <div class="phone-file-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
-                    <div class="phone-file-sub">${item.isDir ? 'Folder' : formatBytes(item.size)}</div>
+                    <div class="phone-item-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+                    <div class="phone-item-meta">${item.isDir ? 'Folder' : formatBytes(item.size)}</div>
                 `;
                 card.appendChild(meta);
 
                 // Actions hover row
                 const actions = document.createElement('div');
-                actions.className = 'phone-file-actions';
+                actions.className = 'phone-item-actions';
 
                 if (!item.isDir) {
                     const dlBtn = document.createElement('button');
