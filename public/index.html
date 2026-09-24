@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -2237,6 +2237,346 @@
             display: flex;
             gap: 12px;
         }
+
+        /* ==========================================
+           Fylo v4 Revamp: Top System Header Bar, PC Explorer, & Pairing Studio
+           ========================================== */
+        .top-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            background: var(--card-bg);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 12px 20px;
+            box-shadow: var(--glass-shadow), var(--inner-shadow);
+            margin-bottom: 22px;
+            position: sticky;
+            top: 16px;
+            z-index: 100;
+        }
+
+        .top-header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .top-view-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+
+        .top-view-title .top-view-icon {
+            font-size: 1.25rem;
+        }
+
+        .top-tagline {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .top-header-center {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            user-select: none;
+        }
+
+        .status-pill:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.09);
+            border-color: var(--accent);
+        }
+
+        .status-pill:active {
+            transform: scale(0.96);
+        }
+
+        .pill-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #a4b0be;
+            flex-shrink: 0;
+        }
+
+        .pill-dot.live-pulse {
+            background: #2ed573;
+            box-shadow: 0 0 10px #2ed573;
+            animation: pillPulse 2s infinite;
+        }
+
+        @keyframes pillPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+
+        .top-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-top-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), #01a3a4);
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.82rem;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 210, 211, 0.25);
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .btn-top-action:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 20px rgba(0, 210, 211, 0.4);
+        }
+
+        .btn-top-action:active {
+            transform: scale(0.96);
+        }
+
+        .btn-top-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .btn-top-icon:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-top-icon:active {
+            transform: scale(0.95);
+        }
+
+        /* PC Drives Grid */
+        .pc-drives-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .drive-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drive-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 24px rgba(0, 210, 211, 0.15);
+        }
+
+        .drive-card:active {
+            transform: scale(0.97);
+        }
+
+        .drive-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1.35rem;
+        }
+
+        .drive-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .drive-title {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .drive-sub {
+            font-size: 0.76rem;
+            color: var(--text-light);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .drive-meter {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .drive-meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #2ed573);
+            border-radius: 2px;
+        }
+
+        /* Interactive Pairing Studio */
+        .pairing-studio-card {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 28px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 32px;
+            padding: 32px;
+            box-shadow: var(--glass-shadow);
+            align-items: center;
+        }
+
+        @media(max-width: 900px) {
+            .pairing-studio-card {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .pairing-qr-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 22px;
+            text-align: center;
+        }
+
+        .pairing-qr-wrapper {
+            background: #ffffff;
+            padding: 14px;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: inline-flex;
+            margin-bottom: 12px;
+        }
+
+        .pairing-qr-wrapper img, .pairing-qr-wrapper svg {
+            width: 170px;
+            height: 170px;
+            display: block;
+        }
+
+        .pairing-guide {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .pairing-steps-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .pairing-step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        .step-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 10px;
+            background: var(--accent-bg);
+            color: var(--accent);
+            font-weight: 800;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            font-size: 0.88rem;
+            line-height: 1.45;
+            color: var(--text);
+        }
+
+        .pairing-status-beacon {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            background: rgba(0, 210, 211, 0.08);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 0.82rem;
+            width: fit-content;
+        }
     </style>
 </head>
 
@@ -2277,7 +2617,22 @@
                 </button>
             </div>
             <ul class="nav-list">
-                <li class="nav-item active" data-target="view-hub">
+                <li class="nav-item active" data-target="view-phone" id="nav-phone-item">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                    </svg>
+                    <span>Phone Explorer <span class="badge hidden" id="phone-nav-badge" style="background:var(--accent); color:#fff; font-size:0.7rem; padding:2px 7px; border-radius:10px; margin-left:4px; font-weight:800;">0</span></span>
+                </li>
+                <li class="nav-item" data-target="view-pc-explorer" id="nav-pc-item">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                    <span>My PC Drives</span>
+                </li>
+                <li class="nav-item" data-target="view-hub" id="nav-hub-item">
                     <svg viewBox="0 0 24 24">
                         <circle cx="18" cy="5" r="3" />
                         <circle cx="6" cy="12" r="3" />
@@ -2287,28 +2642,21 @@
                     </svg>
                     <span>Share Hub</span>
                 </li>
-                <li class="nav-item" data-target="view-devices">
+                <li class="nav-item" data-target="view-clipboard" id="nav-clipboard-item">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    </svg>
+                    <span>Live Clipboard</span>
+                </li>
+                <li class="nav-item" data-target="view-devices" id="nav-devices-item">
                     <svg viewBox="0 0 24 24">
                         <rect x="4" y="4" width="16" height="12" rx="2" />
                         <path d="M12 16v4M8 20h8" />
                     </svg>
                     <span>Devices (<span id="device-count">0</span>)</span>
                 </li>
-                <li class="nav-item" data-target="view-phone" id="nav-phone-item">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                        <line x1="12" y1="18" x2="12.01" y2="18" />
-                    </svg>
-                    <span>Phone Explorer <span class="badge hidden" id="phone-nav-badge" style="background:var(--accent); color:#fff; font-size:0.7rem; padding:2px 7px; border-radius:10px; margin-left:4px; font-weight:800;">0</span></span>
-                </li>
-                <li class="nav-item" data-target="view-connect">
-                    <svg viewBox="0 0 24 24">
-                        <path
-                            d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.59 16.11a6 6 0 0 1 6.82 0M12 20h.01" />
-                    </svg>
-                    <span>Connect</span>
-                </li>
-                <li class="nav-item" data-target="view-settings">
+                <li class="nav-item" data-target="view-settings" id="nav-settings-item">
                     <svg viewBox="0 0 24 24">
                         <circle cx="12" cy="12" r="3" />
                         <path
@@ -2324,7 +2672,57 @@
         </sidebar>
 
         <main class="main-content">
-            <div id="view-hub" class="view-panel view-panel-hub">
+            <!-- Top System Header Bar -->
+            <header class="top-header-bar">
+                <div class="top-header-left">
+                    <div class="top-view-title" id="top-current-view-title">
+                        <span class="top-view-icon" id="top-current-view-icon">📱</span>
+                        <span class="top-view-text" id="top-current-view-text">Phone Explorer</span>
+                    </div>
+                    <div class="top-tagline" id="top-current-view-tagline">Browse and preview Android photos, videos, and folders in real time</div>
+                </div>
+                <div class="top-header-center">
+                    <!-- Live IP Address Pill with 1-click Copy -->
+                    <div class="status-pill" id="top-ip-pill" title="Click to copy server link">
+                        <span class="pill-dot live-pulse"></span>
+                        <span style="opacity:0.75; font-size:0.75rem;">LAN</span>
+                        <span id="top-ip-val">Connecting...</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px; opacity:0.75;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </div>
+                    <!-- Network Mode Pill -->
+                    <div class="status-pill" id="top-mode-pill" title="Network Interface">
+                        <span>🌐</span>
+                        <span id="top-mode-val">Wi-Fi</span>
+                    </div>
+                    <!-- Phone Connection Status Pill -->
+                    <div class="status-pill" id="top-phone-pill" title="Mobile Sync Status">
+                        <span class="pill-dot" id="top-phone-dot"></span>
+                        <span>📱</span>
+                        <span id="top-phone-val">Phone Disconnected</span>
+                    </div>
+                    <!-- Admin Security Badge -->
+                    <div class="status-pill" id="top-admin-pill" title="Protected by Admin Security Password">
+                        <span>🛡️</span>
+                        <span>Protected</span>
+                    </div>
+                </div>
+                <div class="top-header-right">
+                    <button class="btn-top-action" id="top-quick-share-btn" title="Quick Share Files">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:15px; height:15px;"><path d="M12 5v14M5 12h14"/></svg>
+                        <span>Share Files</span>
+                    </button>
+                    <button class="btn-top-icon" id="top-qr-toggle-btn" title="Show Pairing QR Code">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    </button>
+                    <button class="btn-top-icon" id="top-theme-toggle" title="Toggle Dark/Light Mode">
+                        <svg id="top-theme-icon" viewBox="0 0 24 24" style="width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;">
+                            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <div id="view-hub" class="view-panel view-panel-hub hidden">
                 <div class="hub-left">
                     <div class="card">
                         <div id="dropzone">
@@ -2458,24 +2856,93 @@
                                 style="width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;">
                         </div>
                     </div>
+
+                    <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <h4 style="font-size: 1rem; color: var(--text);">🛡️ Admin Security & Deletion Control</h4>
+                            <span class="phone-readonly-badge" style="background: rgba(46, 213, 115, 0.15); color: #2ed573; border-color: rgba(46, 213, 115, 0.3);">Protected</span>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 16px; line-height: 1.5;">
+                            All deletions on PC safely move files to Windows Recycle Bin. Deletions on Mobile move files to .trash. Neither can be performed without Admin Security Password verification.
+                        </p>
+                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn btn-accent" id="settings-change-admin-pwd-btn" style="padding: 10px 18px; border-radius: 12px; font-size: 0.85rem;">
+                                🔑 Change Admin Password
+                            </button>
+                            <span style="font-size: 0.8rem; color: var(--text-light); font-weight: 600;">(Default password: <code style="color:var(--accent);">admin</code>)</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Fylo v4: Phone Explorer View -->
-            <div id="view-phone" class="view-panel hidden">
-                <!-- Empty State when no mobile app paired -->
-                <div id="phone-empty-container" class="phone-empty-state">
-                    <svg class="phone-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                        <line x1="12" y1="18" x2="12.01" y2="18" />
-                    </svg>
-                    <h3 style="font-size: 1.3rem; margin-bottom: 8px; color: var(--text);">No Phone Connected</h3>
-                    <p style="font-size: 0.9rem; color: var(--text-light); max-width: 440px; margin: 0 auto 20px auto; line-height: 1.5;">
-                        Install the <strong>Fylo Mobile App</strong> on your Android phone, grant storage access, and scan the QR code to browse all phone files and folders directly from this PC.
-                    </p>
-                    <button class="btn btn-accent" id="phone-pair-btn" style="padding: 12px 24px; border-radius: 16px; font-size: 0.95rem;">
-                        📱 View Pairing QR Code
-                    </button>
+            <!-- Fylo v4: Phone Explorer View (Default Active) -->
+            <div id="view-phone" class="view-panel">
+                <!-- Empty State: Interactive Pairing Studio -->
+                <div id="phone-empty-container" class="phone-empty-state" style="padding: 0; background: transparent; border: none;">
+                    <div class="pairing-studio-card">
+                        <!-- Left: QR Code & Address -->
+                        <div class="pairing-qr-box">
+                            <div class="pairing-status-beacon" style="margin-bottom: 14px;">
+                                <span class="pill-dot live-pulse"></span>
+                                <span>Ready to Connect</span>
+                            </div>
+                            <div class="pairing-qr-wrapper">
+                                <div id="phone-pairing-qrcode"></div>
+                            </div>
+                            <div style="font-weight: 800; font-size: 0.95rem; color: var(--text); margin-bottom: 4px;" id="pairing-studio-url">Connecting...</div>
+                            <div style="font-size: 0.78rem; color: var(--text-light); margin-bottom: 14px;">Scan with Android camera or Fylo App</div>
+                            <div style="display: flex; gap: 8px; width: 100%;">
+                                <button class="btn btn-accent" id="pairing-copy-btn" style="flex: 1; padding: 8px 12px; font-size: 0.82rem; border-radius: 12px; justify-content: center;">
+                                    📋 Copy Link
+                                </button>
+                                <button class="btn" id="pairing-hotspot-btn" style="padding: 8px 12px; font-size: 0.82rem; border-radius: 12px; justify-content: center;" title="Open Hotspot Settings">
+                                    🔥 Hotspot
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right: 3-Step Guide -->
+                        <div class="pairing-guide">
+                            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                                <div>
+                                    <h3 style="font-size: 1.35rem; font-weight: 900; color: var(--text); letter-spacing: -0.5px;">Phone Explorer Studio</h3>
+                                    <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 2px;">Peer-to-peer connection over local Wi-Fi or Hotspot</p>
+                                </div>
+                                <div class="phone-readonly-badge">🔒 Read-Only Protected</div>
+                            </div>
+
+                            <div class="pairing-steps-list">
+                                <div class="pairing-step-item">
+                                    <div class="step-num">1</div>
+                                    <div class="step-content">
+                                        <strong>Same Wi-Fi:</strong> Connect this PC and your Android phone to the same local Wi-Fi network (or turn on PC Hotspot).
+                                    </div>
+                                </div>
+                                <div class="pairing-step-item">
+                                    <div class="step-num">2</div>
+                                    <div class="step-content">
+                                        <strong>Open Fylo on Phone:</strong> Launch the Fylo Mobile App on Android and tap <em>"Scan PC QR Code"</em>, or scan the QR code on the left with any camera app.
+                                    </div>
+                                </div>
+                                <div class="pairing-step-item">
+                                    <div class="step-num">3</div>
+                                    <div class="step-content">
+                                        <strong>Instant Explorer:</strong> Camera photos, screenshots, downloads, and storage will appear automatically right here!
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px;">
+                                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-light);">
+                                    <span class="pill-dot live-pulse"></span>
+                                    <span>Listening for Android phone...</span>
+                                </div>
+                                <button class="btn" id="pairing-explore-pc-btn" style="padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; gap: 6px;">
+                                    💻 Browse PC Drives Instead →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Active Phone Explorer Interface -->
@@ -2650,6 +3117,122 @@
                                 Loading folder contents...
                             </div>
                         </div>
+            </div>
+
+            <!-- Fylo v4: PC Drives & Explorer View -->
+            <div id="view-pc-explorer" class="view-panel hidden">
+                <!-- Top PC Storage Card -->
+                <div class="card" style="padding: 20px 24px;">
+                    <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                        <span>💻 Local PC Storage Drives</span>
+                        <span style="font-size: 0.72rem; text-transform: none; opacity: 0.7;">Click any drive to browse</span>
+                    </div>
+                    <div class="pc-drives-grid" id="pc-drives-container">
+                        <!-- Drive cards rendered dynamically -->
+                    </div>
+
+                    <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 6px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                        <span>📁 Quick Access PC Folders</span>
+                        <span style="font-size: 0.72rem; text-transform: none; opacity: 0.7;">Direct Links</span>
+                    </div>
+                    <div class="phone-quick-access" id="pc-quick-access-container">
+                        <!-- Shortcuts rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Windows Explorer Style Container Card for PC -->
+                <div class="card" style="padding: 18px 20px;">
+                    <!-- Windows Explorer Navigation Bar -->
+                    <div class="explorer-nav-bar">
+                        <div class="explorer-nav-buttons">
+                            <button class="nav-arrow-btn" id="pc-back-btn" title="Back" disabled>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <button class="nav-arrow-btn" id="pc-fwd-btn" title="Forward" disabled>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                            <button class="nav-arrow-btn" id="pc-up-btn" title="Up to parent folder">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                            </button>
+                            <button class="nav-arrow-btn" id="pc-nav-refresh-btn" title="Refresh">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Address Bar / Breadcrumbs -->
+                        <div class="explorer-address-bar">
+                            <div class="address-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            </div>
+                            <div class="phone-breadcrumbs" id="pc-breadcrumbs">
+                                <span class="crumb-item" data-path="">This PC</span>
+                            </div>
+                        </div>
+
+                        <!-- Tools: Search & View Mode -->
+                        <div class="explorer-tools">
+                            <div class="explorer-search-box">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="pc-search-input" placeholder="Search folder...">
+                                <button id="pc-search-clear" class="search-clear-btn hidden">&times;</button>
+                            </div>
+                            <div class="view-mode-toggle">
+                                <button id="pc-view-grid" class="view-btn active" title="Grid View">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                                </button>
+                                <button id="pc-view-list" class="view-btn" title="List View">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters & Bulk Select Row -->
+                    <div class="phone-filters-row">
+                        <div class="phone-filters">
+                            <button class="filter-btn active" data-pc-filter="all">All (<span id="pc-count-all">0</span>)</button>
+                            <button class="filter-btn" data-pc-filter="images">📸 Photos (<span id="pc-count-photos">0</span>)</button>
+                            <button class="filter-btn" data-pc-filter="videos">🎬 Videos (<span id="pc-count-videos">0</span>)</button>
+                            <button class="filter-btn" data-pc-filter="audio">🎵 Audio (<span id="pc-count-audio">0</span>)</button>
+                            <button class="filter-btn" data-pc-filter="docs">📄 Docs (<span id="pc-count-docs">0</span>)</button>
+                            <button class="filter-btn" data-pc-filter="folders">📁 Folders</button>
+                        </div>
+                        <div>
+                            <button class="btn" id="pc-select-all-btn" style="padding: 6px 14px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;">Select All</button>
+                        </div>
+                    </div>
+
+                    <!-- PC File Items Grid / List -->
+                    <div class="phone-grid" id="pc-grid-view">
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-light); font-weight: 600;">
+                            Loading PC directories...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fylo v4: Dedicated Live Clipboard View -->
+            <div id="view-clipboard" class="view-panel hidden">
+                <div class="card" style="padding: 28px;">
+                    <div class="panel-header">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span>📋 Live Shared Clipboard</span>
+                            <span class="phone-status-pill" style="font-size: 0.75rem;">● Real-time Sync</span>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn" id="clipboard-clear-dedicated" style="padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; background: var(--danger); color: var(--danger-text); border: none;">
+                                🗑️ Clear
+                            </button>
+                            <button class="btn btn-accent" id="clipboard-copy-dedicated" style="padding: 8px 18px; border-radius: 12px; font-size: 0.85rem;">
+                                📋 Copy to PC Clipboard
+                            </button>
+                        </div>
+                    </div>
+                    <p class="panel-desc">Any text typed or pasted here is synchronized in real-time across all connected devices and phones on the network.</p>
+                    <textarea id="clipboard-text-dedicated" placeholder="Type or paste notes, links, code snippets, or text to share across devices..." style="width: 100%; min-height: 380px; padding: 20px; font-family: 'Outfit', monospace; font-size: 1rem; border-radius: 20px; background: rgba(0, 0, 0, 0.15); border: 1px solid var(--border); color: var(--text); resize: vertical; outline: none; line-height: 1.6;"></textarea>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 14px; font-size: 0.82rem; color: var(--text-light); font-weight: 600;">
+                        <span id="clipboard-stats">0 characters • 0 words</span>
+                        <span>Auto-synced automatically</span>
                     </div>
                 </div>
             </div>
@@ -2668,6 +3251,24 @@
                 <span>Download Selected (Zip)</span>
             </button>
             <button id="phone-clear-selection-btn" class="btn" style="background: rgba(255, 255, 255, 0.08); border-radius: 12px; color: #fff;">Clear</button>
+        </div>
+    </div>
+
+    <!-- Floating PC Multi-Select Action Bar -->
+    <div id="pc-selection-bar" class="phone-selection-bar hidden">
+        <div class="selection-info">
+            <span class="selection-badge" id="pc-selected-count">0</span>
+            <span id="pc-selected-text">files selected</span>
+        </div>
+        <div class="selection-actions">
+            <button id="pc-download-selected-btn" class="btn btn-accent">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px; height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download Selected</span>
+            </button>
+            <button id="pc-trash-selected-btn" class="btn" style="background: rgba(255, 71, 87, 0.2); color: var(--danger-text); border-radius: 12px; border:none; padding:8px 14px; font-weight:700; cursor:pointer;">
+                🗑️ Move to Recycle Bin
+            </button>
+            <button id="pc-clear-selection-btn" class="btn" style="background: rgba(255, 255, 255, 0.08); border-radius: 12px; color: #fff;">Clear</button>
         </div>
     </div>
 
@@ -2734,6 +3335,36 @@
             <div class="admin-modal-actions">
                 <button id="admin-cancel-btn" class="btn" style="flex: 1; border-radius: 12px; justify-content: center;">Cancel</button>
                 <button id="admin-confirm-trash-btn" class="btn" style="flex: 1; border-radius: 12px; justify-content: center; background: var(--danger); color: var(--danger-text); border: none;">🗑️ Move to Trash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Change Password Modal -->
+    <div id="admin-change-password-modal" class="admin-security-modal">
+        <div class="admin-modal-card">
+            <div class="admin-modal-icon" style="background: rgba(0, 210, 211, 0.15); color: var(--accent);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <h3 class="admin-modal-title">Change Admin Security Password</h3>
+            <p class="admin-modal-desc">
+                This password protects file deletion and administrative operations on both PC and mobile devices.
+            </p>
+            <div class="admin-input-group">
+                <input type="password" id="admin-current-pwd-input" placeholder="Current Admin Password..." autocomplete="off">
+            </div>
+            <div class="admin-input-group">
+                <input type="password" id="admin-new-pwd-input" placeholder="New Admin Password..." autocomplete="off">
+            </div>
+            <div class="admin-input-group">
+                <input type="password" id="admin-confirm-new-pwd-input" placeholder="Confirm New Admin Password..." autocomplete="off">
+            </div>
+            <div id="admin-change-pwd-error" class="admin-error-msg hidden"></div>
+            <div class="admin-modal-actions">
+                <button id="admin-change-pwd-cancel" class="btn" style="flex: 1; border-radius: 12px; justify-content: center;">Cancel</button>
+                <button id="admin-change-pwd-save" class="btn btn-accent" style="flex: 1; border-radius: 12px; justify-content: center;">Save Password</button>
             </div>
         </div>
     </div>
@@ -3027,32 +3658,106 @@
         const sunIconPath = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
 
         function initTheme() {
-            const saved = localStorage.getItem('fylo-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            const saved = localStorage.getItem('fylo-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', saved);
             const icon = $('#theme-icon');
-            if (icon) {
-                icon.innerHTML = saved === 'dark' ? sunIconPath : moonIconPath;
-            }
+            if (icon) icon.innerHTML = saved === 'dark' ? sunIconPath : moonIconPath;
+            const topIcon = $('#top-theme-icon');
+            if (topIcon) topIcon.innerHTML = saved === 'dark' ? sunIconPath : moonIconPath;
         }
-        $('#theme-toggle').addEventListener('click', () => {
+
+        function toggleTheme() {
             const cur = document.documentElement.getAttribute('data-theme');
             const next = cur === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', next);
             localStorage.setItem('fylo-theme', next);
             const icon = $('#theme-icon');
-            if (icon) {
-                icon.innerHTML = next === 'dark' ? sunIconPath : moonIconPath;
-            }
-        });
+            if (icon) icon.innerHTML = next === 'dark' ? sunIconPath : moonIconPath;
+            const topIcon = $('#top-theme-icon');
+            if (topIcon) topIcon.innerHTML = next === 'dark' ? sunIconPath : moonIconPath;
+        }
+
+        $('#theme-toggle')?.addEventListener('click', toggleTheme);
+        $('#top-theme-toggle')?.addEventListener('click', toggleTheme);
         initTheme();
+
+        const viewMeta = {
+            'view-phone': { icon: '📱', title: 'Phone Explorer', tagline: 'Real-time Android photos, videos, downloads, and storage preview' },
+            'view-pc-explorer': { icon: '💻', title: 'My PC Drives & Files', tagline: 'Browse local Windows drives, folders, and in-app media preview' },
+            'view-hub': { icon: '⚡', title: 'Share Hub & Transfer', tagline: 'Drag and drop files to stream and share across local network' },
+            'view-clipboard': { icon: '📋', title: 'Live Shared Clipboard', tagline: 'Real-time bidirectional text synchronization across devices' },
+            'view-devices': { icon: '👥', title: 'Connected Devices', tagline: 'Active devices detected on local LAN subnet' },
+            'view-settings': { icon: '⚙️', title: 'Settings & Security', tagline: 'App display profile, download paths, and Admin password control' }
+        };
+
+        function switchView(targetId) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
+
+            const navItem = document.querySelector(`.nav-item[data-target="${targetId}"]`);
+            if (navItem) navItem.classList.add('active');
+
+            const targetPanel = $(`#${targetId}`);
+            if (targetPanel) targetPanel.classList.remove('hidden');
+
+            const meta = viewMeta[targetId];
+            if (meta) {
+                if ($('#top-current-view-icon')) $('#top-current-view-icon').textContent = meta.icon;
+                if ($('#top-current-view-text')) $('#top-current-view-text').textContent = meta.title;
+                if ($('#top-current-view-tagline')) $('#top-current-view-tagline').textContent = meta.tagline;
+            }
+
+            if (targetId === 'view-pc-explorer' && (!currentPCPath || currentPCItems.length === 0)) {
+                loadPCQuickAccess();
+            }
+        }
 
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => {
-                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
-                item.classList.add('active');
-                $(`#${item.getAttribute('data-target')}`).classList.remove('hidden');
+                const target = item.getAttribute('data-target');
+                if (target) switchView(target);
             });
+        });
+
+        // Top Header Bar Event Bindings
+        $('#top-ip-pill')?.addEventListener('click', () => {
+            const url = $('#lan-url')?.textContent || '';
+            if (url) {
+                navigator.clipboard.writeText(url);
+                const valEl = $('#top-ip-val');
+                if (valEl) {
+                    const old = valEl.textContent;
+                    valEl.textContent = 'Copied! ✨';
+                    setTimeout(() => (valEl.textContent = old), 1200);
+                }
+            }
+        });
+
+        $('#top-phone-pill')?.addEventListener('click', () => switchView('view-phone'));
+        $('#top-admin-pill')?.addEventListener('click', () => switchView('view-settings'));
+        $('#top-quick-share-btn')?.addEventListener('click', () => {
+            switchView('view-hub');
+            setTimeout(() => $('#file-input')?.click(), 80);
+        });
+        $('#top-qr-toggle-btn')?.addEventListener('click', () => switchView('view-phone'));
+
+        // Pairing Studio Buttons
+        $('#pairing-copy-btn')?.addEventListener('click', () => {
+            const url = $('#lan-url')?.textContent || '';
+            if (url) {
+                navigator.clipboard.writeText(url);
+                const btn = $('#pairing-copy-btn');
+                if (btn) {
+                    btn.textContent = 'Copied! ✨';
+                    setTimeout(() => (btn.textContent = '📋 Copy Link'), 1200);
+                }
+            }
+        });
+        $('#pairing-hotspot-btn')?.addEventListener('click', () => {
+            $('#open-hotspot-btn')?.click();
+        });
+        $('#pairing-explore-pc-btn')?.addEventListener('click', () => {
+            switchView('view-pc-explorer');
         });
 
         function showKicked() {
@@ -3089,8 +3794,20 @@
                 const shelfQr = $('#sidebar-qrcode');
                 if (shelfQr) shelfQr.innerHTML = svg;
 
+                const studioQr = $('#phone-pairing-qrcode');
+                if (studioQr) studioQr.innerHTML = svg;
+
                 const info = await (await apiFetch('/api/network-url')).json();
                 $('#lan-url').textContent = info.url;
+
+                const studioUrl = $('#pairing-studio-url');
+                if (studioUrl) studioUrl.textContent = info.url;
+
+                const topIpVal = $('#top-ip-val');
+                if (topIpVal) topIpVal.textContent = info.url ? info.url.replace(/^https?:\/\//, '') : 'Ready';
+
+                const topModeVal = $('#top-mode-val');
+                if (topModeVal) topModeVal.textContent = info.isHotspot ? '🔥 Hotspot' : (info.networkName || 'Wi-Fi');
 
                 const netTypeEl = $('#network-type');
                 if (netTypeEl && info.networkName) {
@@ -4086,9 +4803,13 @@
 
         async function loadClipboard() {
             try {
-                const data = await (await apiFetch('/api/clipboard')).json();
+                const dedicatedClipboardEl = $('#clipboard-text-dedicated');
                 if (!clipboardDirty && data.text !== clipboardEl.value) {
                     clipboardEl.value = data.text;
+                    if (dedicatedClipboardEl) {
+                        dedicatedClipboardEl.value = data.text;
+                        updateClipboardStats(data.text);
+                    }
                     if (isElectron) {
                         try {
                             const { clipboard } = require('electron');
@@ -4103,6 +4824,9 @@
                             } catch (e) { }
                         }
                     }
+                } else if (dedicatedClipboardEl && !clipboardDirty && data.text !== dedicatedClipboardEl.value) {
+                    dedicatedClipboardEl.value = data.text;
+                    updateClipboardStats(data.text);
                 }
                 $('#clipboard-meta').textContent = data.updatedBy ? `Last edited by ${data.updatedBy}` : 'Text sharing sync block';
             } catch (e) { }
@@ -4399,13 +5123,20 @@
 
                 const emptyContainer = $('#phone-empty-container');
                 const activeContainer = $('#phone-active-container');
+                const topPhoneVal = $('#top-phone-val');
+                const topPhoneDot = $('#top-phone-dot');
 
                 if (onlineDevices.length === 0) {
                     if (emptyContainer) emptyContainer.classList.remove('hidden');
                     if (activeContainer) activeContainer.classList.add('hidden');
                     currentPhoneId = null;
+                    if (topPhoneVal) topPhoneVal.textContent = 'Phone Disconnected';
+                    if (topPhoneDot) topPhoneDot.classList.remove('live-pulse');
                     return;
                 }
+
+                if (topPhoneVal) topPhoneVal.textContent = `${onlineDevices[0].name || 'Phone'} (Connected)`;
+                if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
 
                 if (emptyContainer) emptyContainer.classList.add('hidden');
                 if (activeContainer) activeContainer.classList.remove('hidden');
@@ -4784,10 +5515,20 @@
         // ==========================================
         // Google Photos / Lightbox Viewer Logic
         // ==========================================
-        function openGallery(item) {
+        function openGallery(item, source = 'phone') {
             const modal = $('#gallery-lightbox');
             if (!modal) return;
 
+            item.source = source;
+            const fullList = (source === 'pc' ? currentPCItems : currentPhoneItems)
+                .filter(i => {
+                    if (i.isDir) return false;
+                    const ext = (i.ext || '').toLowerCase();
+                    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp', 'mp4', 'mkv', 'mov', 'avi', 'webm', '3gp', 'mp3', 'wav', 'm4a', 'flac', 'aac', 'ogg'].includes(ext);
+                })
+                .map(i => ({ ...i, source }));
+
+            galleryMediaList = fullList;
             galleryCurrentIdx = galleryMediaList.findIndex(i => i.path === item.path);
             if (galleryCurrentIdx < 0) {
                 galleryMediaList = [item];
@@ -4814,7 +5555,9 @@
             stage.style.transform = `scale(1)`;
             stage.innerHTML = '';
 
-            const streamUrl = `/api/mobile/fs/file?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
+            const streamUrl = (item.source === 'pc')
+                ? `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}`
+                : `/api/mobile/fs/file?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
             const ext = (item.ext || '').toLowerCase();
             const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp'];
             const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', '3gp'];
@@ -4875,7 +5618,9 @@
                 const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
 
                 if (isImage) {
-                    const thumbUrl = `/api/mobile/fs/thumbnail?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
+                    const thumbUrl = (item.source === 'pc')
+                        ? `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}`
+                        : `/api/mobile/fs/thumbnail?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
                     thumb.innerHTML = `<img src="${thumbUrl}" loading="lazy" onerror="this.parentElement.textContent='🖼️';">`;
                 } else if (['mp4', 'mov', 'webm'].includes(ext)) {
                     thumb.innerHTML = `<span style="font-size: 20px;">🎬</span>`;
@@ -4930,7 +5675,36 @@
 
         $('#gallery-download-btn')?.addEventListener('click', () => {
             const item = galleryMediaList[galleryCurrentIdx];
-            if (item) downloadPhoneFile(item);
+            if (!item) return;
+            if (item.source === 'pc') {
+                const link = document.createElement('a');
+                link.href = `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}&download=1`;
+                link.download = item.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                downloadPhoneFile(item);
+            }
+        });
+
+        $('#gallery-trash-btn')?.addEventListener('click', () => {
+            const item = galleryMediaList[galleryCurrentIdx];
+            if (!item) return;
+            promptAdminTrash({
+                type: item.source || 'phone',
+                filePath: item.path,
+                fileName: item.name,
+                deviceId: currentPhoneId,
+                onDone: () => {
+                    closeGallery();
+                    if (item.source === 'pc') {
+                        fetchPCFolder(currentPCPath, false);
+                    } else {
+                        fetchPhoneFolder(currentPhonePath, false);
+                    }
+                }
+            });
         });
 
         // Keyboard Navigation for Gallery
@@ -5249,25 +6023,567 @@
             }
         });
 
-        // Lightbox Gallery Trash Button
-        $('#gallery-trash-btn')?.addEventListener('click', () => {
-            const item = galleryMediaList[galleryCurrentIdx];
-            if (!item) return;
-            promptAdminTrash({
-                type: 'phone',
-                filePath: item.path,
-                fileName: item.name,
-                deviceId: currentPhoneId,
-                onDone: () => {
-                    galleryMediaList.splice(galleryCurrentIdx, 1);
-                    if (galleryMediaList.length === 0) {
-                        closeGallery();
-                    } else {
-                        galleryCurrentIdx = Math.min(galleryCurrentIdx, galleryMediaList.length - 1);
-                        renderGalleryCurrent();
-                        renderGalleryFilmstrip();
+        // ==========================================
+        // Dedicated Live Clipboard Logic
+        // ==========================================
+        const dedicatedClipboardEl = $('#clipboard-text-dedicated');
+        function updateClipboardStats(text) {
+            const stats = $('#clipboard-stats');
+            if (!stats) return;
+            const len = (text || '').length;
+            const words = (text || '').trim() ? (text || '').trim().split(/\s+/).length : 0;
+            stats.textContent = `${len} characters • ${words} words`;
+        }
+
+        if (dedicatedClipboardEl) {
+            dedicatedClipboardEl.addEventListener('input', () => {
+                clipboardDirty = true;
+                if (clipboardEl) clipboardEl.value = dedicatedClipboardEl.value;
+                updateClipboardStats(dedicatedClipboardEl.value);
+                clearTimeout(clipboardSaveTimer);
+                clipboardSaveTimer = setTimeout(saveClipboardText, 500);
+            });
+        }
+
+        $('#clipboard-copy-dedicated')?.addEventListener('click', async () => {
+            const text = dedicatedClipboardEl ? dedicatedClipboardEl.value : '';
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(text);
+                const btn = $('#clipboard-copy-dedicated');
+                if (btn) {
+                    btn.textContent = 'Copied! ✨';
+                    setTimeout(() => (btn.textContent = '📋 Copy to PC Clipboard'), 1200);
+                }
+            }
+        });
+
+        $('#clipboard-clear-dedicated')?.addEventListener('click', async () => {
+            if (dedicatedClipboardEl) dedicatedClipboardEl.value = '';
+            if (clipboardEl) clipboardEl.value = '';
+            updateClipboardStats('');
+            await apiFetch('/api/clipboard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: '' })
+            });
+        });
+
+        // ==========================================
+        // Admin Change Password Logic
+        // ==========================================
+        $('#settings-change-admin-pwd-btn')?.addEventListener('click', () => {
+            const modal = $('#admin-change-password-modal');
+            if (modal) {
+                if ($('#admin-current-pwd-input')) $('#admin-current-pwd-input').value = '';
+                if ($('#admin-new-pwd-input')) $('#admin-new-pwd-input').value = '';
+                if ($('#admin-confirm-new-pwd-input')) $('#admin-confirm-new-pwd-input').value = '';
+                $('#admin-change-pwd-error')?.classList.add('hidden');
+                modal.classList.add('active');
+            }
+        });
+
+        $('#admin-change-pwd-cancel')?.addEventListener('click', () => {
+            $('#admin-change-password-modal')?.classList.remove('active');
+        });
+
+        $('#admin-change-pwd-save')?.addEventListener('click', async () => {
+            const currentPass = $('#admin-current-pwd-input')?.value || '';
+            const newPass = $('#admin-new-pwd-input')?.value || '';
+            const confirmPass = $('#admin-confirm-new-pwd-input')?.value || '';
+            const errEl = $('#admin-change-pwd-error');
+
+            if (!newPass || newPass.length < 4) {
+                if (errEl) {
+                    errEl.textContent = 'New password must be at least 4 characters long.';
+                    errEl.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (newPass !== confirmPass) {
+                if (errEl) {
+                    errEl.textContent = 'New passwords do not match.';
+                    errEl.classList.remove('hidden');
+                }
+                return;
+            }
+
+            try {
+                const res = await apiFetch('/api/admin/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    $('#admin-change-password-modal')?.classList.remove('active');
+                    alert('Admin Security Password successfully updated! ✨');
+                } else {
+                    if (errEl) {
+                        errEl.textContent = data.error || 'Failed to update password.';
+                        errEl.classList.remove('hidden');
                     }
-                    if (currentPhonePath) fetchPhoneFolder(currentPhonePath, false);
+                }
+            } catch (err) {
+                if (errEl) {
+                    errEl.textContent = `Error: ${err.message}`;
+                    errEl.classList.remove('hidden');
+                }
+            }
+        });
+
+        // ==========================================
+        // Fylo v4: PC Explorer & Windows Drives Manager
+        // ==========================================
+        let currentPCPath = '';
+        let currentPCParent = '';
+        let currentPCItems = [];
+        let currentPCFilter = 'all';
+        let pcViewMode = 'grid';
+        let pcHistory = [];
+        let pcHistoryIdx = -1;
+        let pcSelectedPaths = new Set();
+
+        async function loadPCQuickAccess() {
+            try {
+                const res = await apiFetch('/api/pc/explorer/quick-access');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                // Render Drives
+                const drivesContainer = $('#pc-drives-container');
+                if (drivesContainer && Array.isArray(data.drives)) {
+                    drivesContainer.innerHTML = '';
+                    data.drives.forEach(drive => {
+                        const card = document.createElement('div');
+                        card.className = 'drive-card';
+                        const percentFree = drive.total > 0 ? Math.round((drive.free / drive.total) * 100) : 0;
+                        const percentUsed = 100 - percentFree;
+                        card.innerHTML = `
+                            <div class="drive-icon">💾</div>
+                            <div class="drive-info">
+                                <div class="drive-title">${escapeHtml(drive.label || 'Local Disk')} (${escapeHtml(drive.mount)})</div>
+                                <div class="drive-sub">${formatBytes(drive.free)} free of ${formatBytes(drive.total)}</div>
+                                <div class="drive-meter">
+                                    <div class="drive-meter-fill" style="width: ${percentUsed}%;"></div>
+                                </div>
+                            </div>
+                        `;
+                        card.onclick = () => fetchPCFolder(drive.mount + '\\', true);
+                        drivesContainer.appendChild(card);
+                    });
+                }
+
+                // Render Quick Access shortcuts
+                const shortcutsContainer = $('#pc-quick-access-container');
+                if (shortcutsContainer && Array.isArray(data.shortcuts)) {
+                    shortcutsContainer.innerHTML = '';
+                    data.shortcuts.forEach(sc => {
+                        const chip = document.createElement('div');
+                        chip.className = 'quick-chip';
+                        chip.innerHTML = `<span>${sc.icon || '📁'}</span> <span>${escapeHtml(sc.name)}</span>`;
+                        chip.onclick = () => fetchPCFolder(sc.path, true);
+                        shortcutsContainer.appendChild(chip);
+                    });
+                }
+
+                // Initial folder load if none loaded
+                if (!currentPCPath) {
+                    const defaultTarget = (data.shortcuts && data.shortcuts[0]) ? data.shortcuts[0].path : (data.drives && data.drives[0] ? data.drives[0].mount + '\\' : 'C:\\');
+                    fetchPCFolder(defaultTarget, true);
+                }
+            } catch (err) {
+                console.error('loadPCQuickAccess error:', err);
+            }
+        }
+
+        async function fetchPCFolder(targetPath, addToHistory = true) {
+            if (!targetPath) return;
+            currentPCPath = targetPath;
+
+            if (addToHistory) {
+                if (pcHistory[pcHistoryIdx] !== targetPath) {
+                    pcHistory = pcHistory.slice(0, pcHistoryIdx + 1);
+                    pcHistory.push(targetPath);
+                    pcHistoryIdx = pcHistory.length - 1;
+                }
+            }
+            updatePCNavButtons();
+
+            const grid = $('#pc-grid-view');
+            if (grid) {
+                grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-light); font-weight: 600;">Loading files...</div>';
+            }
+
+            try {
+                const res = await apiFetch(`/api/pc/explorer/list?path=${encodeURIComponent(targetPath)}`);
+                if (!res.ok) {
+                    if (grid) grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--danger-text); font-weight: 700;">Could not access PC folder.</div>';
+                    return;
+                }
+                const data = await res.json();
+                currentPCItems = Array.isArray(data.items) ? data.items : [];
+                currentPCParent = data.parent || '';
+                renderPCBreadcrumbs(currentPCPath);
+                updatePCCategoryCounts();
+                renderPCFiles();
+            } catch (err) {
+                console.error('fetchPCFolder error:', err);
+                if (grid) grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--danger-text); font-weight: 700;">Error loading PC folder.</div>';
+            }
+        }
+
+        function updatePCNavButtons() {
+            const backBtn = $('#pc-back-btn');
+            const fwdBtn = $('#pc-fwd-btn');
+            const upBtn = $('#pc-up-btn');
+
+            if (backBtn) backBtn.disabled = (pcHistoryIdx <= 0);
+            if (fwdBtn) fwdBtn.disabled = (pcHistoryIdx >= pcHistory.length - 1);
+            if (upBtn) upBtn.disabled = !currentPCParent;
+        }
+
+        function updatePCCategoryCounts() {
+            const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp', 'svg'];
+            const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', '3gp', 'wmv'];
+            const audioExts = ['mp3', 'wav', 'm4a', 'flac', 'aac', 'ogg'];
+            const docExts = ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx', 'csv'];
+
+            let photos = 0, videos = 0, audio = 0, docs = 0;
+            currentPCItems.forEach(i => {
+                if (i.isDir) return;
+                const ext = (i.ext || '').toLowerCase();
+                if (imageExts.includes(ext)) photos++;
+                else if (videoExts.includes(ext)) videos++;
+                else if (audioExts.includes(ext)) audio++;
+                else if (docExts.includes(ext)) docs++;
+            });
+
+            if ($('#pc-count-all')) $('#pc-count-all').textContent = currentPCItems.length;
+            if ($('#pc-count-photos')) $('#pc-count-photos').textContent = photos;
+            if ($('#pc-count-videos')) $('#pc-count-videos').textContent = videos;
+            if ($('#pc-count-audio')) $('#pc-count-audio').textContent = audio;
+            if ($('#pc-count-docs')) $('#pc-count-docs').textContent = docs;
+        }
+
+        function renderPCBreadcrumbs(pathStr) {
+            const container = $('#pc-breadcrumbs');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const rootSpan = document.createElement('span');
+            rootSpan.className = 'crumb-item';
+            rootSpan.textContent = 'This PC';
+            rootSpan.onclick = () => loadPCQuickAccess();
+            container.appendChild(rootSpan);
+
+            if (!pathStr) return;
+            const normalized = pathStr.replace(/\\/g, '/');
+            const parts = normalized.split('/').filter(p => p.length > 0);
+
+            let accumulated = '';
+            parts.forEach((part, idx) => {
+                accumulated += (idx === 0) ? (part + '\\') : (part + '\\');
+                const sep = document.createElement('span');
+                sep.className = 'crumb-sep';
+                sep.textContent = '›';
+                container.appendChild(sep);
+
+                const item = document.createElement('span');
+                item.className = 'crumb-item' + (idx === parts.length - 1 ? ' active' : '');
+                item.textContent = part;
+                const currentAcc = accumulated;
+                item.onclick = () => fetchPCFolder(currentAcc, true);
+                container.appendChild(item);
+            });
+        }
+
+        function renderPCFiles() {
+            const grid = $('#pc-grid-view');
+            if (!grid) return;
+
+            grid.className = pcViewMode === 'list' ? 'phone-grid list-view' : 'phone-grid';
+            const searchTerm = ($('#pc-search-input')?.value || '').toLowerCase().trim();
+
+            const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp', 'svg'];
+            const videoExts = ['mp4', 'mkv', 'mov', 'avi', 'webm', '3gp', 'wmv'];
+            const audioExts = ['mp3', 'wav', 'm4a', 'flac', 'aac', 'ogg'];
+            const docExts = ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx', 'csv'];
+
+            const filtered = currentPCItems.filter(item => {
+                if (searchTerm && !item.name.toLowerCase().includes(searchTerm)) return false;
+                if (currentPCFilter === 'all') return true;
+                if (currentPCFilter === 'folders') return item.isDir;
+                if (item.isDir) return false;
+                const ext = (item.ext || '').toLowerCase();
+                if (currentPCFilter === 'images') return imageExts.includes(ext);
+                if (currentPCFilter === 'videos') return videoExts.includes(ext);
+                if (currentPCFilter === 'audio') return audioExts.includes(ext);
+                if (currentPCFilter === 'docs') return docExts.includes(ext);
+                return true;
+            });
+
+            grid.innerHTML = '';
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-light); font-weight: 600;">No matching files or folders found.</div>';
+                return;
+            }
+
+            filtered.forEach((item, idx) => {
+                const card = document.createElement('div');
+                const isSelected = pcSelectedPaths.has(item.path);
+                card.className = 'phone-file-card' + (isSelected ? ' selected' : '');
+
+                const ext = (item.ext || '').toLowerCase();
+                const isImage = imageExts.includes(ext);
+                const isVideo = videoExts.includes(ext);
+                const isAudio = audioExts.includes(ext);
+
+                // Multi-select checkbox
+                const check = document.createElement('input');
+                check.type = 'checkbox';
+                check.className = 'file-select-check';
+                check.checked = isSelected;
+                check.onclick = (e) => {
+                    e.stopPropagation();
+                    if (check.checked) pcSelectedPaths.add(item.path);
+                    else pcSelectedPaths.delete(item.path);
+                    updatePCSelectionBar();
+                    renderPCFiles();
+                };
+                card.appendChild(check);
+
+                // Visual Preview / Icon
+                const previewWrap = document.createElement('div');
+                previewWrap.className = 'phone-file-thumb-wrap';
+
+                if (item.isDir) {
+                    previewWrap.innerHTML = `
+                        <svg class="win11-folder-icon" viewBox="0 0 48 48">
+                            <defs>
+                                <linearGradient id="pcWin11FldBack" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stop-color="#f59e0b" />
+                                    <stop offset="100%" stop-color="#d97706" />
+                                </linearGradient>
+                                <linearGradient id="pcWin11FldFront" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stop-color="#fbbf24" />
+                                    <stop offset="100%" stop-color="#f59e0b" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M4 12C4 9.79086 5.79086 8 8 8H18.5858C19.6466 8 20.664 8.42143 21.4142 9.17157L24.8284 12.5858C25.5786 13.3359 26.596 13.7574 27.6569 13.7574H40C42.2091 13.7574 44 15.5482 44 17.7574V38C44 40.2091 42.2091 42 40 42H8C5.79086 42 4 40.2091 4 38V12Z" fill="url(#pcWin11FldBack)"/>
+                            <path d="M4 20C4 17.7909 5.79086 16 8 16H40C42.2091 16 44 17.7909 44 20V38C44 40.2091 42.2091 42 40 42H8C5.79086 42 4 40.2091 4 38V20Z" fill="url(#pcWin11FldFront)"/>
+                        </svg>
+                    `;
+                } else if (isImage) {
+                    const img = document.createElement('img');
+                    img.className = 'phone-file-thumb';
+                    img.loading = 'lazy';
+                    img.src = `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}`;
+                    img.onerror = () => { img.style.display = 'none'; previewWrap.innerHTML = '<span style="font-size: 32px;">🖼️</span>'; };
+                    previewWrap.appendChild(img);
+                } else if (isVideo) {
+                    previewWrap.innerHTML = `<span style="font-size: 34px;">🎬</span>`;
+                } else if (isAudio) {
+                    previewWrap.innerHTML = `<span style="font-size: 34px;">🎵</span>`;
+                } else {
+                    previewWrap.innerHTML = `<span style="font-size: 34px;">📄</span>`;
+                }
+                card.appendChild(previewWrap);
+
+                // File metadata details
+                const meta = document.createElement('div');
+                meta.className = 'phone-file-meta';
+                meta.innerHTML = `
+                    <div class="phone-file-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+                    <div class="phone-file-sub">${item.isDir ? 'Folder' : formatBytes(item.size)}</div>
+                `;
+                card.appendChild(meta);
+
+                // Actions hover row
+                const actions = document.createElement('div');
+                actions.className = 'phone-file-actions';
+
+                if (!item.isDir) {
+                    const dlBtn = document.createElement('button');
+                    dlBtn.className = 'phone-action-btn';
+                    dlBtn.title = 'Download';
+                    dlBtn.innerHTML = '⬇️';
+                    dlBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        const link = document.createElement('a');
+                        link.href = `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}&download=1`;
+                        link.download = item.name;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    };
+                    actions.appendChild(dlBtn);
+                }
+
+                // Recycle Bin Trash button (Admin Protected)
+                const trashBtn = document.createElement('button');
+                trashBtn.className = 'phone-action-btn';
+                trashBtn.title = 'Move to Windows Recycle Bin';
+                trashBtn.innerHTML = '🗑️';
+                trashBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    promptAdminTrash({
+                        type: 'pc',
+                        filePath: item.path,
+                        fileName: item.name,
+                        onDone: () => fetchPCFolder(currentPCPath, false)
+                    });
+                };
+                actions.appendChild(trashBtn);
+                card.appendChild(actions);
+
+                // Card Click handling
+                card.onclick = (e) => {
+                    if (e.target === check) return;
+                    if (item.isDir) {
+                        fetchPCFolder(item.path, true);
+                    } else if (isImage || isVideo || isAudio) {
+                        openGallery(item, 'pc');
+                    } else {
+                        const link = document.createElement('a');
+                        link.href = `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}&download=1`;
+                        link.download = item.name;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }
+                };
+
+                grid.appendChild(card);
+            });
+        }
+
+        function updatePCSelectionBar() {
+            const bar = $('#pc-selection-bar');
+            const countEl = $('#pc-selected-count');
+            const textEl = $('#pc-selected-text');
+            if (!bar) return;
+
+            const count = pcSelectedPaths.size;
+            if (count > 0) {
+                bar.classList.remove('hidden');
+                if (countEl) countEl.textContent = count;
+                if (textEl) textEl.textContent = count === 1 ? 'file selected' : 'files selected';
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        // Toolbar Button Listeners for PC Explorer
+        $('#pc-back-btn')?.addEventListener('click', () => {
+            if (pcHistoryIdx > 0) {
+                pcHistoryIdx--;
+                fetchPCFolder(pcHistory[pcHistoryIdx], false);
+            }
+        });
+
+        $('#pc-fwd-btn')?.addEventListener('click', () => {
+            if (pcHistoryIdx < pcHistory.length - 1) {
+                pcHistoryIdx++;
+                fetchPCFolder(pcHistory[pcHistoryIdx], false);
+            }
+        });
+
+        $('#pc-up-btn')?.addEventListener('click', () => {
+            if (currentPCParent) fetchPCFolder(currentPCParent, true);
+        });
+
+        $('#pc-nav-refresh-btn')?.addEventListener('click', () => {
+            fetchPCFolder(currentPCPath, false);
+        });
+
+        $('#pc-view-grid')?.addEventListener('click', () => {
+            pcViewMode = 'grid';
+            $('#pc-view-grid')?.classList.add('active');
+            $('#pc-view-list')?.classList.remove('active');
+            renderPCFiles();
+        });
+
+        $('#pc-view-list')?.addEventListener('click', () => {
+            pcViewMode = 'list';
+            $('#pc-view-list')?.classList.add('active');
+            $('#pc-view-grid')?.classList.remove('active');
+            renderPCFiles();
+        });
+
+        $('#pc-search-input')?.addEventListener('input', (e) => {
+            const clearBtn = $('#pc-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !e.target.value);
+            renderPCFiles();
+        });
+
+        $('#pc-search-clear')?.addEventListener('click', () => {
+            const input = $('#pc-search-input');
+            if (input) input.value = '';
+            $('#pc-search-clear')?.classList.add('hidden');
+            renderPCFiles();
+        });
+
+        document.querySelectorAll('[data-pc-filter]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-pc-filter]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentPCFilter = btn.getAttribute('data-pc-filter') || 'all';
+                renderPCFiles();
+            });
+        });
+
+        $('#pc-select-all-btn')?.addEventListener('click', () => {
+            const allSelected = currentPCItems.length > 0 && currentPCItems.every(i => pcSelectedPaths.has(i.path));
+            if (allSelected) {
+                pcSelectedPaths.clear();
+            } else {
+                currentPCItems.forEach(i => pcSelectedPaths.add(i.path));
+            }
+            updatePCSelectionBar();
+            renderPCFiles();
+        });
+
+        $('#pc-clear-selection-btn')?.addEventListener('click', () => {
+            pcSelectedPaths.clear();
+            updatePCSelectionBar();
+            renderPCFiles();
+        });
+
+        $('#pc-download-selected-btn')?.addEventListener('click', () => {
+            if (pcSelectedPaths.size === 0) return;
+            pcSelectedPaths.forEach(p => {
+                const link = document.createElement('a');
+                link.href = `/api/pc/explorer/file?path=${encodeURIComponent(p)}&download=1`;
+                link.download = p.substring(p.lastIndexOf('\\') + 1);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        });
+
+        $('#pc-trash-selected-btn')?.addEventListener('click', () => {
+            if (pcSelectedPaths.size === 0) return;
+            const paths = Array.from(pcSelectedPaths);
+            promptAdminTrash({
+                type: 'pc',
+                filePath: paths[0],
+                fileName: `${paths.length} selected files`,
+                onDone: async () => {
+                    const passInput = $('#admin-password-input');
+                    const pass = passInput ? passInput.value : '';
+                    for (const p of paths) {
+                        try {
+                            await apiFetch('/api/pc/trash-file', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ filePath: p, adminPassword: pass })
+                            });
+                        } catch (e) { }
+                    }
+                    pcSelectedPaths.clear();
+                    updatePCSelectionBar();
+                    fetchPCFolder(currentPCPath, false);
                 }
             });
         });
@@ -5301,7 +6617,6 @@
             }
         });
 
-
         async function init() {
             if (isElectron) {
                 for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -5318,6 +6633,7 @@
                 await loadDevices();
                 await loadMobileDevices();
                 await loadClipboard();
+                await loadPCQuickAccess();
                 await initSettingsFolder();
                 initSettingsClipboardSync();
                 initSettingsClientName();
