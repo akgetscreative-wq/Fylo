@@ -131,7 +131,7 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void listDirectory(String targetPath, Promise promise) {
         try {
-            if (targetPath == null || targetPath.trim().isEmpty()) {
+            if (targetPath == null || targetPath.trim().isEmpty() || "undefined".equalsIgnoreCase(targetPath.trim()) || "null".equalsIgnoreCase(targetPath.trim())) {
                 targetPath = Environment.getExternalStorageDirectory().getAbsolutePath();
             }
             File folder = new File(targetPath);

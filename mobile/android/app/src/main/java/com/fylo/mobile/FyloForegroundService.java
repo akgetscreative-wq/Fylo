@@ -53,7 +53,11 @@ public class FyloForegroundService extends Service {
         String authToken = intent != null ? intent.getStringExtra("authToken") : null;
 
         Notification notification = createNotification(port);
-        startForeground(NOTIFICATION_ID, notification);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
 
         if (httpServer == null) {
             try {
