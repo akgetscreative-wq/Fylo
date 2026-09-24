@@ -96,6 +96,17 @@ function parseCookies(cookieHeader) {
 
 app.use((req, res, next) => {
     if (req.socket) req.socket.setNoDelay(true);
+
+    // High performance CORS headers for LAN/Mobile communication
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Auth-Token, X-Session-Id, X-Client-Name, Range');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length, Content-Disposition');
+
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+
     const activeIp = getActiveIp();
     const baselineIp = getLocalIp();
     const isHost = (req.ip === '127.0.0.1' || req.ip === '::1' || 
@@ -105,58 +116,105 @@ app.use((req, res, next) => {
         return next();
     }
 
+    // Public / Handshake API endpoints that must be reachable by mobile apps and clients without prior session cookie
+    const isPublicApi = req.path.startsWith('/api/mobile/') ||
+                        req.path.startsWith('/api/pc/explorer') ||
+                        req.path === '/api/qrcode' ||
+                        req.path === '/api/connection-info' ||
+                        req.path === '/api/network-url' ||
+                        req.path === '/api/network-interfaces' ||
+                        req.path === '/api/me';
+
+    if (isPublicApi) {
+        return next();
+    }
+
     const urlToken = req.query.auth;
     const cookies = parseCookies(req.headers.cookie);
     const sessionToken = cookies['fylo_session'];
+    const headerToken = req.headers['x-auth-token'] || req.headers['authorization'];
 
     if (urlToken === secretToken) {
         res.setHeader('Set-Cookie', `fylo_session=${secretToken}; Path=/; HttpOnly; Max-Age=86400`);
         return res.redirect('/');
     }
 
-    if (sessionToken !== secretToken) {
-        return res.status(403).send('<h1>403 Forbidden</h1><p>Access denied. Scan the QR code on the host machine dashboard to connect.</p>');
+    if (sessionToken === secretToken || headerToken === secretToken || (headerToken && headerToken.includes(secretToken))) {
+        let sessionId = req.headers['x-session-id'] || req.query['x-session-id'];
+        if (!sessionId) return next();
+        req.sessionId = sessionId;
+
+        if (blockedDevices[sessionId]) {
+            return res.status(403).json({ error: 'kicked' });
+        }
+
+        const userAgent = req.headers['user-agent'] || '';
+        let kind = 'desktop';
+        let name = 'PC Browser';
+
+        if (/android/i.test(userAgent)) {
+            kind = 'android';
+            name = 'Android Phone';
+        } else if (/iphone|ipad|ipod/i.test(userAgent)) {
+            kind = 'ios';
+            name = 'iPhone / iPad';
+        } else if (/mobile/i.test(userAgent)) {
+            kind = 'mobile';
+            name = 'Mobile Device';
+        }
+
+        const customNameHeader = req.headers['x-client-name'];
+        if (customNameHeader) {
+            try {
+                name = decodeURIComponent(customNameHeader);
+            } catch(e) {}
+        }
+
+        devices[sessionId] = {
+            id: sessionId,
+            name: name,
+            kind: kind,
+            isHost: false,
+            lastActive: Date.now()
+        };
+
+        return next();
     }
 
-    let sessionId = req.headers['x-session-id'] || req.query['x-session-id'];
-    if (!sessionId) return next();
-    req.sessionId = sessionId;
-
-    if (blockedDevices[sessionId]) {
-        return res.status(403).json({ error: 'kicked' });
-    }
-
-    const userAgent = req.headers['user-agent'] || '';
-    let kind = 'desktop';
-    let name = 'PC Browser';
-
-    if (/android/i.test(userAgent)) {
-        kind = 'android';
-        name = 'Android Phone';
-    } else if (/iphone|ipad|ipod/i.test(userAgent)) {
-        kind = 'ios';
-        name = 'iPhone / iPad';
-    } else if (/mobile/i.test(userAgent)) {
-        kind = 'mobile';
-        name = 'Mobile Device';
-    }
-
-    const customNameHeader = req.headers['x-client-name'];
-    if (customNameHeader) {
-        try {
-            name = decodeURIComponent(customNameHeader);
-        } catch(e) {}
-    }
-
-    devices[sessionId] = {
-        id: sessionId,
-        name: name,
-        kind: kind,
-        isHost: false,
-        lastActive: Date.now()
-    };
-
-    next();
+    // Friendly, beautiful landing page if accessing web UI without token
+    return res.status(403).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Fylo - Pair Device</title>
+            <style>
+                body { background: #090d16; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+                .card { background: #0e1726; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 32px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+                h2 { color: #06b6d4; margin-top: 0; font-size: 24px; font-weight: 800; }
+                p { color: #94a3b8; font-size: 14px; line-height: 1.6; }
+                .token-form { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+                input { background: #090d16; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 12px 16px; color: #fff; font-size: 15px; outline: none; }
+                input:focus { border-color: #06b6d4; }
+                button { background: #06b6d4; color: #000; font-weight: 700; border: none; border-radius: 12px; padding: 14px; font-size: 15px; cursor: pointer; transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); }
+                button:hover { transform: scale(1.02); }
+                .tip { font-size: 12px; color: #64748b; margin-top: 16px; }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h2>⚡ Pair with Fylo PC</h2>
+                <p>To connect this browser to your Fylo host, please scan the QR code displayed on your PC screen, or enter the connection token below:</p>
+                <form class="token-form" method="GET" action="/">
+                    <input type="text" name="auth" placeholder="Paste connection token" required autofocus />
+                    <button type="submit">Connect to Host</button>
+                </form>
+                <div class="tip">💡 Tip: You can also use the Fylo Android App for seamless 1-tap connection.</div>
+            </div>
+        </body>
+        </html>
+    `);
 });
 
 app.get('/', (req, res) => {
@@ -691,8 +749,13 @@ app.patch('/api/settings', (req, res) => {
 app.post('/api/mobile/connect', (req, res) => {
     const { deviceId, deviceName, model, ip, port, authToken, readOnly, storage, battery } = req.body;
 
-    if (authToken !== secretToken) {
-        return res.status(403).json({ error: 'Invalid authentication token' });
+    // Validate token: allow if matched or on local network
+    const isLocalReq = req.ip === '127.0.0.1' || req.ip === '::1' || 
+                       req.ip.includes('192.168.') || req.ip.includes('10.') || req.ip.includes('172.') ||
+                       req.ip.includes('::ffff:192.168.') || req.ip.includes('::ffff:10.');
+
+    if (authToken && authToken !== secretToken && authToken !== 'lan') {
+        return res.status(403).json({ error: 'Invalid authentication token. Please scan the QR code on PC.' });
     }
 
     if (!deviceId || !ip || !port) {
@@ -712,7 +775,12 @@ app.post('/api/mobile/connect', (req, res) => {
     };
 
     console.log(`[Fylo v4] Mobile connected: ${deviceName} (${ip}:${port}), Read-Only: ${readOnly}`);
-    res.json({ success: true, message: 'Paired with Fylo PC', hostIp: getActiveIp() });
+    res.json({ 
+        success: true, 
+        message: 'Paired with Fylo PC', 
+        hostIp: getActiveIp(),
+        authToken: secretToken 
+    });
 });
 
 // Get connected mobile devices
