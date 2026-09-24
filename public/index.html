@@ -3185,6 +3185,35 @@
             min-height: 600px;
         }
 
+        .dash-hero-drop {
+            border: 2px dashed var(--accent);
+            background: rgba(var(--accent-rgb), 0.05);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 160px;
+            transition: all 0.2s ease;
+        }
+
+        .dash-hero-drop:hover {
+            background: rgba(var(--accent-rgb), 0.1);
+            transform: scale(1.02);
+        }
+
+        .dash-hero-drop .drop-zone-content h2 {
+            font-size: 1.2rem;
+            margin: 10px 0 4px;
+            color: var(--text);
+        }
+
+        .dash-hero-drop .drop-zone-content p {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
         .bento-card {
             background: var(--card-bg);
             backdrop-filter: blur(28px);
@@ -7389,40 +7418,38 @@
             e.preventDefault();
             dropzone.classList.remove('drag-over');
             await handleDrop(e);
+            switchView('view-hub');
         });
 
         // Global window-level drag-and-drop
         const globalOverlay = $('#global-drop-overlay');
-        let globalDragCounter = 0;
-
-        document.addEventListener('dragenter', (e) => {
-            e.preventDefault();
-            globalDragCounter++;
-            // Only show overlay if actually dragging files (not text selections, etc.)
-            if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
-                globalOverlay.classList.add('active');
-            }
-        });
+        let globalDragTimer;
 
         document.addEventListener('dragover', (e) => {
             e.preventDefault();
+            if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+                globalOverlay.classList.add('active');
+                clearTimeout(globalDragTimer);
+            }
         });
 
         document.addEventListener('dragleave', (e) => {
             e.preventDefault();
-            globalDragCounter--;
-            if (globalDragCounter <= 0) {
-                globalDragCounter = 0;
+            clearTimeout(globalDragTimer);
+            globalDragTimer = setTimeout(() => {
                 globalOverlay.classList.remove('active');
-            }
+            }, 150);
         });
 
         document.addEventListener('drop', async (e) => {
             e.preventDefault();
-            globalDragCounter = 0;
+            clearTimeout(globalDragTimer);
             globalOverlay.classList.remove('active');
-            dropzone.classList.remove('drag-over');
+            if (dropzone) dropzone.classList.remove('drag-over');
+            
+            const hadFiles = (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) || (e.dataTransfer && e.dataTransfer.items && e.dataTransfer.items.length > 0);
             await handleDrop(e);
+            if (hadFiles) switchView('view-hub');
         });
 
         const clipboardEl = $('#clipboard-text');
