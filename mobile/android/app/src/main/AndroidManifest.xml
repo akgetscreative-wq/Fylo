@@ -31,7 +31,8 @@
         android:allowBackup="false"
         android:theme="@style/AppTheme"
         android:requestLegacyExternalStorage="true"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:extractNativeLibs="true">
 
         <activity
             android:name=".MainActivity"
@@ -45,6 +46,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".CrashReportActivity"
+            android:label="Fylo Crash Diagnostic"
+            android:process=":crash"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
 
         <service
             android:name=".FyloForegroundService"
