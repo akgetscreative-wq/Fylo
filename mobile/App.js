@@ -271,8 +271,11 @@ export default function App() {
   // Send to PC State (Replaces Sending)
   const [isSending, setIsSending] = useState(false);
 
-  // Live Shared Clipboard Sync (OFF BY DEFAULT as requested by user)
-  const [clipboardAutoSync, setClipboardAutoSync] = useState(false);
+  // Live Shared Clipboard Sync (Continuous Live Sync with PC)
+  const [clipboardAutoSync, setClipboardAutoSync] = useState(true);
+  const lastSeenPcClipRef = useRef('');
+  const lastSeenPhoneClipRef = useRef('');
+  const videoTouchStartRef = useRef({ time: 0, x: 0, y: 0 });
 
   // Direct Share Device Picker Modal State
   const [directShareModalVisible, setDirectShareModalVisible] = useState(false);
@@ -356,7 +359,7 @@ export default function App() {
     if (nextItem) {
       setLightboxItem({
         item: nextItem,
-        source,
+        source: nextItem.downloadUrl ? 'pc' : source,
         index: nextIdx,
         playlist,
       });
@@ -375,7 +378,7 @@ export default function App() {
     if (prevItem) {
       setLightboxItem({
         item: prevItem,
-        source,
+        source: prevItem.downloadUrl ? 'pc' : source,
         index: prevIdx,
         playlist,
       });
@@ -421,16 +424,19 @@ export default function App() {
     resetZoom();
     setVideoPaused(false);
     setVideoDuration(0);
-  }, [lightboxItem?.item?.path]);
+  }, [lightboxItem?.item?.path, lightboxItem?.item?.id, lightboxItem?.item?.name]);
 
   // =========================================================
-  // FLUID MULTI-TOUCH PINCH-TO-ZOOM, PAN & SWIPE CAROUSEL
+  // FLUID MULTI-TOUCH PINCH-TO-ZOOM, PAN & SWIPE CAROUSEL (IMAGES)
   // =========================================================
   const zoomPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
         return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6;
+      },
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
+        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 12 || Math.abs(gestureState.dy) > 12;
       },
       onPanResponderGrant: (evt) => {
         if (evt.nativeEvent.touches.length === 2) {
@@ -480,7 +486,7 @@ export default function App() {
             updateNativeTransform(zoomScaleRef.current, nextX, nextY);
           } else {
             // At 1.0x Scale: Pull down to dismiss or swipe left/right for carousel
-            if (gestureState.dy > 15 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.1) {
+            if (gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 0.9) {
               // Google Photos style: slide / pull image down to dismiss!
               const dragY = gestureState.dy;
               const dragScale = Math.max(0.65, 1 - (dragY / SCREEN_HEIGHT) * 0.45);
@@ -497,18 +503,18 @@ export default function App() {
       onPanResponderRelease: (evt, gestureState) => {
         lastTouchDistanceRef.current = null;
         if (zoomScaleRef.current <= 1.05) {
-          // If dragged down by > 80px or flicked down: dismiss!
-          if (gestureState.dy > 80 || (gestureState.dy > 35 && gestureState.vy > 0.65)) {
+          // Swipe down to close (return to explorer): dy > 50 or downward flick with vy > 0.4
+          if (gestureState.dy > 50 || (gestureState.dy > 20 && gestureState.vy > 0.4)) {
             setLightboxItem(null);
             resetZoom();
             return;
           }
 
           // Horizontal swipe left/right to change media (Google Photos carousel)
-          const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.1;
-          if (isHorizontal && (gestureState.dx < -50 || gestureState.vx < -0.5)) {
+          const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.8;
+          if (isHorizontal && (gestureState.dx < -35 || gestureState.vx < -0.4)) {
             goToNextMediaRef.current();
-          } else if (isHorizontal && (gestureState.dx > 50 || gestureState.vx > 0.5)) {
+          } else if (isHorizontal && (gestureState.dx > 35 || gestureState.vx > 0.4)) {
             goToPrevMediaRef.current();
           } else {
             zoomScaleRef.current = 1;
@@ -525,23 +531,48 @@ export default function App() {
     })
   ).current;
 
-  // Video Swiping & Pull-Down Gestures
+  // =========================================================
+  // FLUID VIDEO SWIPING, PULL-DOWN TO CLOSE & TAP TO TOGGLE
+  // =========================================================
   const videoPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return Math.abs(gestureState.dx) > 18 || Math.abs(gestureState.dy) > 18;
+        return Math.abs(gestureState.dx) > 8 || Math.abs(gestureState.dy) > 8;
+      },
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
+        return Math.abs(gestureState.dx) > 15 || Math.abs(gestureState.dy) > 15;
+      },
+      onPanResponderGrant: (evt) => {
+        videoTouchStartRef.current = {
+          time: Date.now(),
+          x: evt.nativeEvent.pageX,
+          y: evt.nativeEvent.pageY,
+        };
       },
       onPanResponderRelease: (evt, gestureState) => {
-        if (gestureState.dy > 80 || (gestureState.dy > 35 && gestureState.vy > 0.65)) {
+        const elapsed = Date.now() - videoTouchStartRef.current.time;
+        const totalDistance = Math.hypot(gestureState.dx, gestureState.dy);
+
+        // 1. Single Tap on Video: Toggle Play / Pause
+        if (elapsed < 350 && totalDistance < 15) {
+          setVideoPaused((prev) => !prev);
+          return;
+        }
+
+        // 2. Swipe Down to Close: dy > 50 or downward flick with vy > 0.4
+        if (gestureState.dy > 50 || (gestureState.dy > 20 && gestureState.vy > 0.4)) {
           setLightboxItem(null);
           resetZoom();
           return;
         }
-        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.1;
-        if (isHorizontal && (gestureState.dx < -45 || gestureState.vx < -0.5)) {
+
+        // 3. Swipe Left / Right to Change Media (Next / Prev)
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.8;
+        if (isHorizontal && (gestureState.dx < -35 || gestureState.vx < -0.4)) {
           goToNextMediaRef.current();
-        } else if (isHorizontal && (gestureState.dx > 45 || gestureState.vx > 0.5)) {
+        } else if (isHorizontal && (gestureState.dx > 35 || gestureState.vx > 0.4)) {
           goToPrevMediaRef.current();
         }
       },
@@ -810,13 +841,25 @@ export default function App() {
     return () => clearInterval(heartbeatTimer);
   }, [pairedPc, pcAuthToken, storageInfo, readOnlyMode, batteryLevel]);
 
-  // Periodic clipboard sync when paired with PC (OFF BY DEFAULT unless user toggles on)
+  // Periodic continuous clipboard sync when paired with PC
   useEffect(() => {
     if (!pairedPc || !clipboardAutoSync) return;
 
     fetchPcClipboard();
-    const clipTimer = setInterval(fetchPcClipboard, 4000);
+    const clipTimer = setInterval(fetchPcClipboard, 3500); // Continuous 3.5s live sync with PC
     return () => clearInterval(clipTimer);
+  }, [pairedPc, pcAuthToken, clipboardAutoSync]);
+
+  // Real-time clipboard sync on app resume / foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && pairedPc && clipboardAutoSync) {
+        fetchPcClipboard();
+      }
+    });
+    return () => {
+      if (sub && sub.remove) sub.remove();
+    };
   }, [pairedPc, pcAuthToken, clipboardAutoSync]);
 
   // Periodic Share Hub sync when paired with PC
@@ -1246,19 +1289,60 @@ export default function App() {
   };
 
   // ==========================================
-  // LAN Shared Clipboard Operations
+  // LAN Shared Clipboard Operations (Bidirectional Real-Time Live Sync)
   // ==========================================
   const fetchPcClipboard = async () => {
     if (!pairedPc) return;
     try {
+      // 1. If live sync is enabled, check if user copied new text on Android phone
+      if (clipboardAutoSync && FyloModule && FyloModule.getClipboardText) {
+        try {
+          const phoneClip = await FyloModule.getClipboardText();
+          if (
+            phoneClip &&
+            phoneClip.trim() &&
+            phoneClip !== lastSeenPhoneClipRef.current &&
+            phoneClip !== lastSeenPcClipRef.current
+          ) {
+            // User copied something on Phone! Auto-push to PC clipboard
+            const trimmed = phoneClip.trim();
+            lastSeenPhoneClipRef.current = trimmed;
+            lastSeenPcClipRef.current = trimmed;
+            setPcClipboardText(trimmed);
+            setPcClipboardUpdatedBy(phoneModelName || 'Mobile Companion');
+            await apiFetch(`http://${pairedPc}/api/clipboard`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
+              body: JSON.stringify({
+                text: trimmed,
+                updatedBy: phoneModelName || 'Mobile Companion',
+              }),
+            }, 3500);
+            return;
+          }
+        } catch (e) {}
+      }
+
+      // 2. Fetch PC Clipboard
       const res = await apiFetch(`http://${pairedPc}/api/clipboard`, {
         headers: { 'X-Auth-Token': pcAuthToken || '' },
-      }, 4000);
+      }, 3500);
       if (res.ok) {
         const data = await safeJson(res);
-        if (data && data.text !== undefined && data.text !== pcClipboardText) {
+        if (data && data.text !== undefined && data.text !== lastSeenPcClipRef.current) {
+          lastSeenPcClipRef.current = data.text;
           setPcClipboardText(data.text);
           setPcClipboardUpdatedBy(data.updatedBy || 'Windows PC');
+
+          // If auto-sync is enabled and PC text differs from phone, automatically write to Android native clipboard!
+          if (clipboardAutoSync && data.text && data.text !== lastSeenPhoneClipRef.current) {
+            lastSeenPhoneClipRef.current = data.text;
+            if (FyloModule && FyloModule.setClipboardText) {
+              try {
+                await FyloModule.setClipboardText(data.text);
+              } catch (e) {}
+            }
+          }
         }
       }
     } catch (e) {}
@@ -1276,20 +1360,25 @@ export default function App() {
     }
 
     try {
+      const trimmed = text.trim();
+      lastSeenPhoneClipRef.current = trimmed;
+      lastSeenPcClipRef.current = trimmed;
       const res = await apiFetch(`http://${pairedPc}/api/clipboard`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
         body: JSON.stringify({
-          text: text.trim(),
+          text: trimmed,
           updatedBy: phoneModelName || 'Mobile Companion',
         }),
       }, 5000);
 
       const data = await safeJson(res);
       if (res.ok && data && data.success) {
-        setPcClipboardText(text.trim());
-        setPcClipboardUpdatedBy('Phone Companion');
-        setClipboardInput('');
+        setPcClipboardText(trimmed);
+        setPcClipboardUpdatedBy(phoneModelName || 'Phone Companion');
+        if (textToSend === undefined) {
+          setClipboardInput('');
+        }
         showToast('⚡ Pushed to PC clipboard! 📋');
       } else {
         showToast('⚠️ PC rejected clipboard update');
@@ -1305,6 +1394,7 @@ export default function App() {
       return;
     }
     try {
+      lastSeenPhoneClipRef.current = pcClipboardText;
       if (FyloModule && FyloModule.setClipboardText) {
         await FyloModule.setClipboardText(pcClipboardText);
         showToast('📋 Copied PC text to Phone clipboard!');
@@ -1819,14 +1909,15 @@ export default function App() {
 
     if (isImg || isVid) {
       const mediaFiles = sharedHubFiles.filter((f) => isMediaFile(f.ext));
-      const idx = mediaFiles.findIndex((f) => f.id === file.id || f.name === file.name);
+      const idx = mediaFiles.findIndex((f) => (f.id && file.id && f.id === file.id) || f.name === file.name || (f.path && file.path && f.path === file.path));
+      const activeIdx = idx >= 0 ? idx : 0;
       setLightboxItem({
         item: {
           ...file,
           path: file.path || file.name,
         },
         source: 'pc',
-        index: idx >= 0 ? idx : 0,
+        index: activeIdx,
         playlist: mediaFiles.length > 0 ? mediaFiles : [file],
       });
     } else {
@@ -3409,7 +3500,7 @@ export default function App() {
                   <Text style={styles.lightboxFileName} numberOfLines={1}>
                     {lightboxItem?.item?.name || 'File'}
                   </Text>
-                  {lightboxItem?.playlist && lightboxItem.playlist.length > 1 && (
+                  {lightboxItem?.playlist && lightboxItem.playlist.length > 0 && (
                     <View style={styles.lightboxIndexBadge}>
                       <Text style={styles.lightboxIndexBadgeText}>
                         {lightboxItem.index + 1} of {lightboxItem.playlist.length}
@@ -3457,7 +3548,7 @@ export default function App() {
               )}
 
               {isVideoFile(lightboxItem?.item?.ext) ? (
-                /* Native In-App Video View Component */
+                /* Native In-App Video View Component with Gesture Overlay */
                 <View style={styles.lightboxVideoContainer}>
                   {FyloVideoView ? (
                     <FyloVideoView
@@ -3465,11 +3556,13 @@ export default function App() {
                       style={styles.lightboxNativeVideoView}
                       source={
                         lightboxItem?.source === 'pc'
-                          ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`
+                          ? (lightboxItem?.item?.downloadUrl
+                              ? lightboxItem.item.downloadUrl
+                              : `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`)
                           : (lightboxItem?.item?.path || '')
                       }
                       paused={videoPaused}
-                      controls={true}
+                      controls={false}
                       repeat={videoRepeat}
                       muted={videoMuted}
                       resizeMode="contain"
@@ -3494,8 +3587,14 @@ export default function App() {
                     </View>
                   )}
 
+                  {/* Transparent Gesture Overlay directly over native video: intercepts swipes & single taps without native event loss */}
+                  <View
+                    style={[StyleSheet.absoluteFillObject, { zIndex: 10 }]}
+                    {...videoPanResponder.panHandlers}
+                  />
+
                   {/* Custom In-App Playback HUD */}
-                  <View style={styles.lightboxVideoHud}>
+                  <View style={[styles.lightboxVideoHud, { zIndex: 30 }]}>
                     <TouchableOpacity
                       activeOpacity={0.75}
                       style={styles.lightboxHudBtn}
@@ -3528,7 +3627,9 @@ export default function App() {
                       style={styles.lightboxHudBtn}
                       onPress={() => {
                         const pathOrUrl = lightboxItem?.source === 'pc'
-                          ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`
+                          ? (lightboxItem?.item?.downloadUrl
+                              ? lightboxItem.item.downloadUrl
+                              : `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`)
                           : lightboxItem?.item?.path;
                         if (FyloModule && FyloModule.openVideoPlayer) {
                           FyloModule.openVideoPlayer(pathOrUrl, 'video/*');
@@ -3546,9 +3647,11 @@ export default function App() {
                   <SafeImage
                     source={{
                       uri: lightboxItem?.source === 'pc'
-                        ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`
+                        ? (lightboxItem?.item?.downloadUrl
+                            ? lightboxItem.item.downloadUrl
+                            : `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`)
                         : `file://${lightboxItem?.item?.path || ''}`,
-                      headers: lightboxItem?.source === 'pc' ? { 'X-Auth-Token': pcAuthToken || '' } : undefined,
+                      headers: (lightboxItem?.source === 'pc' && !lightboxItem?.item?.downloadUrl) ? { 'X-Auth-Token': pcAuthToken || '' } : undefined,
                     }}
                     style={styles.lightboxImage}
                     resizeMode="contain"
@@ -3813,7 +3916,7 @@ export default function App() {
               />
             </View>
 
-            {/* Live Clipboard Sync Toggle in Sidebar (OFF by Default) */}
+            {/* Live Clipboard Sync Toggle in Sidebar (ON by Default) */}
             <View style={[styles.drawerThemeRow, !isDarkMode && styles.drawerThemeRowLight]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Text style={{ fontSize: 20 }}>📋</Text>
