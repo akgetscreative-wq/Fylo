@@ -336,6 +336,9 @@ app.use((req, res, next) => {
     // Public / Handshake API endpoints that must be reachable by mobile apps and clients without prior session cookie
     const isPublicApi = req.path.startsWith('/api/mobile/') ||
                         req.path.startsWith('/api/pc/explorer') ||
+                        req.path.startsWith('/api/download') ||
+                        req.path === '/api/files' ||
+                        req.path.startsWith('/api/files/') ||
                         req.path === '/api/clipboard' ||
                         req.path === '/api/qrcode' ||
                         req.path === '/api/connection-info' ||
@@ -567,13 +570,45 @@ app.post('/api/open-hotspot-settings', (req, res) => {
 
 app.post('/api/register-manifest', (req, res) => {
     const files = Array.isArray(req.body.files) ? req.body.files : [];
-    fileRegistry = files.map(f => {
+    const incomingMap = new Map();
+    files.forEach(f => {
+        if (!f || !f.id) return;
         if (!f.ownerSessionId) {
             f.ownerSessionId = req.sessionId || 'host';
         }
-        return f;
+        if (!f.sharedAt) {
+            f.sharedAt = Date.now();
+        }
+        if (!f.downloadUrl) {
+            f.downloadUrl = `/api/download/${f.id}`;
+        }
+        if (!f.uploadedBy) {
+            f.uploadedBy = f.ownerSessionId === 'mobile' ? 'Mobile Phone' : 'Host PC';
+        }
+        if (!f.type) {
+            f.type = 'file';
+        }
+        incomingMap.set(f.id, f);
     });
-    res.json({ success: true });
+
+    const merged = [];
+    const seenIds = new Set();
+    files.forEach(f => {
+        if (f && f.id && incomingMap.has(f.id)) {
+            merged.push(incomingMap.get(f.id));
+            seenIds.add(f.id);
+        }
+    });
+
+    fileRegistry.forEach(f => {
+        if (f && f.id && !seenIds.has(f.id)) {
+            merged.push(f);
+            seenIds.add(f.id);
+        }
+    });
+
+    fileRegistry = merged;
+    res.json({ success: true, count: fileRegistry.length });
 });
 
 // Register a folder for sharing (Electron host only)

@@ -266,6 +266,7 @@ export default function App() {
 
   // Active Shared Files Hub (Visible in Mobile Dashboard)
   const [sharedHubFiles, setSharedHubFiles] = useState([]);
+  const [downloadedSharedIds, setDownloadedSharedIds] = useState(new Set());
 
   // Send to PC State (Replaces Sending)
   const [isSending, setIsSending] = useState(false);
@@ -818,12 +819,21 @@ export default function App() {
     return () => clearInterval(clipTimer);
   }, [pairedPc, pcAuthToken, clipboardAutoSync]);
 
+  // Periodic Share Hub sync when paired with PC
+  useEffect(() => {
+    if (!pairedPc) return;
+    fetchSharedHubFiles();
+    const hubTimer = setInterval(fetchSharedHubFiles, 3500);
+    return () => clearInterval(hubTimer);
+  }, [pairedPc, pcAuthToken, fetchSharedHubFiles]);
+
   // Load PC Explorer shortcuts when switching to PC Explorer tab or pairing
   useEffect(() => {
     if ((currentTab === 'pc-explorer' || currentTab === 'home') && pairedPc) {
       loadPcQuickAccess();
+      if (currentTab === 'home') fetchSharedHubFiles();
     }
-  }, [currentTab, pairedPc]);
+  }, [currentTab, pairedPc, fetchSharedHubFiles]);
 
   // Load Phone Explorer root when switching to Phone Explorer tab
   useEffect(() => {
@@ -1415,8 +1425,8 @@ export default function App() {
           console.warn('Share event notify error:', e);
         }
 
-        // Add to local Mobile Share Hub list
-        setSharedHubFiles((prev) => [...sentFiles, ...prev].slice(0, 50));
+        // Refresh Mobile Share Hub list
+        fetchSharedHubFiles();
       }
 
       setIsSending(false);
@@ -1493,7 +1503,7 @@ export default function App() {
           }),
         }, 6000);
       } catch (ignored) {}
-      setSharedHubFiles((prev) => [...sentFiles, ...prev].slice(0, 50));
+      fetchSharedHubFiles();
     }
 
     setIsSending(false);
@@ -1704,6 +1714,125 @@ export default function App() {
   };
 
   const isMediaFile = (ext) => isImageFile(ext) || isVideoFile(ext);
+
+  // ==========================================
+  // Active Share Hub Operations (Fetch from PC)
+  // ==========================================
+  const fetchSharedHubFiles = useCallback(async () => {
+    if (!pairedPc) return;
+    try {
+      const res = await apiFetch(`http://${pairedPc}/api/files`, {
+        headers: { 'X-Auth-Token': pcAuthToken || '' },
+      }, 4000);
+      if (res.ok) {
+        const data = await safeJson(res);
+        if (Array.isArray(data)) {
+          const mapped = data.map((f) => {
+            const isSentByPhone = f.uploadedBy === 'Mobile Phone' || f.ownerSessionId === 'mobile' || f.direction === 'sent';
+            const dl = f.downloadUrl
+              ? (f.downloadUrl.startsWith('http') ? f.downloadUrl : `http://${pairedPc}${f.downloadUrl}`)
+              : `http://${pairedPc}/api/download/${f.id}`;
+            const fullDlUrl = `${dl}${dl.includes('?') ? '&' : '?'}auth=${pcAuthToken || ''}`;
+            return {
+              id: f.id,
+              name: f.name,
+              size: f.size,
+              sizeLabel: f.sizeLabel || (f.size ? formatFileSize(f.size) : 'Ready'),
+              ext: f.ext || (f.name ? f.name.split('.').pop().toLowerCase() : ''),
+              path: f.path,
+              downloadUrl: fullDlUrl,
+              direction: isSentByPhone ? 'sent' : 'received',
+              uploadedBy: f.uploadedBy || (isSentByPhone ? 'Mobile Phone' : 'Host PC'),
+              sharedAt: Number(f.sharedAt || f.timestamp || f.modified || Date.now()),
+              type: f.type || 'file',
+            };
+          });
+          setSharedHubFiles(mapped);
+        }
+      }
+    } catch (e) {
+      // transient network error
+    }
+  }, [pairedPc, pcAuthToken]);
+
+  const handleDownloadSharedHubFile = async (file) => {
+    if (!file || !file.name) return;
+    if (!pairedPc) {
+      showToast('⚠️ Pair with PC first to download files');
+      return;
+    }
+    const cleanName = (file.name || 'file').replace(/[\\/:*?"<>|]/g, '_');
+    const dlUrl = file.downloadUrl || `http://${pairedPc}/api/download/${file.id}?auth=${pcAuthToken || ''}`;
+
+    try {
+      showToast(`📥 Saving "${cleanName}" to Downloads/Fylo...`);
+      if (FyloModule && FyloModule.downloadFileFromUrl) {
+        await FyloModule.downloadFileFromUrl(dlUrl, cleanName);
+        setDownloadedSharedIds((prev) => new Set(prev).add(file.id || file.name));
+        showToast(`✓ Saved "${cleanName}" to Downloads/Fylo 📥`);
+      } else {
+        const res = await apiFetch(dlUrl);
+        if (res.ok) {
+          setDownloadedSharedIds((prev) => new Set(prev).add(file.id || file.name));
+          showToast(`✓ Saved "${cleanName}"`);
+        } else {
+          showToast('⚠️ PC download failed');
+        }
+      }
+    } catch (e) {
+      showToast('⚠️ Download error: ' + (e?.message || 'Failed'));
+    }
+  };
+
+  const handleDownloadAllSharedHubFiles = async () => {
+    const received = sharedHubFiles.filter((f) => f.direction === 'received');
+    if (received.length === 0) {
+      showToast('No files from PC available to save');
+      return;
+    }
+    showToast(`📥 Saving ${received.length} file(s) from PC...`);
+    let count = 0;
+    for (let i = 0; i < received.length; i++) {
+      const f = received[i];
+      try {
+        const cleanName = (f.name || 'file').replace(/[\\/:*?"<>|]/g, '_');
+        const dlUrl = f.downloadUrl || `http://${pairedPc}/api/download/${f.id}?auth=${pcAuthToken || ''}`;
+        showToast(`Saving (${i + 1}/${received.length}) ${cleanName}...`);
+        if (FyloModule && FyloModule.downloadFileFromUrl) {
+          await FyloModule.downloadFileFromUrl(dlUrl, cleanName);
+        } else {
+          await apiFetch(dlUrl);
+        }
+        setDownloadedSharedIds((prev) => new Set(prev).add(f.id || f.name));
+        count++;
+      } catch (e) {
+        console.warn('Batch download error for:', f.name, e);
+      }
+    }
+    showToast(`✓ Saved ${count} file(s) to Downloads/Fylo 📥`);
+  };
+
+  const handleSharedHubItemPress = (file) => {
+    if (!file) return;
+    const isImg = isImageFile(file.ext);
+    const isVid = isVideoFile(file.ext);
+
+    if (isImg || isVid) {
+      const mediaFiles = sharedHubFiles.filter((f) => isMediaFile(f.ext));
+      const idx = mediaFiles.findIndex((f) => f.id === file.id || f.name === file.name);
+      setLightboxItem({
+        item: {
+          ...file,
+          path: file.path || file.name,
+        },
+        source: 'pc',
+        index: idx >= 0 ? idx : 0,
+        playlist: mediaFiles.length > 0 ? mediaFiles : [file],
+      });
+    } else {
+      handleDownloadSharedHubFile(file);
+    }
+  };
 
   const getSortLabel = (mode) => {
     switch (mode) {
@@ -2100,14 +2229,43 @@ export default function App() {
             <View style={styles.bentoCardHeaderRow}>
               <View>
                 <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>⚡ Share Hub</Text>
-                <Text style={styles.bentoCardSubtitle}>Active shared files & transfers</Text>
-              </View>
-              <View style={styles.shareHubCountBadge}>
-                <Text style={styles.shareHubCountText}>
-                  {sharedHubFiles.length} {sharedHubFiles.length === 1 ? 'file' : 'files'}
+                <Text style={styles.bentoCardSubtitle}>
+                  {pairedPc ? 'Active shared files from PC & Mobile' : 'Pair with PC to browse shared files'}
                 </Text>
               </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {pairedPc && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={styles.shareHubRefreshBtn}
+                    onPress={() => {
+                      fetchSharedHubFiles();
+                      showToast('🔄 Refreshing Share Hub...');
+                    }}>
+                    <Text style={{ fontSize: 13, color: '#38bdf8' }}>🔄</Text>
+                  </TouchableOpacity>
+                )}
+                <View style={styles.shareHubCountBadge}>
+                  <Text style={styles.shareHubCountText}>
+                    {sharedHubFiles.length} {sharedHubFiles.length === 1 ? 'file' : 'files'}
+                  </Text>
+                </View>
+              </View>
             </View>
+
+            {/* Quick Batch Download Action if PC has shared files */}
+            {sharedHubFiles.some((f) => f.direction === 'received') && (
+              <View style={styles.shareHubBatchRow}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.shareHubSaveAllBtn}
+                  onPress={handleDownloadAllSharedHubFiles}>
+                  <Text style={styles.shareHubSaveAllBtnText}>
+                    ⬇️ Save All From PC ({sharedHubFiles.filter((f) => f.direction === 'received').length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {sharedHubFiles.length === 0 ? (
               <View style={styles.shareHubEmpty}>
@@ -2116,34 +2274,72 @@ export default function App() {
                   No files shared yet
                 </Text>
                 <Text style={styles.shareHubEmptySub}>
-                  Tap 'Send Files to PC' above to transfer files instantly across your LAN
+                  {pairedPc
+                    ? 'Upload or drop files in PC Share Hub, or tap "Send Files to PC" above to transfer files instantly'
+                    : 'Pair with PC to exchange files instantly across your local Wi-Fi'}
                 </Text>
               </View>
             ) : (
               <View style={styles.shareHubList}>
-                {sharedHubFiles.slice(0, 8).map((f, i) => (
-                  <View key={f.path || i} style={[styles.shareHubRow, !isDarkMode && styles.shareHubRowLight]}>
-                    <Text style={{ fontSize: 20 }}>{getFileIcon((f.name || '').split('.').pop(), false)}</Text>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={[styles.shareHubFileName, !isDarkMode && styles.shareHubFileNameLight]} numberOfLines={1}>
-                        {f.name}
-                      </Text>
-                      <Text style={styles.shareHubFileMeta}>
-                        {f.size ? formatFileSize(f.size) : 'Ready'} • {f.direction === 'received' ? '📥 From PC' : '📤 Sent to PC'}
-                      </Text>
-                    </View>
-                    <View style={styles.shareHubStatusChip}>
-                      <Text style={styles.shareHubStatusText}>Done</Text>
-                    </View>
-                  </View>
-                ))}
+                {sharedHubFiles.slice(0, 15).map((f, i) => {
+                  const isSaved = downloadedSharedIds.has(f.id || f.name);
+                  const isReceived = f.direction === 'received';
+                  return (
+                    <TouchableOpacity
+                      key={f.id || f.path || i}
+                      activeOpacity={0.7}
+                      style={[styles.shareHubRow, !isDarkMode && styles.shareHubRowLight]}
+                      onPress={() => handleSharedHubItemPress(f)}>
+                      <Text style={{ fontSize: 22 }}>{getFileIcon((f.name || '').split('.').pop(), false)}</Text>
+                      <View style={{ flex: 1, minWidth: 0, marginHorizontal: 8 }}>
+                        <Text style={[styles.shareHubFileName, !isDarkMode && styles.shareHubFileNameLight]} numberOfLines={1}>
+                          {f.name}
+                        </Text>
+                        <Text style={styles.shareHubFileMeta}>
+                          {f.size ? formatFileSize(f.size) : (f.sizeLabel || 'Ready')} • {isReceived ? '📥 From PC' : '📤 Sent to PC'}
+                        </Text>
+                      </View>
+                      {isReceived ? (
+                        isSaved ? (
+                          <View style={styles.shareHubSavedChip}>
+                            <Text style={styles.shareHubSavedChipText}>✓ Saved</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={styles.shareHubActionBtn}
+                            onPress={() => handleDownloadSharedHubFile(f)}>
+                            <Text style={styles.shareHubActionBtnText}>📥 Save</Text>
+                          </TouchableOpacity>
+                        )
+                      ) : (
+                        <View style={styles.shareHubStatusChip}>
+                          <Text style={styles.shareHubStatusText}>Done</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
                 {sharedHubFiles.length > 0 && (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.shareHubClearBtn}
-                    onPress={() => setSharedHubFiles([])}>
-                    <Text style={styles.shareHubClearBtnText}>Clear Hub History</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 8 }}>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={styles.shareHubClearBtn}
+                      onPress={() => setSharedHubFiles([])}>
+                      <Text style={styles.shareHubClearBtnText}>Clear Local List</Text>
+                    </TouchableOpacity>
+                    {pairedPc && (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.shareHubClearBtn}
+                        onPress={() => {
+                          fetchSharedHubFiles();
+                          showToast('✓ Share Hub synchronized');
+                        }}>
+                        <Text style={[styles.shareHubClearBtnText, { color: '#38bdf8' }]}>Sync with PC 🔄</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </View>
             )}
@@ -3389,7 +3585,11 @@ export default function App() {
                   activeOpacity={0.75}
                   style={styles.lightboxDlBtn}
                   onPress={() => {
-                    handleDownloadPcFile(lightboxItem?.item?.path, lightboxItem?.item?.name);
+                    if (lightboxItem?.item?.downloadUrl) {
+                      handleDownloadSharedHubFile(lightboxItem.item);
+                    } else {
+                      handleDownloadPcFile(lightboxItem?.item?.path, lightboxItem?.item?.name);
+                    }
                   }}>
                   <Text style={styles.lightboxDlBtnText}>⬇ Save to Phone</Text>
                 </TouchableOpacity>
@@ -6418,6 +6618,14 @@ const styles = StyleSheet.create({
   },
 
   /* Share Hub Bento Card on Mobile Homepage */
+  shareHubRefreshBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+  },
   shareHubCountBadge: {
     backgroundColor: 'rgba(37, 99, 235, 0.2)',
     paddingHorizontal: 8,
@@ -6429,6 +6637,23 @@ const styles = StyleSheet.create({
   shareHubCountText: {
     color: '#60a5fa',
     fontSize: 11,
+    fontWeight: '800',
+  },
+  shareHubBatchRow: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  shareHubSaveAllBtn: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareHubSaveAllBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
     fontWeight: '800',
   },
   shareHubEmpty: {
@@ -6480,6 +6705,30 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 10,
     marginTop: 1,
+  },
+  shareHubActionBtn: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  shareHubActionBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  shareHubSavedChip: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  shareHubSavedChipText: {
+    color: '#10b981',
+    fontSize: 10.5,
+    fontWeight: '800',
   },
   shareHubStatusChip: {
     paddingHorizontal: 8,

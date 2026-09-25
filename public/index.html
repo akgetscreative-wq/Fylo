@@ -7817,6 +7817,21 @@
             triggerNotificationAlert(`🧹 Cleared all application repository assets`);
         });
 
+        function getFilePath(file) {
+            if (!file) return null;
+            if (file.path) return file.path;
+            try {
+                if (isElectron && window.require) {
+                    const { webUtils } = window.require('electron');
+                    if (webUtils && typeof webUtils.getPathForFile === 'function') {
+                        const p = webUtils.getPathForFile(file);
+                        if (p) return p;
+                    }
+                }
+            } catch (e) {}
+            return file.path || null;
+        }
+
         async function queueFiles(fileList) {
             if (!fileList || !fileList.length) return;
 
@@ -7830,10 +7845,11 @@
 
             const newFiles = Array.from(fileList).map(file => {
                 const id = Math.random().toString(36).substring(2) + Date.now().toString(36);
+                const resolvedPath = isElectron ? getFilePath(file) : null;
                 if (!isElectron) {
                     memoryRegistry.set(id, file);
                 } else {
-                    memoryRegistry.set(id, { isLocalPath: true, path: file.path, name: file.name, size: file.size });
+                    memoryRegistry.set(id, { isLocalPath: true, path: resolvedPath, name: file.name, size: file.size });
                 }
                 return {
                     id: id,
@@ -7841,7 +7857,11 @@
                     size: file.size,
                     sizeLabel: (file.size / (1024 * 1024)).toFixed(1) + 'MB',
                     ext: file.name.split('.').pop().toLowerCase(),
-                    path: isElectron ? file.path : null
+                    path: resolvedPath,
+                    uploadedBy: 'Host PC',
+                    sharedAt: Date.now(),
+                    downloadUrl: `/api/download/${id}`,
+                    type: 'file'
                 };
             });
 
@@ -8433,11 +8453,12 @@
 
                 for (let i = 0; i < droppedFiles.length; i++) {
                     const file = droppedFiles[i];
-                    if (file.path) {
+                    const filePath = getFilePath(file);
+                    if (filePath) {
                         try {
-                            const stat = fs.statSync(file.path);
+                            const stat = fs.statSync(filePath);
                             if (stat.isDirectory()) {
-                                folderPaths.push(file.path);
+                                folderPaths.push(filePath);
                             } else {
                                 regularFiles.push(file);
                             }
@@ -9930,32 +9951,33 @@
 
                 for (let i = 0; i < droppedFiles.length; i++) {
                     const f = droppedFiles[i];
-                    if (f.path) {
+                    const fPath = getFilePath(f);
+                    if (fPath) {
                         try {
-                            const st = fs.statSync(f.path);
-                            if (st.isDirectory()) folderPaths.push(f.path);
-                            else regularFiles.push(f);
+                            const st = fs.statSync(fPath);
+                            if (st.isDirectory()) folderPaths.push(fPath);
+                            else regularFiles.push({ file: f, path: fPath });
                         } catch (err) {
-                            regularFiles.push(f);
+                            regularFiles.push({ file: f, path: fPath });
                         }
                     } else {
-                        regularFiles.push(f);
+                        regularFiles.push({ file: f, path: null });
                     }
                 }
 
                 if (folderPaths.length > 0) await queueFolders(folderPaths);
-                if (regularFiles.length > 0) await queueFiles(regularFiles);
+                if (regularFiles.length > 0) await queueFiles(regularFiles.map(r => r.file));
 
                 let successCount = 0;
-                for (const f of regularFiles) {
-                    if (f.path) {
+                for (const rf of regularFiles) {
+                    if (rf.path) {
                         try {
                             const res = await apiFetch('/api/mobile/fs/upload-direct', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     deviceId: currentPhoneId,
-                                    path: f.path,
+                                    path: rf.path,
                                     targetDir: currentPhonePath || ''
                                 })
                             });
