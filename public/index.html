@@ -2238,63 +2238,8 @@
             gap: 12px;
         }
 
-        /* ==========================================
-           Fylo v4 Revamp: Top System Header Bar, PC Explorer, & Pairing Studio
-           ========================================== */
-        .top-header-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            background: var(--card-bg);
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 12px 20px;
-            box-shadow: var(--glass-shadow), var(--inner-shadow);
-            margin-bottom: 22px;
-            position: sticky;
-            top: 16px;
-            z-index: 100;
-        }
 
-        .top-header-left {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-        }
 
-        .top-view-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 1.15rem;
-            font-weight: 800;
-            color: var(--text);
-            letter-spacing: -0.3px;
-        }
-
-        .top-view-title .top-view-icon {
-            font-size: 1.25rem;
-        }
-
-        .top-tagline {
-            font-size: 0.78rem;
-            color: var(--text-light);
-            font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .top-header-center {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
 
         .status-pill {
             display: inline-flex;
@@ -2341,11 +2286,7 @@
             50% { transform: scale(1.3); opacity: 0.7; }
         }
 
-        .top-header-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+
 
         .btn-top-action {
             display: inline-flex;
@@ -4298,9 +4239,8 @@
             #sidebar-qr-shelf, #top-qr-toggle-btn, #sidebar-toggle-btn, #top-notif-btn, #sidebar-hide-btn {
                 display: none !important;
             }
-            .top-header-bar {
-                display: none !important;
-            }
+
+
             .btn-back-dashboard {
                 display: none !important;
             }
@@ -4743,7 +4683,7 @@
                 <!-- Clean segmented switch / tabs -->
                 <nav class="mobile-nav-tabs" id="mobile-nav-tabs">
                     <button class="mobile-tab-btn active" data-target="view-pc-explorer">
-                        <span>💻 PC Files</span>
+                        <span>📂 Browse PC</span>
                     </button>
                     <button class="mobile-tab-btn" data-target="view-hub">
                         <span>📤 Upload to PC</span>
@@ -5172,44 +5112,18 @@
                                         Connected via Web Browser • Ready for Transfers & Sync
                                     </div>
                                 </div>
-                            </div>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <a href="/fylo.apk" download="fylo-v4.0.0.apk" class="btn btn-accent" style="padding: 9px 16px; border-radius: 12px; font-weight: 800; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                                    📥 Download Fylo APK
-                                </a>
-                            </div>
                         </div>
 
 
-                        <!-- Informative Note -->
-                        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 16px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px;">
-                            <div style="font-size: 1.4rem; line-height: 1;">💡</div>
-                            <div style="font-size: 0.86rem; color: var(--text); line-height: 1.5;">
-                                <strong>Connected via Web Browser.</strong> For deep phone filesystem access & gallery browsing from PC, open the Fylo APK.
-                                <div style="font-size: 0.78rem; color: var(--text-light); margin-top: 4px;">
-                                    The web companion allows downloading PC files, uploading files to PC, and live clipboard syncing. To explore your phone's Android DCIM gallery & storage directly from this PC, install and launch the Fylo APK on your phone.
-                                </div>
-                            </div>
+                        <div style="font-size: 0.84rem; color: var(--text-light); line-height: 1.5; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px;">
+                            Connected via browser. To browse your phone's files & storage from this PC, install the Fylo Android app.
+                            <a href="/fylo.apk" download="fylo-v4.0.0.apk" style="color: var(--accent); font-weight: 700; text-decoration: underline; margin-left: 4px;">Download APK</a>
                         </div>
 
-                        <!-- Quick Navigation & Secondary QR Link -->
-                        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border);">
-                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button class="btn" onclick="switchView('view-pc-explorer')" style="padding: 7px 14px; border-radius: 10px; font-weight: 700; font-size: 0.82rem;">
-                                    💻 Browse PC Files
-                                </button>
-                                <button class="btn" onclick="switchView('view-hub')" style="padding: 7px 14px; border-radius: 10px; font-weight: 700; font-size: 0.82rem;">
-                                    ⚡ Share Hub & Uploads
-                                </button>
-                                <button class="btn" onclick="switchView('view-clipboard')" style="padding: 7px 14px; border-radius: 10px; font-weight: 700; font-size: 0.82rem;">
-                                    📋 Live Clipboard
-                                </button>
-                            </div>
-                            <div>
-                                <a href="#" id="web-companion-show-qr-link" style="color: var(--text-light); font-size: 0.8rem; text-decoration: underline; cursor: pointer;">
-                                    Show QR code
-                                </a>
-                            </div>
+                        <div style="text-align: right; margin-top: 12px;">
+                            <a href="#" id="web-companion-show-qr-link" style="color: var(--text-light); font-size: 0.78rem; text-decoration: underline; cursor: pointer;">
+                                Show QR code to pair another device
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -6326,17 +6240,10 @@
                     });
                 }
 
-                // 2. Fetch Network Info & URL
+                // 2. Fetch Network Info & URL (used by QR code generation)
                 const netRes = await apiFetch('/api/network-url');
                 if (netRes.ok) {
-                    const netInfo = await netRes.json();
-                    const cleanIp = netInfo.url ? netInfo.url.replace(/^https?:\/\//, '') : 'Ready';
-                    const netIpDisplay = $('#dash-net-ip-display');
-                    if (netIpDisplay) netIpDisplay.textContent = cleanIp;
-                    const greetingIp = $('#dash-greeting-ip');
-                    if (greetingIp) greetingIp.textContent = cleanIp;
-                    const topProfileStatus = $('#top-ip-val');
-                    if (topProfileStatus) topProfileStatus.textContent = cleanIp;
+                    await netRes.json();
                 }
 
                 // 3. User & Host Greeting
