@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 
 const { FyloModule } = NativeModules;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Robust AbortController-wrapped fetch helper to prevent socket hanging and unhandled rejections
 const apiFetch = async (url, options = {}, timeoutMs = 6000) => {
