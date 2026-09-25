@@ -210,23 +210,6 @@ public class FyloHttpServer {
                 }
             }
 
-            if (contentLength > MAX_BODY_SIZE) {
-                sendJsonResponse(out, 413, "{\"error\":\"Payload Too Large\"}");
-                return;
-            }
-
-            // Read request body if present
-            byte[] bodyBytes = new byte[0];
-            if (contentLength > 0) {
-                bodyBytes = new byte[contentLength];
-                int totalRead = 0;
-                while (totalRead < contentLength) {
-                    int r = in.read(bodyBytes, totalRead, contentLength - totalRead);
-                    if (r == -1) break;
-                    totalRead += r;
-                }
-            }
-
             // CORS preflight
             if ("OPTIONS".equals(method)) {
                 sendResponseHeaders(out, 204, "No Content", "text/plain", 0, null);
@@ -249,6 +232,29 @@ public class FyloHttpServer {
             if (!isAuthorized(queryParams, headers)) {
                 sendJsonResponse(out, 401, "{\"error\":\"Unauthorized: Invalid or missing auth token\"}");
                 return;
+            }
+
+            // Streaming file upload from PC directly into Phone storage (bypasses memory buffer)
+            if ("/api/fs/upload".equals(path) && "POST".equals(method)) {
+                handleUploadStream(out, queryParams, in, contentLength);
+                return;
+            }
+
+            if (contentLength > MAX_BODY_SIZE) {
+                sendJsonResponse(out, 413, "{\"error\":\"Payload Too Large\"}");
+                return;
+            }
+
+            // Read request body if present
+            byte[] bodyBytes = new byte[0];
+            if (contentLength > 0) {
+                bodyBytes = new byte[contentLength];
+                int totalRead = 0;
+                while (totalRead < contentLength) {
+                    int r = in.read(bodyBytes, totalRead, contentLength - totalRead);
+                    if (r == -1) break;
+                    totalRead += r;
+                }
             }
 
             // Routing
@@ -767,6 +773,74 @@ public class FyloHttpServer {
         sendJsonResponse(out, success ? 200 : 500, resp.toString());
     }
 
+    private void handleUploadStream(OutputStream out, Map<String, String> queryParams, InputStream in, int contentLength) throws Exception {
+        String name = queryParams.get("name");
+        if (name == null || name.trim().isEmpty()) {
+            name = "fylo_upload_" + System.currentTimeMillis();
+        }
+        name = new File(name).getName().replaceAll("[\\\\/:*?\"<>|]", "_");
+
+        String dirPath = queryParams.get("dir");
+        File dir = null;
+        if (dirPath != null && !dirPath.trim().isEmpty()) {
+            File customDir = new File(dirPath.trim());
+            if (customDir.exists() && customDir.isDirectory() && customDir.canWrite()) {
+                dir = customDir;
+            }
+        }
+        if (dir == null) {
+            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            dir = new File(downloadsDir, "Fylo");
+        }
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        File dest = new File(dir, name);
+        if (dest.exists()) {
+            String base = name;
+            String ext = "";
+            int dot = name.lastIndexOf('.');
+            if (dot > 0) {
+                base = name.substring(0, dot);
+                ext = name.substring(dot);
+            }
+            dest = new File(dir, base + "_" + System.currentTimeMillis() + ext);
+        }
+
+        try (FileOutputStream fos = new FileOutputStream(dest)) {
+            byte[] buf = new byte[65536];
+            int remaining = contentLength;
+            if (remaining > 0) {
+                while (remaining > 0) {
+                    int toRead = Math.min(buf.length, remaining);
+                    int r = in.read(buf, 0, toRead);
+                    if (r == -1) break;
+                    fos.write(buf, 0, r);
+                    remaining -= r;
+                }
+            } else {
+                int r;
+                while ((r = in.read(buf)) != -1) {
+                    fos.write(buf, 0, r);
+                }
+            }
+            fos.flush();
+        }
+
+        // Notify media scanner so photos/audio appear in Gallery immediately
+        try {
+            android.media.MediaScannerConnection.scanFile(context, new String[]{dest.getAbsolutePath()}, null, null);
+        } catch (Throwable ignored) {}
+
+        JSONObject resp = new JSONObject();
+        resp.put("success", true);
+        resp.put("name", dest.getName());
+        resp.put("path", dest.getAbsolutePath());
+        resp.put("size", dest.length());
+        sendJsonResponse(out, 200, resp.toString());
+    }
+
     private void sendJsonResponse(OutputStream out, int status, String json) throws IOException {
         byte[] data = json.getBytes(StandardCharsets.UTF_8);
         sendResponseHeaders(out, status, status == 200 ? "OK" : "Error", "application/json; charset=utf-8", data.length, null);
@@ -819,6 +893,11 @@ public class FyloHttpServer {
             if (path == null || path.contains("\0")) return false;
             String canonical = file.getCanonicalPath();
             if (canonical.contains("\0")) return false;
+
+            // Explicitly allow FyloShared direct transfers
+            if (canonical.contains("FyloShared")) {
+                return true;
+            }
 
             // Disallow access to app private internal data directories
             if (context != null && context.getApplicationInfo() != null) {

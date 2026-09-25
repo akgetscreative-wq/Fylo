@@ -31,14 +31,14 @@ public class FyloForegroundService extends Service {
         super.onCreate();
         createNotificationChannel();
 
-        // Safely acquire WakeLock with timeout and SecurityException guard
+        // Safely acquire WakeLock (PARTIAL_WAKE_LOCK) for background & screen lock persistence
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if (pm != null) {
             try {
                 wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Fylo:ServerWakeLock");
                 wakeLock.setReferenceCounted(false);
-                // 12-hour auto-release safety timeout to prevent permanent battery drain if app is abandoned
-                wakeLock.acquire(12 * 60 * 60 * 1000L);
+                wakeLock.acquire();
+                Log.i(TAG, "WakeLock (PARTIAL_WAKE_LOCK) acquired successfully");
             } catch (SecurityException se) {
                 Log.w(TAG, "WakeLock permission denied: " + se.getMessage());
                 wakeLock = null;
@@ -48,17 +48,14 @@ public class FyloForegroundService extends Service {
             }
         }
 
-        // Safely acquire WifiLock with modern mode selection
+        // Safely acquire WifiLock (WIFI_MODE_FULL_HIGH_PERF) for background network persistence
         WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wm != null) {
             try {
-                int wifiMode = WifiManager.WIFI_MODE_FULL_HIGH_PERF;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    wifiMode = WifiManager.WIFI_MODE_FULL_LOW_LATENCY;
-                }
-                wifiLock = wm.createWifiLock(wifiMode, "Fylo:WifiLock");
+                wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Fylo:WifiLock");
                 wifiLock.setReferenceCounted(false);
                 wifiLock.acquire();
+                Log.i(TAG, "WifiLock (WIFI_MODE_FULL_HIGH_PERF) acquired successfully");
             } catch (SecurityException se) {
                 Log.w(TAG, "WifiLock permission denied: " + se.getMessage());
                 wifiLock = null;
@@ -73,6 +70,18 @@ public class FyloForegroundService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Ensure locks are actively held on each start command invocation
+        if (wakeLock != null && !wakeLock.isHeld()) {
+            try {
+                wakeLock.acquire();
+            } catch (Throwable ignored) {}
+        }
+        if (wifiLock != null && !wifiLock.isHeld()) {
+            try {
+                wifiLock.acquire();
+            } catch (Throwable ignored) {}
+        }
+
         int port = intent != null ? intent.getIntExtra("port", 8080) : 8080;
         boolean readOnly = intent != null ? intent.getBooleanExtra("readOnly", true) : true;
         String authToken = intent != null ? intent.getStringExtra("authToken") : null;
@@ -135,10 +144,11 @@ public class FyloForegroundService extends Service {
                 NotificationChannel channel = new NotificationChannel(
                         CHANNEL_ID,
                         "Fylo Background Service",
-                        NotificationManager.IMPORTANCE_LOW
+                        NotificationManager.IMPORTANCE_HIGH
                 );
                 channel.setDescription("Keeps Fylo server running when phone is locked");
-                channel.setShowBadge(false);
+                channel.setShowBadge(true);
+                channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
                 NotificationManager manager = getSystemService(NotificationManager.class);
                 if (manager != null) {
                     manager.createNotificationChannel(channel);
@@ -173,7 +183,8 @@ public class FyloForegroundService extends Service {
                 .setContentText("Listening on port " + port + " • Screen can be locked")
                 .setSmallIcon(iconRes)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE);
 
         if (pendingIntent != null) {

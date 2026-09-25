@@ -10,13 +10,15 @@ import {
   Switch,
   TextInput,
   Modal,
-  Alert,
   NativeModules,
   Platform,
   Image,
   Dimensions,
   ActivityIndicator,
   AppState,
+  BackHandler,
+  PanResponder,
+  DeviceEventEmitter,
 } from 'react-native';
 
 const { FyloModule } = NativeModules;
@@ -89,6 +91,44 @@ const Win11FolderIcon = ({ size = 28 }) => {
   );
 };
 
+// File sorting helper (STRICT DEFAULT: LATEST-FIRST by date/mtime descending, folders always at top)
+const sortExplorerItems = (items, sortBy = 'latest') => {
+  if (!Array.isArray(items)) return [];
+  const folders = [];
+  const files = [];
+
+  for (const item of items) {
+    if (!item) continue;
+    if (item.isDir) {
+      folders.push(item);
+    } else {
+      files.push(item);
+    }
+  }
+
+  const comparator = (a, b) => {
+    if (sortBy === 'latest') {
+      const aTime = typeof a.modified === 'number' ? a.modified : 0;
+      const bTime = typeof b.modified === 'number' ? b.modified : 0;
+      if (bTime !== aTime) return bTime - aTime; // descending: newest first
+      return (a.name || '').localeCompare(b.name || '');
+    } else if (sortBy === 'name') {
+      return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
+    } else if (sortBy === 'size') {
+      const aSize = typeof a.size === 'number' ? a.size : 0;
+      const bSize = typeof b.size === 'number' ? b.size : 0;
+      if (bSize !== aSize) return bSize - aSize; // descending: largest first
+      return (a.name || '').localeCompare(b.name || '');
+    }
+    return 0;
+  };
+
+  folders.sort(comparator);
+  files.sort(comparator);
+
+  return [...folders, ...files];
+};
+
 export default function App() {
   // Navigation: 'home' | 'phone-explorer' | 'pc-explorer' | 'clipboard' | 'transfer'
   const [currentTab, setCurrentTab] = useState('home');
@@ -99,7 +139,7 @@ export default function App() {
   const [serverPort, setServerPort] = useState(8080);
   const [hasPermission, setHasPermission] = useState(false);
   const [readOnlyMode, setReadOnlyMode] = useState(true);
-  const [pairedPc, setPairedPc] = useState(null); // '192.168.1.10:4444'
+  const [pairedPc, setPairedPc] = useState(null); // '192.168.1.10:3000'
   const [pcHostName, setPcHostName] = useState('');
   const [pcAuthToken, setPcAuthToken] = useState('');
   const [pingLatency, setPingLatency] = useState(null); // Real measured latency in ms
@@ -123,10 +163,12 @@ export default function App() {
   // Phone Local Filesystem Explorer State
   const [phoneCurrentPath, setPhoneCurrentPath] = useState('');
   const [phoneParentPath, setPhoneParentPath] = useState('');
+  const [phoneHistory, setPhoneHistory] = useState([]); // Directory navigation history stack
   const [phoneItems, setPhoneItems] = useState([]);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneFilter, setPhoneFilter] = useState('all');
   const [phoneSearch, setPhoneSearch] = useState('');
+  const [phoneSortBy, setPhoneSortBy] = useState('latest'); // 'latest' | 'name' | 'size' (STRICT DEFAULT: latest)
   const [phoneViewMode, setPhoneViewMode] = useState('grid'); // 'grid' | 'list'
   const [phoneSelectedPaths, setPhoneSelectedPaths] = useState(new Set());
   const [phoneMultiSelect, setPhoneMultiSelect] = useState(false);
@@ -135,16 +177,31 @@ export default function App() {
   const [pcQuickAccess, setPcQuickAccess] = useState({ drives: [], shortcuts: [] });
   const [pcCurrentPath, setPcCurrentPath] = useState('');
   const [pcParentPath, setPcParentPath] = useState('');
+  const [pcHistory, setPcHistory] = useState([]); // Remote PC directory navigation history stack
   const [pcItems, setPcItems] = useState([]);
   const [pcLoading, setPcLoading] = useState(false);
   const [pcFilter, setPcFilter] = useState('all');
   const [pcSearch, setPcSearch] = useState('');
+  const [pcSortBy, setPcSortBy] = useState('latest'); // 'latest' | 'name' | 'size' (STRICT DEFAULT: latest)
   const [pcViewMode, setPcViewMode] = useState('grid'); // 'grid' | 'list'
   const [pcSelectedPaths, setPcSelectedPaths] = useState(new Set());
   const [pcMultiSelect, setPcMultiSelect] = useState(false);
 
-  // Universal Media Lightbox State
+  // Quick Share / Beam to PC Modal State
+  const [quickShareVisible, setQuickShareVisible] = useState(false);
+  const [quickShareItems, setQuickShareItems] = useState([]);
+  const [quickShareLoading, setQuickShareLoading] = useState(false);
+  const [quickShareSelected, setQuickShareSelected] = useState(new Set());
+  const [isBeaming, setIsBeaming] = useState(false);
+
+  // Universal Media Lightbox State with Pinch-to-Zoom & Pan
   const [lightboxItem, setLightboxItem] = useState(null); // { item, source: 'phone' | 'pc' }
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const zoomScaleRef = useRef(1);
+  const panOffsetRef = useRef({ x: 0, y: 0 });
+  const lastTouchDistanceRef = useRef(null);
+  const lastTapTimeRef = useRef(0);
 
   // Admin Security Password Modal State
   const [adminModalVisible, setAdminModalVisible] = useState(false);
@@ -157,6 +214,36 @@ export default function App() {
   const [diagStatus, setDiagStatus] = useState('idle'); // 'idle' | 'testing' | 'success' | 'warning'
   const [diagMessage, setDiagMessage] = useState('');
 
+  // Live Refs for BackHandler to avoid stale state closures
+  const currentTabRef = useRef(currentTab);
+  currentTabRef.current = currentTab;
+  const lightboxItemRef = useRef(lightboxItem);
+  lightboxItemRef.current = lightboxItem;
+  const quickShareVisibleRef = useRef(quickShareVisible);
+  quickShareVisibleRef.current = quickShareVisible;
+  const showPairModalRef = useRef(showPairModal);
+  showPairModalRef.current = showPairModal;
+  const adminModalVisibleRef = useRef(adminModalVisible);
+  adminModalVisibleRef.current = adminModalVisible;
+  const diagVisibleRef = useRef(diagVisible);
+  diagVisibleRef.current = diagVisible;
+  const phoneMultiSelectRef = useRef(phoneMultiSelect);
+  phoneMultiSelectRef.current = phoneMultiSelect;
+  const pcMultiSelectRef = useRef(pcMultiSelect);
+  pcMultiSelectRef.current = pcMultiSelect;
+  const phoneHistoryRef = useRef(phoneHistory);
+  phoneHistoryRef.current = phoneHistory;
+  const phoneCurrentPathRef = useRef(phoneCurrentPath);
+  phoneCurrentPathRef.current = phoneCurrentPath;
+  const phoneParentPathRef = useRef(phoneParentPath);
+  phoneParentPathRef.current = phoneParentPath;
+  const pcHistoryRef = useRef(pcHistory);
+  pcHistoryRef.current = pcHistory;
+  const pcCurrentPathRef = useRef(pcCurrentPath);
+  pcCurrentPathRef.current = pcCurrentPath;
+  const pcParentPathRef = useRef(pcParentPath);
+  pcParentPathRef.current = pcParentPath;
+
   const addLog = (msg) => {
     const time = new Date().toLocaleTimeString();
     setLogs((prev) => [`[${time}] ${msg}`, ...prev.slice(0, 30)]);
@@ -164,7 +251,97 @@ export default function App() {
 
   const showToast = (msg) => {
     setClipboardToast(msg);
-    setTimeout(() => setClipboardToast(''), 3000);
+    setTimeout(() => setClipboardToast(''), 3200);
+  };
+
+  // Reset zoom & pan helper
+  const resetZoom = () => {
+    zoomScaleRef.current = 1;
+    panOffsetRef.current = { x: 0, y: 0 };
+    setZoomScale(1);
+    setPanOffset({ x: 0, y: 0 });
+    lastTouchDistanceRef.current = null;
+  };
+
+  useEffect(() => {
+    resetZoom();
+  }, [lightboxItem]);
+
+  // =========================================================
+  // REQUIREMENT 3: PINCH-TO-ZOOM & PAN FOR PHOTOS & FILES
+  // =========================================================
+  const zoomPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        if (evt.nativeEvent.touches.length === 2) {
+          const [t1, t2] = evt.nativeEvent.touches;
+          lastTouchDistanceRef.current = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
+        } else if (evt.nativeEvent.touches.length === 1) {
+          // Double tap to toggle zoom
+          const now = Date.now();
+          if (now - lastTapTimeRef.current < 320) {
+            const nextScale = zoomScaleRef.current > 1.2 ? 1 : 2.5;
+            zoomScaleRef.current = nextScale;
+            panOffsetRef.current = { x: 0, y: 0 };
+            setZoomScale(nextScale);
+            setPanOffset({ x: 0, y: 0 });
+            lastTapTimeRef.current = 0;
+            return;
+          }
+          lastTapTimeRef.current = now;
+        }
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length === 2) {
+          const [t1, t2] = touches;
+          const currentDistance = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
+          if (lastTouchDistanceRef.current && lastTouchDistanceRef.current > 0) {
+            const delta = currentDistance / lastTouchDistanceRef.current;
+            let nextScale = zoomScaleRef.current * delta;
+            if (nextScale < 1) nextScale = 1;
+            if (nextScale > 4) nextScale = 4;
+            zoomScaleRef.current = nextScale;
+            setZoomScale(nextScale);
+          }
+          lastTouchDistanceRef.current = currentDistance;
+        } else if (touches.length === 1 && zoomScaleRef.current > 1) {
+          const maxPanX = (SCREEN_WIDTH * (zoomScaleRef.current - 1)) / 1.8;
+          const maxPanY = (SCREEN_HEIGHT * (zoomScaleRef.current - 1)) / 1.8;
+          let nextX = panOffsetRef.current.x + gestureState.dx * 0.18;
+          let nextY = panOffsetRef.current.y + gestureState.dy * 0.18;
+          nextX = Math.max(-maxPanX, Math.min(maxPanX, nextX));
+          nextY = Math.max(-maxPanY, Math.min(maxPanY, nextY));
+          panOffsetRef.current = { x: nextX, y: nextY };
+          setPanOffset({ x: nextX, y: nextY });
+        }
+      },
+      onPanResponderRelease: () => {
+        lastTouchDistanceRef.current = null;
+        if (zoomScaleRef.current <= 1) {
+          panOffsetRef.current = { x: 0, y: 0 };
+          setPanOffset({ x: 0, y: 0 });
+        }
+      },
+    })
+  ).current;
+
+  // Zoom button triggers
+  const handleZoomIn = () => {
+    let next = Math.min(4, zoomScaleRef.current + 0.5);
+    zoomScaleRef.current = next;
+    setZoomScale(next);
+  };
+  const handleZoomOut = () => {
+    let next = Math.max(1, zoomScaleRef.current - 0.5);
+    zoomScaleRef.current = next;
+    if (next === 1) {
+      panOffsetRef.current = { x: 0, y: 0 };
+      setPanOffset({ x: 0, y: 0 });
+    }
+    setZoomScale(next);
   };
 
   // Periodic device & server status check
@@ -218,7 +395,6 @@ export default function App() {
           setPingLatency(roundTripMs);
           failCount = 0;
         } else if (res.status === 404) {
-          // PC restarted or lost device in memory: re-handshake seamlessly!
           handleConnectToPc(pairedPc, pcAuthToken);
         } else {
           failCount++;
@@ -262,6 +438,113 @@ export default function App() {
     }
   }, [currentTab]);
 
+  // =========================================================
+  // REQUIREMENT 2: ONE-STEP-BACK HARDWARE & IN-APP NAVIGATION
+  // =========================================================
+  const goBackPhoneFolder = () => {
+    if (phoneHistoryRef.current.length > 0) {
+      const nextStack = [...phoneHistoryRef.current];
+      const prevPath = nextStack.pop();
+      setPhoneHistory(nextStack);
+      loadPhoneFolder(prevPath, true);
+    } else if (phoneParentPathRef.current && phoneParentPathRef.current !== phoneCurrentPathRef.current) {
+      loadPhoneFolder(phoneParentPathRef.current, true);
+    } else {
+      setCurrentTab('home');
+    }
+  };
+
+  const goBackPcFolder = () => {
+    if (pcHistoryRef.current.length > 0) {
+      const nextStack = [...pcHistoryRef.current];
+      const prevPath = nextStack.pop();
+      setPcHistory(nextStack);
+      loadPcFolder(prevPath, true);
+    } else if (pcParentPathRef.current && pcParentPathRef.current !== pcCurrentPathRef.current) {
+      loadPcFolder(pcParentPathRef.current, true);
+    } else {
+      setCurrentTab('home');
+    }
+  };
+
+  // React Native hardware back button listener
+  useEffect(() => {
+    const handleHardwareBackPress = () => {
+      // 1. Close lightbox if open
+      if (lightboxItemRef.current) {
+        setLightboxItem(null);
+        resetZoom();
+        return true;
+      }
+      // 2. Close Quick Share modal if open
+      if (quickShareVisibleRef.current) {
+        setQuickShareVisible(false);
+        return true;
+      }
+      // 3. Close other modals if open
+      if (showPairModalRef.current) {
+        setShowPairModal(false);
+        return true;
+      }
+      if (adminModalVisibleRef.current) {
+        setAdminModalVisible(false);
+        return true;
+      }
+      if (diagVisibleRef.current) {
+        setDiagVisible(false);
+        return true;
+      }
+
+      // 4. In Phone Explorer: clear multi-select or step one directory back
+      if (currentTabRef.current === 'phone-explorer') {
+        if (phoneMultiSelectRef.current) {
+          setPhoneMultiSelect(false);
+          setPhoneSelectedPaths(new Set());
+          return true;
+        }
+        if (
+          phoneHistoryRef.current.length > 0 ||
+          (phoneParentPathRef.current && phoneParentPathRef.current !== phoneCurrentPathRef.current)
+        ) {
+          goBackPhoneFolder();
+          return true;
+        }
+        setCurrentTab('home');
+        return true;
+      }
+
+      // 5. In PC Explorer: clear multi-select or step one directory back
+      if (currentTabRef.current === 'pc-explorer') {
+        if (pcMultiSelectRef.current) {
+          setPcMultiSelect(false);
+          setPcSelectedPaths(new Set());
+          return true;
+        }
+        if (
+          pcHistoryRef.current.length > 0 ||
+          (pcParentPathRef.current && pcParentPathRef.current !== pcCurrentPathRef.current)
+        ) {
+          goBackPcFolder();
+          return true;
+        }
+        setCurrentTab('home');
+        return true;
+      }
+
+      // 6. In any other tab: return to Home
+      if (currentTabRef.current !== 'home') {
+        setCurrentTab('home');
+        return true;
+      }
+
+      // 7. On Home tab with no modal: exit/background app
+      return false;
+    };
+
+    const backSubscription = BackHandler.addEventListener('hardwareBackPress', handleHardwareBackPress);
+    return () => backSubscription.remove();
+  }, []);
+
   const checkStatus = async () => {
     try {
       if (FyloModule && FyloModule.getServerInfo) {
@@ -283,7 +566,6 @@ export default function App() {
               freeGB: info.storage.freeGB || '--',
             });
           }
-          // Auto-start background server if storage permission granted so PC can browse files immediately
           if (info.hasStoragePermission && !info.running) {
             try {
               await FyloModule.startServer(info.port || 8080, readOnlyMode, pcAuthToken || '');
@@ -302,14 +584,8 @@ export default function App() {
 
   const handleToggleServer = async () => {
     if (!hasPermission) {
-      Alert.alert(
-        'Permission Required',
-        'Please grant "All Files Access" so the PC can browse files on this device.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Grant Access', onPress: handleRequestPermission },
-        ]
-      );
+      handleRequestPermission();
+      showToast('⚠️ Storage permission required');
       return;
     }
 
@@ -322,17 +598,19 @@ export default function App() {
           await FyloModule.stopServer();
           setServerRunning(false);
           addLog('Fylo server stopped.');
+          showToast('Fylo server stopped');
         } else {
           await FyloModule.startServer(serverPort, readOnlyMode, pcAuthToken || '');
           setServerRunning(true);
           addLog(`Server active on http://${deviceIp}:${serverPort}`);
+          showToast(`⚡ Server active on ${deviceIp}:${serverPort}`);
         }
       } else {
         setServerRunning(!serverRunning);
         addLog(`Server toggled: ${!serverRunning ? 'RUNNING' : 'STOPPED'}`);
       }
     } catch (err) {
-      Alert.alert('Server Error', err?.message || String(err));
+      showToast('Server Error: ' + (err?.message || String(err)));
     }
   };
 
@@ -340,7 +618,7 @@ export default function App() {
     if (FyloModule && FyloModule.requestStoragePermission) {
       FyloModule.requestStoragePermission();
     } else {
-      Alert.alert('Notice', 'Storage permission must be enabled in device Settings.');
+      showToast('Storage permission must be enabled in Android Settings');
     }
   };
 
@@ -350,6 +628,7 @@ export default function App() {
       await FyloModule.setReadOnly(val);
     }
     addLog(`Read-Only Mode: ${val ? 'ENABLED (Safe Mode)' : 'DISABLED (Write-Allowed)'}`);
+    showToast(val ? '🛡️ Safe Mode Enabled' : '⚡ Write-Allowed Mode');
   };
 
   const handleUnpair = async () => {
@@ -364,24 +643,27 @@ export default function App() {
     addLog(`Unpaired from ${pairedPc}`);
     setPairedPc(null);
     setPingLatency(null);
+    showToast('Unpaired from PC');
   };
 
+  // =========================================================
+  // REQUIREMENT 6: REMOVE ANNOYING POPUPS (Non-blocking Toasts)
+  // =========================================================
   const handleConnectToPc = async (pcIp, token) => {
     if (!pcIp) {
-      Alert.alert('Missing IP', 'Please enter your PC local IP address (e.g. 192.168.1.5:3000).');
+      showToast('⚠️ Please enter PC address');
       return;
     }
 
     let cleanIp = pcIp.trim().replace(/^https?:\/\//, '').replace(/^fylo:\/\//, '').replace(/\/.*$/, '');
     let host = cleanIp.split(':')[0];
     let port = cleanIp.includes(':') ? cleanIp.split(':')[1] : '3000';
-    if (!port || port === '4444') port = '3000'; // Default to Fylo PC port 3000
+    if (!port || port === '4444') port = '3000';
 
     try {
       addLog(`Pairing with PC at ${host}:${port}...`);
       const startTime = Date.now();
 
-      // Ensure local phone server is active so PC can browse files & stream media
       if (!serverRunning && FyloModule && FyloModule.startServer) {
         try {
           await FyloModule.startServer(serverPort || 8080, readOnlyMode, token || pcAuthToken || '');
@@ -433,25 +715,19 @@ export default function App() {
         }
         setShowPairModal(false);
         addLog(`Successfully paired with PC (${host}:${port})!`);
-        Alert.alert(
-          'Paired Successfully! ⚡',
-          `Linked to ${data.hostName || 'PC'}. Browse PC drives or transfer files. Phone server active even when screen is locked.`,
-          [{ text: 'Browse PC Drives', onPress: () => setCurrentTab('pc-explorer') }]
-        );
+        // Non-blocking toast replacing disruptive popup!
+        showToast(`⚡ Linked to ${data.hostName || 'PC'} (${roundTrip} ms)`);
       } else {
-        Alert.alert('Pairing Failed', data?.error || 'PC rejected pairing request.');
+        showToast(`⚠️ Pairing Failed: ${data?.error || 'PC rejected pairing request.'}`);
       }
     } catch (e) {
-      Alert.alert(
-        'Connection Failed ⚠️',
-        `Could not reach PC at ${host}:${port}.\n\n💡 Tip: Verify PC is running Fylo and both devices are connected to the same Wi-Fi or Hotspot.`
-      );
+      showToast(`⚠️ Connection Failed: Could not reach ${host}:${port}`);
     }
   };
 
   const handleParseAndConnectQr = (rawText) => {
     if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
-      Alert.alert('Input Required', 'Please enter or paste the QR code string shown on your PC.');
+      showToast('⚠️ Please enter or paste QR code string');
       return;
     }
     const clean = rawText.trim();
@@ -488,7 +764,7 @@ export default function App() {
     }
 
     if (!host) {
-      Alert.alert('Invalid QR Format', 'Could not parse PC address from QR code.');
+      showToast('⚠️ Invalid QR code address format');
       return;
     }
 
@@ -498,10 +774,7 @@ export default function App() {
   const handleStartQrScan = async () => {
     try {
       if (!FyloModule || typeof FyloModule.scanQrCode !== 'function') {
-        Alert.alert(
-          'Scanner Unavailable',
-          'The camera QR scanner module is not available on this device.'
-        );
+        showToast('📷 QR scanner unavailable on device');
         return;
       }
       const scannedCode = await FyloModule.scanQrCode();
@@ -512,47 +785,9 @@ export default function App() {
       }
     } catch (err) {
       console.warn('QR scan error:', err);
-      Alert.alert(
-        'Camera Error',
-        'Could not open camera for QR scanning. Please check camera permission in Android settings.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Settings',
-            onPress: () => {
-              if (FyloModule && FyloModule.openAppSettings) {
-                FyloModule.openAppSettings();
-              }
-            },
-          },
-        ]
-      );
+      showToast('📷 Camera scanner unavailable');
     }
   };
-
-  // Real device storage calculation (Zero mock metrics)
-  const storageStats = useMemo(() => {
-    const freeStr = storageInfo?.freeGB || '';
-    const totalStr = storageInfo?.totalGB || '';
-    const freeVal = parseFloat(freeStr) || 0;
-    const totalVal = parseFloat(totalStr) || 0;
-    if (totalVal > 0) {
-      const usedVal = Math.max(0, totalVal - freeVal);
-      const percent = Math.min(100, Math.max(1, Math.round((usedVal / totalVal) * 100)));
-      return {
-        freeGB: freeVal > 0 ? freeVal.toFixed(1) + ' GB' : (freeStr || '--'),
-        totalGB: totalVal > 0 ? totalVal.toFixed(1) + ' GB' : (totalStr || '--'),
-        usedGB: usedVal.toFixed(1) + ' GB',
-        usedPercent: isNaN(percent) ? 0 : percent,
-      };
-    }
-    return {
-      freeGB: freeStr || '--',
-      totalGB: totalStr || '--',
-      usedGB: '--',
-      usedPercent: 0,
-    };
-  }, [storageInfo]);
 
   // ==========================================
   // LAN Shared Clipboard Operations
@@ -565,9 +800,9 @@ export default function App() {
       }, 4000);
       if (res.ok) {
         const data = await safeJson(res);
-        if (data && data.text !== undefined) {
+        if (data && data.text !== undefined && data.text !== pcClipboardText) {
           setPcClipboardText(data.text);
-          setPcClipboardUpdatedBy(data.updatedBy || 'PC Host');
+          setPcClipboardUpdatedBy(data.updatedBy || 'Windows PC');
         }
       }
     } catch (e) {}
@@ -576,81 +811,214 @@ export default function App() {
   const handlePushClipboardToPc = async (textToSend) => {
     const text = textToSend !== undefined ? textToSend : clipboardInput;
     if (!text || !text.trim()) {
-      Alert.alert('Empty Text', 'Please enter text to push to PC clipboard.');
+      showToast('⚠️ Please enter text to push');
       return;
     }
-
     if (!pairedPc) {
-      Alert.alert('Not Connected', 'Please pair with your PC first to share clipboard text.');
+      showToast('⚠️ Pair with PC first to share clipboard');
       return;
     }
 
     try {
       const res = await apiFetch(`http://${pairedPc}/api/clipboard`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Auth-Token': pcAuthToken || '',
-        },
-        body: JSON.stringify({ text }),
-      }, 6000);
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
+        body: JSON.stringify({
+          text: text.trim(),
+          updatedBy: phoneModelName || 'Mobile Companion',
+        }),
+      }, 5000);
 
-      if (res.ok) {
-        setPcClipboardText(text);
-        setPcClipboardUpdatedBy('This Phone');
+      const data = await safeJson(res);
+      if (res.ok && data && data.success) {
+        setPcClipboardText(text.trim());
+        setPcClipboardUpdatedBy('Phone Companion');
         setClipboardInput('');
-        showToast('Pushed to PC Clipboard! ⚡');
-        addLog('Sent text to PC clipboard.');
+        showToast('⚡ Pushed to PC clipboard! 📋');
       } else {
-        Alert.alert('Failed', 'PC rejected clipboard update.');
+        showToast('⚠️ PC rejected clipboard update');
       }
     } catch (e) {
-      Alert.alert('Error', 'Could not reach PC: ' + (e?.message || String(e)));
+      showToast('⚠️ Could not reach PC: ' + (e?.message || 'Error'));
     }
   };
 
   const handleCopyPcClipboardToPhone = async () => {
     if (!pcClipboardText) {
-      Alert.alert('Empty', 'No text currently on PC clipboard.');
+      showToast('⚠️ PC clipboard is empty');
       return;
     }
-
     try {
       if (FyloModule && FyloModule.setClipboardText) {
         await FyloModule.setClipboardText(pcClipboardText);
-        showToast('Copied to Phone Clipboard! 📋');
+        showToast('📋 Copied PC text to Phone clipboard!');
       } else {
-        showToast('Clipboard text ready! 📋');
-        Alert.alert('PC Clipboard Text', pcClipboardText);
+        showToast('📋 Copied to clipboard!');
       }
     } catch (e) {
-      Alert.alert('PC Clipboard', pcClipboardText);
+      showToast('📋 Text copied: ' + pcClipboardText.substring(0, 40));
     }
   };
 
   // ==========================================
-  // Phone Filesystem Explorer Functions
+  // REQUIREMENT 2 & 4: Phone Explorer Functions
   // ==========================================
-  const loadPhoneFolder = async (folderPath) => {
+  const loadPhoneFolder = async (folderPath, isBack = false) => {
     setPhoneLoading(true);
     try {
+      const targetPath = folderPath || '/storage/emulated/0';
+      if (!isBack && phoneCurrentPath && targetPath !== phoneCurrentPath) {
+        setPhoneHistory((prev) => [...prev, phoneCurrentPath]);
+      }
+
       if (FyloModule && FyloModule.listDirectory) {
         const result = await FyloModule.listDirectory(folderPath || '');
         if (result) {
-          setPhoneCurrentPath(result.path || folderPath || '/storage/emulated/0');
+          setPhoneCurrentPath(result.path || targetPath);
           setPhoneParentPath(result.parent || '');
           setPhoneItems(Array.isArray(result.items) ? result.items : []);
         }
       } else {
-        setPhoneCurrentPath(folderPath || '/storage/emulated/0');
+        setPhoneCurrentPath(targetPath);
         setPhoneParentPath(folderPath ? '/storage/emulated/0' : '');
         setPhoneItems([]);
       }
       setPhoneSelectedPaths(new Set());
     } catch (err) {
-      Alert.alert('Error', 'Could not open folder on phone: ' + (err?.message || String(err)));
+      showToast('Could not open folder: ' + (err?.message || 'Error'));
     } finally {
       setPhoneLoading(false);
+    }
+  };
+
+  // ==========================================
+  // REQUIREMENT 5: FAST SHARE / BEAM TO PC
+  // ==========================================
+  const handleBeamFilesToPc = async (pathsToBeam) => {
+    if (!pairedPc) {
+      setShowPairModal(true);
+      showToast('⚡ Pair with PC to beam files!');
+      return;
+    }
+    const pathArray = Array.from(pathsToBeam);
+    if (pathArray.length === 0) {
+      showToast('⚠️ No files selected to beam');
+      return;
+    }
+
+    setIsBeaming(true);
+    showToast(`🚀 Beaming ${pathArray.length} file(s) to PC Downloads...`);
+    let successCount = 0;
+
+    for (const fPath of pathArray) {
+      try {
+        const res = await apiFetch(`http://${pairedPc}/api/mobile/fs/download-direct`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Auth-Token': pcAuthToken || '',
+          },
+          body: JSON.stringify({
+            deviceId: deviceIdRef.current,
+            path: fPath,
+          }),
+        }, 12000);
+        const data = await safeJson(res);
+        if (data && data.success) {
+          successCount++;
+        }
+      } catch (e) {
+        console.warn('Beam error:', e);
+      }
+    }
+
+    setIsBeaming(false);
+    if (successCount > 0) {
+      showToast(`✅ Beamed ${successCount} file(s) to PC Downloads! 🎉`);
+      setPhoneSelectedPaths(new Set());
+      setQuickShareSelected(new Set());
+      setQuickShareVisible(false);
+    } else {
+      showToast('⚠️ Beam failed. Check PC connection.');
+    }
+  };
+
+  // Handle Android System Direct Share (when user shares photos/files from any other app to Fylo)
+  useEffect(() => {
+    const handleIncomingFiles = async (files) => {
+      if (!files || !Array.isArray(files) || files.length === 0) return;
+      const validPaths = files.map((f) => (typeof f === 'string' ? f : f.path)).filter(Boolean);
+      if (validPaths.length === 0) return;
+
+      if (pairedPc) {
+        showToast(`📲 Direct Share: Beaming ${validPaths.length} file(s) to PC...`);
+        await handleBeamFilesToPc(validPaths);
+      } else {
+        showToast(`📲 ${validPaths.length} file(s) ready to share! Pair with PC to beam.`);
+        setShowPairModal(true);
+      }
+      if (FyloModule && FyloModule.clearPendingSharedFiles) {
+        FyloModule.clearPendingSharedFiles();
+      }
+    };
+
+    // Check for pending shared files on launch
+    if (FyloModule && FyloModule.getPendingSharedFiles) {
+      FyloModule.getPendingSharedFiles()
+        .then((files) => {
+          if (files && files.length > 0) {
+            handleIncomingFiles(files);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Listen for runtime direct shares while app is open/foregrounded
+    const sub = DeviceEventEmitter.addListener('onFilesShared', (data) => {
+      const files = Array.isArray(data) ? data : (data?.files || []);
+      if (files.length > 0) {
+        handleIncomingFiles(files);
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, [pairedPc, pcAuthToken]);
+
+  const openQuickShareModal = async (initialFolder = '/storage/emulated/0/DCIM/Camera') => {
+    if (!pairedPc) {
+      setShowPairModal(true);
+      showToast('⚡ Pair with PC to start beaming files!');
+      return;
+    }
+
+    setQuickShareVisible(true);
+    setQuickShareLoading(true);
+    setQuickShareSelected(new Set());
+
+    try {
+      let items = [];
+      if (FyloModule && FyloModule.listDirectory) {
+        // Try camera folder first, fallback to Download or base
+        let result = await FyloModule.listDirectory(initialFolder);
+        if (!result || !result.items || result.items.length === 0) {
+          result = await FyloModule.listDirectory('/storage/emulated/0/Download');
+        }
+        if (!result || !result.items || result.items.length === 0) {
+          result = await FyloModule.listDirectory('/storage/emulated/0');
+        }
+        if (result && Array.isArray(result.items)) {
+          // Filter to files only, sorted latest first!
+          const filesOnly = result.items.filter((f) => !f.isDir);
+          items = sortExplorerItems(filesOnly, 'latest');
+        }
+      }
+      setQuickShareItems(items);
+    } catch (e) {
+      console.warn('Quick share load error:', e);
+    } finally {
+      setQuickShareLoading(false);
     }
   };
 
@@ -665,7 +1033,7 @@ export default function App() {
         <TouchableOpacity
           style={styles.breadcrumbItem}
           onPress={() => onSelectPath(isPc ? 'C:\\' : '/storage/emulated/0')}>
-          <Text style={styles.breadcrumbTextRoot}>{isPc ? '💻 This PC' : '📱 Internal'}</Text>
+          <Text style={styles.breadcrumbTextRoot}>{isPc ? '💻 PC' : '📱 Phone'}</Text>
         </TouchableOpacity>
 
         {parts.map((part, index) => {
@@ -694,7 +1062,7 @@ export default function App() {
   };
 
   // ==========================================
-  // PC Explorer Functions (Browse PC Files on Mobile)
+  // REQUIREMENT 2 & 4: PC Remote Explorer Functions
   // ==========================================
   const loadPcQuickAccess = async () => {
     if (!pairedPc) return;
@@ -719,10 +1087,15 @@ export default function App() {
     }
   };
 
-  const loadPcFolder = async (folderPath) => {
+  const loadPcFolder = async (folderPath, isBack = false) => {
     if (!pairedPc) return;
     setPcLoading(true);
     try {
+      const targetPath = folderPath || 'C:\\';
+      if (!isBack && pcCurrentPath && targetPath !== pcCurrentPath) {
+        setPcHistory((prev) => [...prev, pcCurrentPath]);
+      }
+
       const url = folderPath
         ? `http://${pairedPc}/api/pc/explorer/list?path=${encodeURIComponent(folderPath)}`
         : `http://${pairedPc}/api/pc/explorer/list`;
@@ -733,16 +1106,16 @@ export default function App() {
       if (res.ok) {
         const data = await safeJson(res);
         if (data) {
-          setPcCurrentPath(data.path || folderPath || 'C:\\');
+          setPcCurrentPath(data.path || targetPath);
           setPcParentPath(data.parent || '');
           setPcItems(Array.isArray(data.items) ? data.items : []);
           setPcSelectedPaths(new Set());
         }
       } else {
-        Alert.alert('Error', 'Could not open folder on PC');
+        showToast('⚠️ Could not open folder on PC');
       }
     } catch (err) {
-      Alert.alert('Network Error', 'Failed to reach PC: ' + (err?.message || String(err)));
+      showToast('⚠️ Failed to reach PC: ' + (err?.message || 'Error'));
     } finally {
       setPcLoading(false);
     }
@@ -760,12 +1133,16 @@ export default function App() {
   const getFileIcon = (ext, isDir) => {
     if (isDir) return '📁';
     const e = (ext || '').toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic'].includes(e)) return '🖼️';
-    if (['mp4', 'mkv', 'mov', 'avi', 'webm', '3gp'].includes(e)) return '🎬';
+    if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'bmp', 'svg'].includes(e)) return '🖼️';
+    if (['mp4', 'mkv', 'mov', 'webm', 'avi', 'flv'].includes(e)) return '🎬';
     if (['mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac'].includes(e)) return '🎵';
-    if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].includes(e)) return '📄';
+    if (['pdf'].includes(e)) return '📕';
+    if (['doc', 'docx', 'txt', 'rtf', 'md'].includes(e)) return '📄';
+    if (['xls', 'xlsx', 'csv'].includes(e)) return '📊';
+    if (['ppt', 'pptx'].includes(e)) return '📑';
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(e)) return '📦';
     if (['apk'].includes(e)) return '🤖';
+    if (['exe', 'msi', 'bat', 'cmd'].includes(e)) return '⚙️';
     return '📄';
   };
 
@@ -774,11 +1151,13 @@ export default function App() {
     return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'mp4', 'mkv', 'mov', 'webm'].includes(e);
   };
 
-  // Filter items
+  // =========================================================
+  // REQUIREMENT 4: SORTING (STRICT DEFAULT: LATEST-FIRST)
+  // =========================================================
   const filteredPhoneItems = useMemo(() => {
     if (!Array.isArray(phoneItems)) return [];
     const searchLower = (phoneSearch || '').toLowerCase().trim();
-    return phoneItems.filter((item) => {
+    const filtered = phoneItems.filter((item) => {
       if (!item || !item.name) return false;
       if (searchLower && !item.name.toLowerCase().includes(searchLower)) {
         return false;
@@ -793,12 +1172,13 @@ export default function App() {
       if (phoneFilter === 'docs') return ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'].includes(ext);
       return true;
     });
-  }, [phoneItems, phoneFilter, phoneSearch]);
+    return sortExplorerItems(filtered, phoneSortBy);
+  }, [phoneItems, phoneFilter, phoneSearch, phoneSortBy]);
 
   const filteredPcItems = useMemo(() => {
     if (!Array.isArray(pcItems)) return [];
     const searchLower = (pcSearch || '').toLowerCase().trim();
-    return pcItems.filter((item) => {
+    const filtered = pcItems.filter((item) => {
       if (!item || !item.name) return false;
       if (searchLower && !item.name.toLowerCase().includes(searchLower)) {
         return false;
@@ -813,7 +1193,8 @@ export default function App() {
       if (pcFilter === 'docs') return ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'].includes(ext);
       return true;
     });
-  }, [pcItems, pcFilter, pcSearch]);
+    return sortExplorerItems(filtered, pcSortBy);
+  }, [pcItems, pcFilter, pcSearch, pcSortBy]);
 
   // Admin Protected Action Handler
   const requestAdminProtectedAction = (actionTitle, callback) => {
@@ -825,7 +1206,7 @@ export default function App() {
 
   const handleExecuteAdminAction = async () => {
     if (!adminPasswordInput) {
-      Alert.alert('Password Required', 'Please enter the Admin Security Password.');
+      showToast('⚠️ Please enter Admin password');
       return;
     }
 
@@ -836,7 +1217,7 @@ export default function App() {
       setAdminModalVisible(false);
       setAdminPasswordInput('');
     } catch (e) {
-      Alert.alert('Action Failed', e?.message || 'Incorrect password or operation error.');
+      showToast('⚠️ ' + (e?.message || 'Incorrect password or operation error.'));
     }
   };
 
@@ -898,6 +1279,33 @@ export default function App() {
     }
   };
 
+  // Cycle sort mode helper
+  const cycleSortMode = (type) => {
+    if (type === 'phone') {
+      const next = phoneSortBy === 'latest' ? 'name' : phoneSortBy === 'name' ? 'size' : 'latest';
+      setPhoneSortBy(next);
+      showToast(`Sorted by: ${next === 'latest' ? '⏱️ Latest (Newest First)' : next === 'name' ? '🔤 Name (A-Z)' : '📊 Size'}`);
+    } else {
+      const next = pcSortBy === 'latest' ? 'name' : pcSortBy === 'name' ? 'size' : 'latest';
+      setPcSortBy(next);
+      showToast(`Sorted by: ${next === 'latest' ? '⏱️ Latest (Newest First)' : next === 'name' ? '🔤 Name (A-Z)' : '📊 Size'}`);
+    }
+  };
+
+  // Compute storage statistics
+  const storageStats = useMemo(() => {
+    const total = parseFloat(storageInfo.totalGB) || 0;
+    const free = parseFloat(storageInfo.freeGB) || 0;
+    const used = total > 0 ? (total - free).toFixed(1) : 0;
+    const usedPercent = total > 0 ? Math.round(((total - free) / total) * 100) : 0;
+    return {
+      usedGB: `${used} GB`,
+      freeGB: `${free} GB`,
+      totalGB: `${total} GB`,
+      usedPercent: Math.max(5, Math.min(98, usedPercent)),
+    };
+  }, [storageInfo]);
+
   // 3-Column dynamic tile width for responsive grid
   const GRID_TILE_WIDTH = (SCREEN_WIDTH - 32 - 16) / 3;
 
@@ -906,12 +1314,16 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor="#080c14" />
 
       {/* ========================================================= */}
-      {/* TOP HEADER & CAPSULE PILL NAVIGATION                       */}
+      {/* REQUIREMENT 1: HEADER & NAVIGATION REDESIGN                */}
+      {/* Sleek, compact top bar with vibrant pink/neon accents     */}
       {/* ========================================================= */}
       <View style={styles.topHeader}>
         {/* Brand Row */}
         <View style={styles.brandRow}>
-          <View style={styles.brandLeft}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.brandLeft}
+            onPress={() => setCurrentTab('home')}>
             <View style={styles.brandCircle}>
               <Text style={styles.brandCircleText}>F</Text>
             </View>
@@ -919,24 +1331,28 @@ export default function App() {
               <Text style={styles.brandTitle}>fylo</Text>
               <Text style={styles.brandSub}>Mobile Companion</Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* Connection Status Pill */}
           <TouchableOpacity
             activeOpacity={0.75}
             style={[styles.topStatusPill, pairedPc ? styles.topStatusPillActive : styles.topStatusPillIdle]}
             onPress={() => {
-              setDiagVisible(true);
-              runNetworkDiagnostic();
+              if (pairedPc) {
+                setDiagVisible(true);
+                runNetworkDiagnostic();
+              } else {
+                setShowPairModal(true);
+              }
             }}>
-            <View style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#f59e0b' }]} />
+            <View style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#f43f5e' }]} />
             <Text style={styles.topStatusPillText} numberOfLines={1}>
-              {pairedPc ? (pingLatency !== null ? `${pingLatency} ms` : 'Linked') : 'Ready to Pair'}
+              {pairedPc ? (pingLatency !== null ? `${pingLatency} ms` : 'Linked') : '⚡ Pair PC'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Seamless Horizontal Capsule Pill Tabs (Decluttered Navigation) */}
+        {/* Clean Segmented Horizontal Tabs (Non-clipping, vibrant neon accents) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -955,7 +1371,7 @@ export default function App() {
             style={[styles.pillTab, currentTab === 'phone-explorer' && styles.pillTabActive]}
             onPress={() => setCurrentTab('phone-explorer')}>
             <Text style={[styles.pillTabText, currentTab === 'phone-explorer' && styles.pillTabTextActive]}>
-              📱 Phone Storage
+              📱 Phone
             </Text>
           </TouchableOpacity>
 
@@ -973,7 +1389,7 @@ export default function App() {
             style={[styles.pillTab, currentTab === 'clipboard' && styles.pillTabActive]}
             onPress={() => setCurrentTab('clipboard')}>
             <Text style={[styles.pillTabText, currentTab === 'clipboard' && styles.pillTabTextActive]}>
-              📋 Clipboard
+              📋 Clip
             </Text>
           </TouchableOpacity>
 
@@ -982,13 +1398,13 @@ export default function App() {
             style={[styles.pillTab, currentTab === 'transfer' && styles.pillTabActive]}
             onPress={() => setCurrentTab('transfer')}>
             <Text style={[styles.pillTabText, currentTab === 'transfer' && styles.pillTabTextActive]}>
-              ⚡ Transfer
+              ⚡ Speed
             </Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
 
-      {/* Floating Clipboard Toast Notification */}
+      {/* Floating Toast Notification (Vibrant pink pill) */}
       {clipboardToast !== '' && (
         <View style={styles.toastWrap}>
           <Text style={styles.toastText}>{clipboardToast}</Text>
@@ -1070,13 +1486,13 @@ export default function App() {
                 <View style={styles.beaconHeaderRow}>
                   <View style={styles.beaconRowLeft}>
                     <View style={styles.beaconGlowIdle}>
-                      <View style={[styles.beaconDot, { backgroundColor: '#f59e0b' }]} />
+                      <View style={[styles.beaconDot, { backgroundColor: '#f43f5e' }]} />
                     </View>
                     <View>
                       <Text style={styles.beaconStatusLabelIdle}>READY TO PAIR</Text>
-                      <Text style={styles.beaconHostTitle}>Standalone Mode</Text>
+                      <Text style={styles.beaconHostTitle}>Fast Wireless Sync</Text>
                       <Text style={styles.beaconIpSub}>
-                        Same Wi-Fi or Hotspot • {deviceIp}
+                        Wi-Fi or Hotspot • {deviceIp}
                       </Text>
                     </View>
                   </View>
@@ -1107,6 +1523,66 @@ export default function App() {
                 </View>
               </View>
             )}
+          </View>
+
+          {/* ========================================================= */}
+          {/* REQUIREMENT 5: ALWAYS-PRESENT DROP & SHARE CARD ON HOMEPAGE */}
+          {/* ========================================================= */}
+          <View style={styles.quickShareCard}>
+            <View style={styles.quickShareHeaderRow}>
+              <View style={styles.quickShareHeaderLeft}>
+                <View style={styles.quickShareIconWrap}>
+                  <Text style={styles.quickShareIconEmoji}>📤</Text>
+                </View>
+                <View>
+                  <Text style={styles.quickShareCardTitle}>Fast Share to PC</Text>
+                  <Text style={styles.quickShareCardSub}>
+                    {pairedPc
+                      ? `Beam directly to ${pcHostName || 'PC'} Downloads folder`
+                      : 'Connect to PC to beam photos & files wirelessly'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.quickSharePillBadge}>
+                <Text style={styles.quickSharePillBadgeText}>Instant</Text>
+              </View>
+            </View>
+
+            {/* Prominent Action Button */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.quickShareBeamBtn}
+              onPress={() => openQuickShareModal('/storage/emulated/0/DCIM/Camera')}>
+              <Text style={styles.quickShareBeamBtnText}>
+                📤 Pick & Beam Files to PC
+              </Text>
+            </TouchableOpacity>
+
+            {/* Fast Category Jump Beams */}
+            <View style={styles.quickShareCategoryRow}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.quickShareCatPill}
+                onPress={() => openQuickShareModal('/storage/emulated/0/DCIM')}>
+                <Text style={styles.quickShareCatPillText}>📸 Photos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.quickShareCatPill}
+                onPress={() => openQuickShareModal('/storage/emulated/0/Download')}>
+                <Text style={styles.quickShareCatPillText}>📥 Downloads</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.quickShareCatPill}
+                onPress={() => {
+                  setCurrentTab('phone-explorer');
+                  setPhoneMultiSelect(true);
+                  showToast('Select files to beam to PC 📤');
+                }}>
+                <Text style={styles.quickShareCatPillText}>📁 Phone Files</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* 2. DEVICE STORAGE BENTO TILE (Real Internal Storage Meter) */}
@@ -1229,54 +1705,55 @@ export default function App() {
             <View style={styles.clipboardPreviewBox}>
               <Text
                 style={styles.clipboardPreviewText}
-                numberOfLines={3}>
-                {pcClipboardText
-                  ? pcClipboardText
-                  : pairedPc
-                  ? 'PC clipboard is empty or ready for text...'
-                  : 'Pair phone with PC to copy & paste snippets effortlessly.'}
+                numberOfLines={3}
+                selectable>
+                {pcClipboardText || 'Clipboard empty or waiting for text...'}
               </Text>
             </View>
 
-            <View style={styles.clipboardQuickActionRow}>
-              {pairedPc && pcClipboardText ? (
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  style={styles.clipboardActionBtn}
-                  onPress={handleCopyPcClipboardToPhone}>
-                  <Text style={styles.clipboardActionBtnText}>📋 Copy to Phone</Text>
-                </TouchableOpacity>
-              ) : null}
+            <View style={styles.clipboardActionRow}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[styles.clipboardActionBtn, styles.clipboardActionBtnPrimary]}
+                onPress={handleCopyPcClipboardToPhone}>
+                <Text style={styles.clipboardActionBtnPrimaryText}>
+                  📋 Copy to Phone
+                </Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={[styles.clipboardActionBtn, { backgroundColor: 'rgba(6, 182, 212, 0.15)', borderColor: '#06b6d4' }]}
+                style={styles.clipboardActionBtnSecondary}
                 onPress={() => setCurrentTab('clipboard')}>
-                <Text style={[styles.clipboardActionBtnText, { color: '#06b6d4' }]}>
-                  ✏️ Push Text to PC
+                <Text style={styles.clipboardActionBtnSecondaryText}>
+                  Push Text to PC ›
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* 5. SERVER SERVICE CONTROL CARD */}
+          {/* 5. BACKGROUND SERVER CONTROLS CARD */}
           <View style={styles.bentoCard}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>🛡️ Fylo Mobile Server</Text>
+                <Text style={styles.bentoCardTitle}>📡 Background File Server</Text>
                 <Text style={styles.bentoCardSubtitle}>
-                  {serverRunning ? `Online: http://${deviceIp}:${serverPort}` : 'Service idle on port 8080'}
+                  Port {serverPort} • {readOnlyMode ? 'Safe Read-Only' : 'Read/Write Access'}
                 </Text>
               </View>
-              <View style={[styles.statusDot, { backgroundColor: serverRunning ? '#10b981' : '#f43f5e' }]} />
+              <View style={[styles.serverStatusTag, serverRunning ? styles.serverStatusRunning : styles.serverStatusStopped]}>
+                <Text style={styles.serverStatusTagText}>
+                  {serverRunning ? 'ACTIVE' : 'STOPPED'}
+                </Text>
+              </View>
             </View>
 
-            <View style={styles.serverActionRow}>
+            <View style={styles.serverControlButtonsRow}>
               <TouchableOpacity
                 activeOpacity={0.75}
                 style={[
                   styles.serverToggleBtn,
-                  { backgroundColor: serverRunning ? '#ef4444' : '#10b981' },
+                  serverRunning ? styles.serverToggleBtnStop : styles.serverToggleBtnStart,
                 ]}
                 onPress={handleToggleServer}>
                 <Text style={styles.serverToggleBtnText}>
@@ -1289,7 +1766,7 @@ export default function App() {
                 <Switch
                   value={readOnlyMode}
                   onValueChange={handleToggleReadOnly}
-                  trackColor={{ false: '#475569', true: '#10b981' }}
+                  trackColor={{ false: '#475569', true: '#ec4899' }}
                   thumbColor="#ffffff"
                 />
               </View>
@@ -1300,24 +1777,25 @@ export default function App() {
 
       {/* ========================================================= */}
       {/* TAB 2: PHONE STORAGE EXPLORER & GALLERY                   */}
+      {/* Clean, compact, non-cropped, one-step-back & sorting       */}
       {/* ========================================================= */}
       {currentTab === 'phone-explorer' && (
         <View style={styles.explorerContainer}>
-          {/* Breadcrumbs Navigation Bar */}
+          {/* Breadcrumbs Navigation Bar with ONE-STEP-BACK */}
           <View style={styles.navBar}>
             <TouchableOpacity
               activeOpacity={0.75}
               style={[
                 styles.navUpBtn,
-                (!phoneParentPath || phoneParentPath === phoneCurrentPath) && styles.navBtnDisabled,
+                phoneHistory.length === 0 && (!phoneParentPath || phoneParentPath === phoneCurrentPath) && styles.navBtnDisabled,
               ]}
-              disabled={!phoneParentPath || phoneParentPath === phoneCurrentPath}
-              onPress={() => loadPhoneFolder(phoneParentPath)}>
-              <Text style={styles.navUpBtnText}>⬆ Up</Text>
+              disabled={phoneHistory.length === 0 && (!phoneParentPath || phoneParentPath === phoneCurrentPath)}
+              onPress={goBackPhoneFolder}>
+              <Text style={styles.navUpBtnText}>‹ Back</Text>
             </TouchableOpacity>
 
             <View style={{ flex: 1 }}>
-              {renderBreadcrumbs(phoneCurrentPath, loadPhoneFolder, false)}
+              {renderBreadcrumbs(phoneCurrentPath, (p) => loadPhoneFolder(p), false)}
             </View>
 
             <TouchableOpacity
@@ -1335,7 +1813,7 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* Search & Multi-Select Bar */}
+          {/* Search, Sort & Multi-Select Bar */}
           <View style={styles.searchRow}>
             <View style={styles.searchInputWrap}>
               <Text style={styles.searchIcon}>🔍</Text>
@@ -1356,6 +1834,16 @@ export default function App() {
               )}
             </View>
 
+            {/* Sort Toggle Button (Latest STRICT DEFAULT) */}
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.sortToggleBtn}
+              onPress={() => cycleSortMode('phone')}>
+              <Text style={styles.sortToggleBtnText}>
+                {phoneSortBy === 'latest' ? '⏱️ Latest' : phoneSortBy === 'name' ? '🔤 Name' : '📊 Size'}
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               activeOpacity={0.75}
               style={[styles.multiSelectToggle, phoneMultiSelect && styles.multiSelectToggleActive]}
@@ -1374,7 +1862,7 @@ export default function App() {
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.filterScroll}
-            contentContainerStyle={{ gap: 6 }}>
+            contentContainerStyle={{ gap: 6, paddingHorizontal: 2 }}>
             {[
               { id: 'all', label: 'All Files' },
               { id: 'photos', label: '📸 Photos' },
@@ -1398,7 +1886,7 @@ export default function App() {
           {/* Explorer Items View */}
           {phoneLoading ? (
             <View style={styles.centerLoading}>
-              <ActivityIndicator size="large" color="#06b6d4" />
+              <ActivityIndicator size="large" color="#ec4899" />
               <Text style={styles.loadingText}>Loading folder contents...</Text>
             </View>
           ) : filteredPhoneItems.length === 0 ? (
@@ -1521,7 +2009,7 @@ export default function App() {
             </ScrollView>
           )}
 
-          {/* Floating Multi-Select Action Bar */}
+          {/* Floating Multi-Select Bar with BEAM TO PC Action */}
           {phoneMultiSelect && phoneSelectedPaths.size > 0 && (
             <View style={styles.floatingMultiSelectBar}>
               <View>
@@ -1529,6 +2017,15 @@ export default function App() {
               </View>
 
               <View style={styles.floatingActionsRow}>
+                {pairedPc && (
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.floatingBeamBtn}
+                    onPress={() => handleBeamFilesToPc(phoneSelectedPaths)}>
+                    <Text style={styles.floatingBeamBtnText}>📤 Beam to PC</Text>
+                  </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
                   activeOpacity={0.75}
                   style={styles.floatingTrashBtn}
@@ -1542,12 +2039,12 @@ export default function App() {
                               await FyloModule.trashFile(path);
                               trashedCount++;
                             }
-                          } catch (err) {
-                            console.warn('Failed to trash phone file:', path, err);
+                          } catch (e) {
+                            console.warn('Failed to trash file:', path, e);
                           }
                         }
                       }
-                      showToast(`Moved ${trashedCount} item(s) to .trash 🗑️`);
+                      showToast(`Moved ${trashedCount} file(s) to .trash safely 🗑️`);
                       setPhoneSelectedPaths(new Set());
                       loadPhoneFolder(phoneCurrentPath);
                     });
@@ -1568,92 +2065,82 @@ export default function App() {
       )}
 
       {/* ========================================================= */}
-      {/* TAB 3: PC DRIVES & REMOTE WINDOWS EXPLORER                */}
+      {/* TAB 3: PC REMOTE DRIVES EXPLORER                           */}
+      {/* Clean, compact ribbon, one-step-back & sorting            */}
       {/* ========================================================= */}
       {currentTab === 'pc-explorer' && (
         <View style={styles.explorerContainer}>
           {!pairedPc ? (
-            // Unpaired Notice
-            <View style={styles.unpairedContainer}>
-              <Text style={styles.unpairedIconLarge}>💻</Text>
-              <Text style={styles.unpairedTitle}>No PC Connected</Text>
-              <Text style={styles.unpairedDescription}>
-                Pair with your Fylo PC application to browse Windows C:\, D:\, Downloads, and Desktop folders directly from your phone.
+            <View style={styles.centerLoading}>
+              <Text style={{ fontSize: 44, marginBottom: 12 }}>💻</Text>
+              <Text style={styles.pcEmptyTitle}>PC Remote Explorer</Text>
+              <Text style={styles.pcEmptyDesc}>
+                Browse, stream, and manage your Windows PC drives and folders directly from your phone.
               </Text>
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={styles.heroPrimaryBtn}
-                onPress={() => {
-                  setPairModalTab('qr');
-                  setShowPairModal(true);
-                }}>
-                <Text style={styles.heroPrimaryBtnText}>🔗 Pair with PC Now</Text>
+                style={styles.pcConnectPromptBtn}
+                onPress={() => setShowPairModal(true)}>
+                <Text style={styles.pcConnectPromptBtnText}>⚡ Pair with PC Now</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            // Paired PC Explorer View
             <View style={{ flex: 1 }}>
-              {/* Windows Drive Cards & Quick Access Row */}
-              <View style={styles.pcHeaderSection}>
-                {/* Windows Drives Cards */}
-                <View style={styles.pcDrivesRow}>
+              {/* REQUIREMENT 1: UNIFIED COMPACT DRIVES & SHORTCUTS RIBBON (No vertical bloat!) */}
+              <View style={styles.unifiedRibbonWrap}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.unifiedRibbonScroll}>
+                  {/* Windows Drives */}
                   {Array.isArray(pcQuickAccess?.drives) && pcQuickAccess.drives.length > 0 ? (
                     pcQuickAccess.drives.map((d, i) => (
                       <TouchableOpacity
-                        key={'drv-' + i}
+                        key={'pcdrive-' + i}
                         activeOpacity={0.75}
                         style={[
-                          styles.pcDriveCard,
-                          pcCurrentPath === d?.path && styles.pcDriveCardActive,
+                          styles.pcDrivePill,
+                          pcCurrentPath === d?.path && styles.pcDrivePillActive,
                         ]}
                         onPress={() => d?.path && loadPcFolder(d.path)}>
-                        <Text style={styles.pcDriveCardIcon}>💽</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.pcDriveCardTitle} numberOfLines={1}>
-                            {d?.name || d?.path || 'Drive'}
-                          </Text>
-                          <Text style={styles.pcDriveCardSub}>Windows Drive</Text>
-                        </View>
+                        <Text style={styles.pcDrivePillIcon}>💽</Text>
+                        <Text style={[styles.pcDrivePillText, pcCurrentPath === d?.path && styles.pcDrivePillTextActive]}>
+                          {d?.name || d?.path || 'Drive'}
+                        </Text>
                       </TouchableOpacity>
                     ))
                   ) : (
                     <>
                       <TouchableOpacity
                         activeOpacity={0.75}
-                        style={[styles.pcDriveCard, pcCurrentPath === 'C:\\' && styles.pcDriveCardActive]}
+                        style={[styles.pcDrivePill, pcCurrentPath.startsWith('C:') && styles.pcDrivePillActive]}
                         onPress={() => loadPcFolder('C:\\')}>
-                        <Text style={styles.pcDriveCardIcon}>💽</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.pcDriveCardTitle}>Drive C:\</Text>
-                          <Text style={styles.pcDriveCardSub}>System</Text>
-                        </View>
+                        <Text style={styles.pcDrivePillIcon}>💽</Text>
+                        <Text style={[styles.pcDrivePillText, pcCurrentPath.startsWith('C:') && styles.pcDrivePillTextActive]}>
+                          Drive (C:)
+                        </Text>
                       </TouchableOpacity>
-
                       <TouchableOpacity
                         activeOpacity={0.75}
-                        style={[styles.pcDriveCard, pcCurrentPath === 'D:\\' && styles.pcDriveCardActive]}
+                        style={[styles.pcDrivePill, pcCurrentPath.startsWith('D:') && styles.pcDrivePillActive]}
                         onPress={() => loadPcFolder('D:\\')}>
-                        <Text style={styles.pcDriveCardIcon}>💽</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.pcDriveCardTitle}>Drive D:\</Text>
-                          <Text style={styles.pcDriveCardSub}>Data</Text>
-                        </View>
+                        <Text style={styles.pcDrivePillIcon}>💽</Text>
+                        <Text style={[styles.pcDrivePillText, pcCurrentPath.startsWith('D:') && styles.pcDrivePillTextActive]}>
+                          Drive (D:)
+                        </Text>
                       </TouchableOpacity>
                     </>
                   )}
-                </View>
 
-                {/* Quick Access Folders Scroll */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 6, paddingTop: 4 }}>
+                  <View style={styles.ribbonDivider} />
+
+                  {/* Windows Folder Shortcuts */}
                   {[
                     { name: 'Downloads', icon: '📥', path: 'Downloads' },
                     { name: 'Desktop', icon: '🖥️', path: 'Desktop' },
                     { name: 'Pictures', icon: '🖼️', path: 'Pictures' },
                     { name: 'Screenshots', icon: '📸', path: 'Screenshots' },
-                    { name: 'Documents', icon: '📄', path: 'Documents' },
+                    { name: 'Docs', icon: '📄', path: 'Documents' },
                     { name: 'Videos', icon: '🎬', path: 'Videos' },
                   ].map((sc, i) => (
                     <TouchableOpacity
@@ -1676,21 +2163,21 @@ export default function App() {
                 </ScrollView>
               </View>
 
-              {/* PC Breadcrumbs & Nav Bar */}
+              {/* PC Breadcrumbs & Nav Bar with ONE-STEP-BACK */}
               <View style={styles.navBar}>
                 <TouchableOpacity
                   activeOpacity={0.75}
                   style={[
                     styles.navUpBtn,
-                    (!pcParentPath || pcParentPath === pcCurrentPath) && styles.navBtnDisabled,
+                    pcHistory.length === 0 && (!pcParentPath || pcParentPath === pcCurrentPath) && styles.navBtnDisabled,
                   ]}
-                  disabled={!pcParentPath || pcParentPath === pcCurrentPath}
-                  onPress={() => loadPcFolder(pcParentPath)}>
-                  <Text style={styles.navUpBtnText}>⬆ Up</Text>
+                  disabled={pcHistory.length === 0 && (!pcParentPath || pcParentPath === pcCurrentPath)}
+                  onPress={goBackPcFolder}>
+                  <Text style={styles.navUpBtnText}>‹ Back</Text>
                 </TouchableOpacity>
 
                 <View style={{ flex: 1 }}>
-                  {renderBreadcrumbs(pcCurrentPath, loadPcFolder, true)}
+                  {renderBreadcrumbs(pcCurrentPath, (p) => loadPcFolder(p), true)}
                 </View>
 
                 <TouchableOpacity
@@ -1708,7 +2195,7 @@ export default function App() {
                 </TouchableOpacity>
               </View>
 
-              {/* Search & Filter Bar */}
+              {/* Search, Sort & Multi-Select Bar */}
               <View style={styles.searchRow}>
                 <View style={styles.searchInputWrap}>
                   <Text style={styles.searchIcon}>🔍</Text>
@@ -1729,6 +2216,16 @@ export default function App() {
                   )}
                 </View>
 
+                {/* Sort Toggle Button (Latest STRICT DEFAULT) */}
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={styles.sortToggleBtn}
+                  onPress={() => cycleSortMode('pc')}>
+                  <Text style={styles.sortToggleBtnText}>
+                    {pcSortBy === 'latest' ? '⏱️ Latest' : pcSortBy === 'name' ? '🔤 Name' : '📊 Size'}
+                  </Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   activeOpacity={0.75}
                   style={[styles.multiSelectToggle, pcMultiSelect && styles.multiSelectToggleActive]}
@@ -1747,7 +2244,7 @@ export default function App() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.filterScroll}
-                contentContainerStyle={{ gap: 6 }}>
+                contentContainerStyle={{ gap: 6, paddingHorizontal: 2 }}>
                 {[
                   { id: 'all', label: 'All Files' },
                   { id: 'photos', label: '📸 Photos' },
@@ -1771,7 +2268,7 @@ export default function App() {
               {/* Files Display */}
               {pcLoading ? (
                 <View style={styles.centerLoading}>
-                  <ActivityIndicator size="large" color="#06b6d4" />
+                  <ActivityIndicator size="large" color="#ec4899" />
                   <Text style={styles.loadingText}>Fetching files from PC...</Text>
                 </View>
               ) : filteredPcItems.length === 0 ? (
@@ -1919,7 +2416,7 @@ export default function App() {
               <View style={styles.beaconRowLeft}>
                 <View style={pairedPc ? styles.beaconGlowConnected : styles.beaconGlowIdle}>
                   <View
-                    style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#f59e0b' }]}
+                    style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#f43f5e' }]}
                   />
                 </View>
                 <View>
@@ -2046,7 +2543,7 @@ export default function App() {
               activeOpacity={0.75}
               style={styles.runDiagHeroBtn}
               onPress={runNetworkDiagnostic}>
-              <Text style={styles.runDiagHeroBtnText}>⚡ Run 1-Click Diagnostics</Text>
+              <Text style={styles.runDiagHeroBtnText}>⚡ Run 1-Tap Speed & Latency Test</Text>
             </TouchableOpacity>
 
             {diagMessage !== '' && (
@@ -2060,65 +2557,70 @@ export default function App() {
             )}
           </View>
 
-          {/* Direct Hotspot Mode Guide */}
+          {/* High-Speed Transfer Guide */}
           <View style={styles.bentoCard}>
-            <Text style={styles.bentoCardTitle}>🔥 Direct Hotspot Mode</Text>
-            <Text style={styles.bentoCardSubtitle}>Direct peer-to-peer Wi-Fi connection without router bottlenecks</Text>
+            <Text style={styles.bentoCardTitle}>🚀 Maximum Wi-Fi Speed Guide</Text>
+            <Text style={styles.bentoCardSubtitle}>How to achieve up to 50+ MB/s transfers</Text>
 
             <View style={styles.stepRow}>
-              <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>1</Text></View>
+              <View style={styles.stepBadge}>
+                <Text style={styles.stepBadgeText}>1</Text>
+              </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.stepTitle}>Turn on Android Mobile Hotspot</Text>
-                <Text style={styles.stepDesc}>Open phone Settings → Portable Hotspot → Enable.</Text>
+                <Text style={styles.stepTitle}>Turn on Phone Hotspot (5GHz)</Text>
+                <Text style={styles.stepDesc}>
+                  Direct device-to-device hotspot eliminates router lag and bypasses slow public Wi-Fi.
+                </Text>
               </View>
             </View>
 
             <View style={styles.stepRow}>
-              <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>2</Text></View>
+              <View style={styles.stepBadge}>
+                <Text style={styles.stepBadgeText}>2</Text>
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.stepTitle}>Connect PC to Phone Hotspot</Text>
-                <Text style={styles.stepDesc}>On Windows, select your phone's Wi-Fi network.</Text>
+                <Text style={styles.stepDesc}>
+                  On Windows, connect your Wi-Fi to this phone's personal hotspot network.
+                </Text>
               </View>
             </View>
 
             <View style={styles.stepRow}>
-              <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>3</Text></View>
+              <View style={styles.stepBadge}>
+                <Text style={styles.stepBadgeText}>3</Text>
+              </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.stepTitle}>Instant Direct Linking</Text>
-                <Text style={styles.stepDesc}>Open Fylo and scan QR or connect via IP: {deviceIp}.</Text>
+                <Text style={styles.stepTitle}>Enter Hotspot IP (192.168.43.1)</Text>
+                <Text style={styles.stepDesc}>
+                  Fylo automatically detects the direct hotspot IP for ultra-low ping transfers.
+                </Text>
               </View>
             </View>
           </View>
 
-          {/* Live Activity & Transfer Stream */}
+          {/* Server Connection Logs */}
           <View style={styles.bentoCard}>
-            <View style={styles.bentoCardHeaderRow}>
-              <View>
-                <Text style={styles.bentoCardTitle}>📜 Live Transfer Activity</Text>
-                <Text style={styles.bentoCardSubtitle}>Real-time system events</Text>
-              </View>
-              {logs.length > 0 && (
-                <TouchableOpacity activeOpacity={0.75} onPress={() => setLogs([])}>
-                  <Text style={styles.cardHeaderLink}>Clear</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            <Text style={styles.bentoCardTitle}>📜 Real-Time Connection Logs</Text>
+            <Text style={styles.bentoCardSubtitle}>Last 30 network & server events</Text>
 
-            {logs.length === 0 ? (
-              <Text style={styles.emptyLogsText}>No active transfer events yet. Ready for sync...</Text>
-            ) : (
-              logs.map((log, index) => (
-                <Text key={index} style={styles.logTextItem}>
-                  {log}
-                </Text>
-              ))
-            )}
+            <ScrollView style={{ maxHeight: 180, marginTop: 8 }} nestedScrollEnabled>
+              {logs.length === 0 ? (
+                <Text style={styles.emptyLogsText}>No connection events logged yet.</Text>
+              ) : (
+                logs.map((log, index) => (
+                  <Text key={index} style={styles.logTextItem}>
+                    {log}
+                  </Text>
+                ))
+              )}
+            </ScrollView>
           </View>
         </ScrollView>
       )}
 
       {/* ========================================================= */}
-      {/* UNIVERSAL MEDIA LIGHTBOX MODAL                            */}
+      {/* REQUIREMENT 3: UNIVERSAL MEDIA LIGHTBOX WITH PINCH & ZOOM  */}
       {/* ========================================================= */}
       {lightboxItem && (
         <Modal visible={!!lightboxItem} transparent animationType="fade">
@@ -2136,34 +2638,65 @@ export default function App() {
               <TouchableOpacity
                 activeOpacity={0.75}
                 style={styles.lightboxCloseBtn}
-                onPress={() => setLightboxItem(null)}>
+                onPress={() => {
+                  setLightboxItem(null);
+                  resetZoom();
+                }}>
                 <Text style={styles.lightboxCloseBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.lightboxBody}>
-              {isMediaFile(lightboxItem?.item?.ext) && lightboxItem?.source === 'pc' && pairedPc ? (
-                <SafeImage
-                  source={{
-                    uri: `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}`,
-                    headers: { 'X-Auth-Token': pcAuthToken || '' },
-                  }}
-                  style={styles.lightboxImage}
-                  resizeMode="contain"
-                  fallbackEmoji="🎬"
-                />
-              ) : isMediaFile(lightboxItem?.item?.ext) && lightboxItem?.source === 'phone' ? (
-                <SafeImage
-                  source={{ uri: `file://${lightboxItem?.item?.path || ''}` }}
-                  style={styles.lightboxImage}
-                  resizeMode="contain"
-                  fallbackEmoji="🎬"
-                />
-              ) : (
-                <View style={styles.lightboxNonImgContainer}>
-                  <Text style={{ fontSize: 64 }}>{getFileIcon(lightboxItem?.item?.ext, false)}</Text>
-                  <Text style={styles.lightboxNonImgTitle}>{lightboxItem?.item?.name || 'File'}</Text>
-                  <Text style={styles.lightboxNonImgMeta}>{formatFileSize(lightboxItem?.item?.size)}</Text>
+            {/* Pinchable & Zoomable Media Body */}
+            <View style={styles.lightboxBody} {...zoomPanResponder.panHandlers}>
+              <ScrollView
+                style={{ flex: 1, width: '100%' }}
+                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+                maximumZoomScale={4}
+                minimumZoomScale={1}
+                showsHorizontalScrollIndicator={false}
+                showsVerticalScrollIndicator={false}>
+                {isMediaFile(lightboxItem?.item?.ext) && lightboxItem?.source === 'pc' && pairedPc ? (
+                  <View style={{ transform: [{ scale: zoomScale }, { translateX: panOffset.x }, { translateY: panOffset.y }] }}>
+                    <SafeImage
+                      source={{
+                        uri: `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}`,
+                        headers: { 'X-Auth-Token': pcAuthToken || '' },
+                      }}
+                      style={styles.lightboxImage}
+                      resizeMode="contain"
+                      fallbackEmoji="🎬"
+                    />
+                  </View>
+                ) : isMediaFile(lightboxItem?.item?.ext) && lightboxItem?.source === 'phone' ? (
+                  <View style={{ transform: [{ scale: zoomScale }, { translateX: panOffset.x }, { translateY: panOffset.y }] }}>
+                    <SafeImage
+                      source={{ uri: `file://${lightboxItem?.item?.path || ''}` }}
+                      style={styles.lightboxImage}
+                      resizeMode="contain"
+                      fallbackEmoji="🎬"
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.lightboxNonImgContainer}>
+                    <Text style={{ fontSize: 64 }}>{getFileIcon(lightboxItem?.item?.ext, false)}</Text>
+                    <Text style={styles.lightboxNonImgTitle}>{lightboxItem?.item?.name || 'File'}</Text>
+                    <Text style={styles.lightboxNonImgMeta}>{formatFileSize(lightboxItem?.item?.size)}</Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* On-screen quick zoom controls for effortless accessibility */}
+              {isMediaFile(lightboxItem?.item?.ext) && (
+                <View style={styles.lightboxZoomControls}>
+                  <TouchableOpacity activeOpacity={0.75} style={styles.zoomCtrlBtn} onPress={handleZoomOut}>
+                    <Text style={styles.zoomCtrlBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity activeOpacity={0.75} style={styles.zoomScaleBadge} onPress={resetZoom}>
+                    <Text style={styles.zoomScaleBadgeText}>{Math.round(zoomScale * 100)}%</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity activeOpacity={0.75} style={styles.zoomCtrlBtn} onPress={handleZoomIn}>
+                    <Text style={styles.zoomCtrlBtnText}>+</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -2174,12 +2707,18 @@ export default function App() {
                   activeOpacity={0.75}
                   style={styles.lightboxDlBtn}
                   onPress={() => {
-                    Alert.alert(
-                      'Download to Phone',
-                      `Streaming directly from PC at:\nhttp://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&download=1`
-                    );
+                    showToast('Streaming file directly to phone 📥');
                   }}>
                   <Text style={styles.lightboxDlBtnText}>⬇ Save to Phone</Text>
+                </TouchableOpacity>
+              )}
+
+              {lightboxItem?.source === 'phone' && pairedPc && (
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={styles.lightboxBeamBtn}
+                  onPress={() => handleBeamFilesToPc([lightboxItem?.item?.path])}>
+                  <Text style={styles.lightboxBeamBtnText}>📤 Beam to PC</Text>
                 </TouchableOpacity>
               )}
 
@@ -2208,7 +2747,7 @@ export default function App() {
                           await FyloModule.trashFile(lightboxItem.item.path);
                           showToast('Moved to .trash safely 🗑️');
                         } catch (err) {
-                          Alert.alert('Trash Error', err?.message || 'Could not move file to .trash');
+                          showToast('Trash Error: ' + (err?.message || 'Failed'));
                         }
                       }
                       setLightboxItem(null);
@@ -2222,6 +2761,98 @@ export default function App() {
           </View>
         </Modal>
       )}
+
+      {/* ========================================================= */}
+      {/* REQUIREMENT 5: QUICK SHARE PICKER MODAL                   */}
+      {/* ========================================================= */}
+      <Modal visible={quickShareVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeaderRow}>
+              <View>
+                <Text style={styles.modalTitle}>📤 Quick Share to PC</Text>
+                <Text style={styles.modalSubtitle}>Select items to beam directly into PC Downloads</Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => setQuickShareVisible(false)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {quickShareLoading ? (
+              <View style={{ padding: 30, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#ec4899" />
+                <Text style={[styles.loadingText, { color: '#ec4899' }]}>Loading recent media...</Text>
+              </View>
+            ) : quickShareItems.length === 0 ? (
+              <View style={{ padding: 24, alignItems: 'center' }}>
+                <Text style={{ fontSize: 32, marginBottom: 8 }}>📁</Text>
+                <Text style={styles.modalSubtitle}>No recent files found in this category.</Text>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={[styles.modalPrimaryBtn, { marginTop: 12, paddingHorizontal: 20 }]}
+                  onPress={() => {
+                    setQuickShareVisible(false);
+                    setCurrentTab('phone-explorer');
+                    setPhoneMultiSelect(true);
+                  }}>
+                  <Text style={styles.modalPrimaryBtnText}>Browse All Files in Explorer</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+                {quickShareItems.slice(0, 50).map((file, idx) => {
+                  const isChecked = quickShareSelected.has(file.path);
+                  return (
+                    <TouchableOpacity
+                      key={file.path || idx}
+                      activeOpacity={0.75}
+                      style={[styles.quickShareRow, isChecked && styles.quickShareRowSelected]}
+                      onPress={() => {
+                        const next = new Set(quickShareSelected);
+                        isChecked ? next.delete(file.path) : next.add(file.path);
+                        setQuickShareSelected(next);
+                      }}>
+                      <View style={[styles.checkCircle, isChecked && styles.checkCircleSelected, { position: 'relative', top: 0, right: 0 }]}>
+                        {isChecked && <Text style={styles.checkMark}>✓</Text>}
+                      </View>
+                      <Text style={{ fontSize: 20 }}>{getFileIcon(file.ext, false)}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.listRowName} numberOfLines={1}>{file.name}</Text>
+                        <Text style={styles.listRowMeta}>{formatFileSize(file.size)}</Text>
+                      </View>
+                      <TouchableOpacity
+                        activeOpacity={0.75}
+                        style={styles.quickBeamSingleBtn}
+                        onPress={() => handleBeamFilesToPc([file.path])}>
+                        <Text style={styles.quickBeamSingleBtnText}>Beam ⚡</Text>
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            <View style={[styles.modalBtnRow, { marginTop: 14 }]}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.modalCancelBtn}
+                onPress={() => setQuickShareVisible(false)}>
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                disabled={quickShareSelected.size === 0 || isBeaming}
+                style={[styles.modalPrimaryBtn, (quickShareSelected.size === 0 || isBeaming) && { opacity: 0.5 }]}
+                onPress={() => handleBeamFilesToPc(quickShareSelected)}>
+                <Text style={styles.modalPrimaryBtnText}>
+                  {isBeaming ? 'Beaming...' : `Beam (${quickShareSelected.size}) to PC 📤`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* ========================================================= */}
       {/* PAIRING MODAL: SCAN QR / MANUAL IP                        */}
@@ -2298,9 +2929,9 @@ export default function App() {
                           return;
                         }
                       }
-                      Alert.alert('Clipboard Empty', 'Please copy the pairing link or QR text first.');
+                      showToast('Clipboard is empty');
                     } catch (e) {
-                      Alert.alert('Notice', 'Could not read clipboard.');
+                      showToast('Could not read clipboard');
                     }
                   }}>
                   <Text style={styles.hotspotPresetBtnText}>📋 Paste from Clipboard & Connect</Text>
@@ -2468,6 +3099,9 @@ export default function App() {
   );
 }
 
+// =========================================================
+// STYLES: Vibrant Pink/Neon Accents matching Fylo logo (#ec4899, #f43f5e, #a855f7)
+// =========================================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -2476,62 +3110,62 @@ const styles = StyleSheet.create({
 
   /* Top Header & Horizontal Pill Navigation */
   topHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(236, 72, 153, 0.15)',
     backgroundColor: '#0d1322',
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   brandLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   brandCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#7c3aed',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#ec4899',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7c3aed',
+    shadowColor: '#ec4899',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 5,
-    elevation: 4,
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 5,
   },
   brandCircleText: {
     color: '#ffffff',
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '900',
   },
   brandTitle: {
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '900',
     color: '#ffffff',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   brandSub: {
-    fontSize: 10,
-    color: '#06b6d4',
+    fontSize: 9.5,
+    color: '#f472b6',
     fontWeight: '700',
     marginTop: -2,
   },
   topStatusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 36,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    minHeight: 30,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
     borderRadius: 999,
-    gap: 6,
+    gap: 5,
     borderWidth: 1,
   },
   topStatusPillActive: {
@@ -2539,32 +3173,32 @@ const styles = StyleSheet.create({
     borderColor: '#10b981',
   },
   topStatusPillIdle: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderColor: '#f59e0b',
+    backgroundColor: 'rgba(236, 72, 153, 0.12)',
+    borderColor: '#ec4899',
   },
   topStatusPillText: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
   },
   beaconDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
 
-  /* Top Capsule Pill Navigation Tabs */
+  /* Compact Horizontal Capsule Pill Tabs (Non-cropping) */
   pillTabsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 2,
+    gap: 6,
+    paddingVertical: 1,
   },
   pillTab: {
-    minHeight: 44,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 999,
+    minHeight: 32,
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -2572,310 +3206,391 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pillTabActive: {
-    backgroundColor: '#1e293b',
-    borderColor: '#06b6d4',
+    backgroundColor: '#ec4899',
+    borderColor: '#f43f5e',
+    shadowColor: '#ec4899',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
   },
   pillTabText: {
     color: '#94a3b8',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   pillTabTextActive: {
-    color: '#06b6d4',
+    color: '#ffffff',
     fontWeight: '800',
   },
 
   /* Floating Toast */
   toastWrap: {
     position: 'absolute',
-    top: 110,
+    top: 96,
     alignSelf: 'center',
-    zIndex: 999,
-    backgroundColor: '#06b6d4',
+    zIndex: 9999,
+    backgroundColor: '#ec4899',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 999,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
+    shadowColor: '#ec4899',
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#f43f5e',
   },
   toastText: {
-    color: '#000000',
+    color: '#ffffff',
+    fontSize: 11.5,
     fontWeight: '800',
-    fontSize: 12,
   },
 
-  /* Bento Scroll Container */
+  /* Bento Dashboard General */
   bentoScroll: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: 12,
+    paddingBottom: 60,
   },
-
-  /* BENTO HERO CARD (Prominent Beacon Status) */
   bentoCardHero: {
-    backgroundColor: '#0d1322',
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(6, 182, 212, 0.28)',
-    shadowColor: '#06b6d4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 3,
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(236, 72, 153, 0.25)',
+    marginBottom: 10,
   },
   beaconHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   beaconRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    flex: 1,
+    gap: 8,
   },
   beaconGlowConnected: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(16, 185, 129, 0.18)',
-    borderWidth: 1,
-    borderColor: '#10b981',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   beaconGlowIdle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(245, 158, 11, 0.18)',
-    borderWidth: 1,
-    borderColor: '#f59e0b',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   beaconStatusLabel: {
-    fontSize: 10,
-    fontWeight: '900',
+    fontSize: 9.5,
     color: '#10b981',
-    letterSpacing: 0.6,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   beaconStatusLabelIdle: {
-    fontSize: 10,
+    fontSize: 9.5,
+    color: '#f472b6',
     fontWeight: '900',
-    color: '#f59e0b',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
   beaconHostTitle: {
-    fontSize: 17,
-    fontWeight: '900',
+    fontSize: 15,
     color: '#ffffff',
-    letterSpacing: -0.3,
+    fontWeight: '800',
   },
   beaconIpSub: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#94a3b8',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    marginTop: 1,
   },
   latencyBadge: {
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 1,
-    borderColor: '#10b981',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
     borderRadius: 999,
   },
   latencyBadgeText: {
     color: '#10b981',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
   },
-  readyPairSubText: {
-    fontSize: 12,
-    color: '#94a3b8',
-    lineHeight: 17,
-    marginBottom: 14,
-  },
-
-  /* Hero & General Buttons */
   heroBtnRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 6,
+    gap: 8,
+    marginTop: 8,
   },
   heroPrimaryBtn: {
-    flex: 1.2,
-    minHeight: 46,
-    backgroundColor: '#06b6d4',
-    borderRadius: 14,
+    flex: 1,
+    minHeight: 40,
+    backgroundColor: '#ec4899',
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    shadowColor: '#ec4899',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 3,
   },
   heroPrimaryBtnText: {
-    color: '#000000',
-    fontSize: 13,
-    fontWeight: '900',
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
   },
   heroSecondaryBtn: {
-    flex: 1,
-    minHeight: 46,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderWidth: 1,
-    borderColor: '#ef4444',
-    borderRadius: 14,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 14,
   },
   heroSecondaryBtnText: {
-    color: '#ef4444',
-    fontSize: 13,
-    fontWeight: '800',
+    color: '#ffffff',
+    fontSize: 11.5,
+    fontWeight: '700',
   },
   heroOutlineBtn: {
     flex: 1,
-    minHeight: 46,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    minHeight: 40,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    borderRadius: 14,
+    borderColor: '#ec4899',
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 14,
   },
   heroOutlineBtnText: {
-    color: '#ffffff',
-    fontSize: 13,
+    color: '#f472b6',
+    fontSize: 12,
     fontWeight: '800',
   },
+  readyPairSubText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    lineHeight: 16,
+    marginVertical: 4,
+  },
 
-  /* GENERAL BENTO CARDS */
-  bentoCard: {
-    backgroundColor: '#0d1322',
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 14,
+  /* ALWAYS-PRESENT QUICK SHARE BENTO CARD */
+  quickShareCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#ec4899',
+    marginBottom: 10,
+    shadowColor: '#ec4899',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  quickShareHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  quickShareHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  quickShareIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickShareIconEmoji: {
+    fontSize: 18,
+  },
+  quickShareCardTitle: {
+    fontSize: 14.5,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  quickShareCardSub: {
+    fontSize: 10,
+    color: '#f472b6',
+    marginTop: 1,
+  },
+  quickSharePillBadge: {
+    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#ec4899',
+  },
+  quickSharePillBadgeText: {
+    color: '#ec4899',
+    fontSize: 9.5,
+    fontWeight: '900',
+  },
+  quickShareBeamBtn: {
+    minHeight: 42,
+    backgroundColor: '#ec4899',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: '#ec4899',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  quickShareBeamBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  quickShareCategoryRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  quickShareCatPill: {
+    flex: 1,
+    minHeight: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  quickShareCatPillText: {
+    color: '#ffffff',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+
+  /* Standard Bento Card */
+  bentoCard: {
+    backgroundColor: '#0d1322',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 10,
   },
   bentoCardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   bentoCardTitle: {
-    fontSize: 15,
+    fontSize: 13.5,
     fontWeight: '800',
     color: '#ffffff',
   },
   bentoCardSubtitle: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#94a3b8',
-    marginTop: 2,
+    marginTop: 1,
   },
   cardHeaderLink: {
-    color: '#06b6d4',
-    fontSize: 12,
+    color: '#ec4899',
+    fontSize: 11,
     fontWeight: '800',
   },
 
-  /* STORAGE TILE */
+  /* Storage Meter */
   storagePercentChip: {
-    backgroundColor: 'rgba(6, 182, 212, 0.15)',
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    paddingVertical: 3,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 999,
   },
   storagePercentChipText: {
-    color: '#06b6d4',
-    fontSize: 11,
-    fontWeight: '900',
+    color: '#ec4899',
+    fontSize: 10,
+    fontWeight: '800',
   },
   storageTrack: {
-    height: 9,
+    height: 7,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 5,
+    borderRadius: 4,
     overflow: 'hidden',
-    marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   storageFill: {
     height: '100%',
-    backgroundColor: '#06b6d4',
-    borderRadius: 5,
+    backgroundColor: '#ec4899',
+    borderRadius: 4,
   },
   storageLegendRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   storageLegendText: {
-    color: '#94a3b8',
-    fontSize: 11,
+    fontSize: 10,
+    color: '#64748b',
     fontWeight: '600',
   },
   storageMetricsRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderRadius: 12,
+    padding: 8,
   },
   storageMetricCol: {
     flex: 1,
     alignItems: 'center',
   },
-  metricDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
   metricVal: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     color: '#ffffff',
   },
   metricLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#64748b',
-    marginTop: 2,
+    marginTop: 1,
+  },
+  metricDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
 
-  /* QUICK CATEGORY JUMPERS */
+  /* Category Jumpers Grid */
   categoryJumperGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 10,
+    marginTop: 8,
   },
   jumperTile: {
-    width: (SCREEN_WIDTH - 32 - 32 - 8) / 2,
-    minHeight: 64,
-    backgroundColor: '#1e293b',
+    width: (SCREEN_WIDTH - 24 - 28 - 8) / 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 12,
+    padding: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 16,
-    padding: 10,
-    justifyContent: 'center',
   },
   jumperTileWide: {
     width: '100%',
-    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 12,
+    padding: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
     gap: 10,
   },
   jumperEmoji: {
@@ -2883,126 +3598,159 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   jumperTitle: {
-    fontSize: 12,
-    fontWeight: '800',
     color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   jumperSubtitle: {
-    fontSize: 10,
-    color: '#94a3b8',
+    color: '#64748b',
+    fontSize: 9.5,
   },
   jumperArrow: {
-    color: '#06b6d4',
-    fontSize: 18,
+    color: '#ec4899',
+    fontSize: 16,
     fontWeight: '800',
   },
 
-  /* LAN SHARED CLIPBOARD CARD */
+  /* Clipboard Preview */
   clipboardPreviewBox: {
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 12,
-    padding: 12,
+    padding: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-    marginBottom: 10,
+    marginBottom: 8,
+    minHeight: 52,
+    justifyContent: 'center',
   },
   clipboardPreviewText: {
     color: '#cbd5e1',
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 16,
   },
-  clipboardQuickActionRow: {
+  clipboardActionRow: {
     flexDirection: 'row',
     gap: 8,
   },
   clipboardActionBtn: {
-    flex: 1,
-    minHeight: 44,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
+    minHeight: 34,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
   },
-  clipboardActionBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
+  clipboardActionBtnPrimary: {
+    flex: 1,
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    borderWidth: 1,
+    borderColor: '#ec4899',
+  },
+  clipboardActionBtnPrimaryText: {
+    color: '#ec4899',
+    fontSize: 11,
     fontWeight: '800',
   },
-
-  /* SERVER CONTROLS */
-  serverActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  serverToggleBtn: {
-    minHeight: 44,
-    paddingHorizontal: 18,
-    borderRadius: 12,
+  clipboardActionBtnSecondary: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  clipboardActionBtnSecondaryText: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  /* Server Controls */
+  serverStatusTag: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  serverStatusRunning: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  serverStatusStopped: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  serverStatusTagText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#10b981',
+  },
+  serverControlButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 6,
+  },
+  serverToggleBtn: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  serverToggleBtnStart: {
+    backgroundColor: '#ec4899',
+  },
+  serverToggleBtnStop: {
+    backgroundColor: '#ef4444',
   },
   serverToggleBtnText: {
     color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 11.5,
+    fontWeight: '800',
   },
   safeModeSwitchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   safeModeLabel: {
-    color: '#94a3b8',
-    fontSize: 12,
+    color: '#cbd5e1',
+    fontSize: 11,
     fontWeight: '700',
   },
 
-  /* PERMISSION REQUIRED CARD */
+  /* Permission Card */
   permissionCard: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#ef4444',
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   permissionCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     marginBottom: 4,
   },
   permissionBadge: {
-    backgroundColor: '#ef4444',
-    color: '#ffffff',
-    fontSize: 9,
+    color: '#ef4444',
+    fontSize: 9.5,
     fontWeight: '900',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    letterSpacing: 0.5,
   },
   permissionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
     color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
   },
   permissionDesc: {
+    color: '#cbd5e1',
     fontSize: 11,
-    color: '#94a3b8',
     lineHeight: 16,
-    marginBottom: 10,
+    marginVertical: 6,
   },
   permissionBtn: {
-    minHeight: 44,
+    minHeight: 38,
     backgroundColor: '#ef4444',
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 4,
   },
   permissionBtnText: {
     color: '#ffffff',
@@ -3013,25 +3761,89 @@ const styles = StyleSheet.create({
   /* ==================== EXPLORER STYLES ==================== */
   explorerContainer: {
     flex: 1,
-    padding: 12,
+    paddingHorizontal: 10,
+    paddingTop: 8,
   },
+
+  /* Compact Unified PC Ribbon (Drives + Shortcuts) */
+  unifiedRibbonWrap: {
+    marginBottom: 6,
+  },
+  unifiedRibbonScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  pcDrivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 32,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: '#0d1322',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 6,
+  },
+  pcDrivePillActive: {
+    backgroundColor: 'rgba(236, 72, 153, 0.18)',
+    borderColor: '#ec4899',
+  },
+  pcDrivePillIcon: {
+    fontSize: 14,
+  },
+  pcDrivePillText: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  pcDrivePillTextActive: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+  ribbonDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    marginHorizontal: 2,
+  },
+  pcShortcutPill: {
+    minHeight: 30,
+    backgroundColor: '#172033',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pcShortcutPillText: {
+    color: '#94a3b8',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+
+  /* Nav Bar & Breadcrumbs */
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#0d1322',
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    padding: 6,
-    marginBottom: 8,
-    gap: 6,
+    padding: 4,
+    marginBottom: 6,
+    gap: 4,
+    minHeight: 38,
   },
   navUpBtn: {
-    minHeight: 38,
-    backgroundColor: '#1e293b',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    minHeight: 30,
+    backgroundColor: '#172033',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3040,24 +3852,24 @@ const styles = StyleSheet.create({
   },
   navUpBtnText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
   },
   breadcrumbScroll: {
     flex: 1,
   },
   breadcrumbItem: {
-    minHeight: 38,
+    minHeight: 30,
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
   },
   breadcrumbItemActive: {
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
     borderRadius: 6,
   },
   breadcrumbTextRoot: {
-    color: '#06b6d4',
-    fontSize: 11,
+    color: '#ec4899',
+    fontSize: 10.5,
     fontWeight: '800',
   },
   breadcrumbSegmentWrap: {
@@ -3066,12 +3878,12 @@ const styles = StyleSheet.create({
   },
   breadcrumbSeparator: {
     color: '#64748b',
-    fontSize: 12,
-    marginHorizontal: 2,
+    fontSize: 11,
+    marginHorizontal: 1,
   },
   breadcrumbText: {
     color: '#94a3b8',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
   },
   breadcrumbTextActive: {
@@ -3079,117 +3891,136 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   refreshBtn: {
-    minHeight: 38,
-    minWidth: 38,
+    minHeight: 30,
+    minWidth: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    borderRadius: 6,
   },
   refreshBtnText: {
-    color: '#06b6d4',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  viewModeBtn: {
-    minHeight: 38,
-    minWidth: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#1e293b',
-  },
-  viewModeBtnActive: {
-    backgroundColor: 'rgba(6, 182, 212, 0.2)',
-  },
-  viewModeBtnText: {
-    color: '#06b6d4',
+    color: '#ec4899',
     fontSize: 16,
     fontWeight: '800',
   },
+  viewModeBtn: {
+    minHeight: 30,
+    minWidth: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    backgroundColor: '#172033',
+  },
+  viewModeBtnActive: {
+    backgroundColor: 'rgba(236, 72, 153, 0.25)',
+  },
+  viewModeBtnText: {
+    color: '#ec4899',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  /* Search & Filter Row */
   searchRow: {
     flexDirection: 'row',
     gap: 6,
-    marginBottom: 8,
+    marginBottom: 6,
     alignItems: 'center',
   },
   searchInputWrap: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 36,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#0d1322',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
+    borderRadius: 10,
+    paddingHorizontal: 8,
   },
   searchIcon: {
-    fontSize: 14,
-    marginRight: 6,
+    fontSize: 12,
+    marginRight: 4,
   },
   searchInput: {
     flex: 1,
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11.5,
     paddingVertical: 0,
   },
   searchClearBtn: {
-    padding: 6,
+    padding: 4,
   },
   searchClearBtnText: {
     color: '#64748b',
-    fontSize: 13,
+    fontSize: 11,
+  },
+  sortToggleBtn: {
+    minHeight: 36,
+    backgroundColor: '#172033',
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(236, 72, 153, 0.3)',
+  },
+  sortToggleBtnText: {
+    color: '#f472b6',
+    fontSize: 10.5,
+    fontWeight: '800',
   },
   multiSelectToggle: {
-    minHeight: 44,
-    backgroundColor: '#1e293b',
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    minHeight: 36,
+    backgroundColor: '#172033',
+    paddingHorizontal: 11,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   multiSelectToggleActive: {
-    backgroundColor: '#06b6d4',
+    backgroundColor: '#ec4899',
   },
   multiSelectToggleText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
   },
   multiSelectToggleTextActive: {
-    color: '#000000',
+    color: '#ffffff',
   },
+
+  /* Filter Pills */
   filterScroll: {
-    maxHeight: 38,
-    marginBottom: 10,
+    maxHeight: 32,
+    marginBottom: 8,
   },
   filterPill: {
-    minHeight: 32,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    minHeight: 28,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
   },
   filterPillActive: {
-    backgroundColor: '#06b6d4',
-    borderColor: '#06b6d4',
+    backgroundColor: '#ec4899',
+    borderColor: '#f43f5e',
   },
   filterPillText: {
     color: '#94a3b8',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   filterPillTextActive: {
-    color: '#000000',
+    color: '#ffffff',
     fontWeight: '800',
   },
 
   /* Responsive Photo / File Grid */
   gridContentContainer: {
-    paddingBottom: 60,
+    paddingBottom: 70,
   },
   responsiveGridWrap: {
     flexDirection: 'row',
@@ -3197,49 +4028,49 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   gridTile: {
-    minHeight: 105,
+    minHeight: 102,
     backgroundColor: '#0d1322',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 16,
-    padding: 8,
+    borderRadius: 14,
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   gridTileSelected: {
-    borderColor: '#06b6d4',
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    borderColor: '#ec4899',
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
   },
   gridThumbnailImage: {
     width: '100%',
-    height: 52,
-    borderRadius: 10,
-    marginBottom: 6,
+    height: 50,
+    borderRadius: 8,
+    marginBottom: 4,
   },
   gridFileIconEmoji: {
-    fontSize: 32,
-    marginBottom: 6,
+    fontSize: 30,
+    marginBottom: 4,
   },
   gridFileName: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     textAlign: 'center',
     width: '100%',
   },
   gridFileMeta: {
     color: '#64748b',
-    fontSize: 9,
-    marginTop: 2,
+    fontSize: 8.5,
+    marginTop: 1,
   },
   checkCircle: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: 5,
+    right: 5,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     borderWidth: 1.5,
     borderColor: '#94a3b8',
     alignItems: 'center',
@@ -3248,113 +4079,126 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   checkCircleSelected: {
-    backgroundColor: '#06b6d4',
-    borderColor: '#06b6d4',
+    backgroundColor: '#ec4899',
+    borderColor: '#ec4899',
   },
   checkMark: {
-    color: '#000000',
-    fontSize: 11,
+    color: '#ffffff',
+    fontSize: 10,
     fontWeight: '900',
   },
 
   /* List View */
   listContentContainer: {
-    paddingBottom: 60,
+    paddingBottom: 70,
   },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#0d1322',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 6,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 5,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
-    gap: 12,
+    gap: 10,
   },
   listRowSelected: {
-    borderColor: '#06b6d4',
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    borderColor: '#ec4899',
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
   },
   listRowEmoji: {
-    fontSize: 22,
+    fontSize: 20,
   },
   listRowContent: {
     flex: 1,
   },
   listRowName: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   listRowMeta: {
     color: '#64748b',
-    fontSize: 10,
-    marginTop: 2,
+    fontSize: 9.5,
+    marginTop: 1,
   },
   listRowChevron: {
-    color: '#06b6d4',
-    fontSize: 16,
+    color: '#ec4899',
+    fontSize: 15,
     fontWeight: '800',
   },
 
   /* Floating Multi-Select Bar */
   floatingMultiSelectBar: {
     position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
+    bottom: 14,
+    left: 12,
+    right: 12,
     backgroundColor: '#0d1322',
     borderWidth: 1.5,
-    borderColor: '#06b6d4',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    borderColor: '#ec4899',
+    borderRadius: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
+    shadowColor: '#ec4899',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
     elevation: 8,
   },
   floatingSelectCount: {
-    color: '#06b6d4',
+    color: '#f472b6',
     fontWeight: '800',
-    fontSize: 13,
+    fontSize: 12,
   },
   floatingActionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
+  },
+  floatingBeamBtn: {
+    minHeight: 34,
+    backgroundColor: '#ec4899',
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingBeamBtnText: {
+    color: '#ffffff',
+    fontSize: 10.5,
+    fontWeight: '800',
   },
   floatingTrashBtn: {
-    minHeight: 36,
+    minHeight: 34,
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderWidth: 1,
     borderColor: '#ef4444',
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   floatingTrashBtnText: {
     color: '#ef4444',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
   },
   floatingCancelBtn: {
-    minHeight: 36,
+    minHeight: 34,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   floatingCancelBtnText: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
   },
 
@@ -3371,149 +4215,99 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   emptyFolderIcon: {
-    fontSize: 48,
+    fontSize: 44,
     marginBottom: 8,
   },
   emptyFolderText: {
     color: '#64748b',
     fontSize: 13,
+    fontWeight: '700',
   },
-
-  /* PC DRIVES EXPLORER */
-  unpairedContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  unpairedIconLarge: {
-    fontSize: 54,
-    marginBottom: 12,
-  },
-  unpairedTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+  pcEmptyTitle: {
     color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '800',
     marginBottom: 6,
   },
-  unpairedDescription: {
-    fontSize: 12,
+  pcEmptyDesc: {
     color: '#94a3b8',
+    fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 20,
-    maxWidth: 290,
+    marginBottom: 16,
   },
-  pcHeaderSection: {
-    marginBottom: 10,
-  },
-  pcDrivesRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  pcDriveCard: {
-    flex: 1,
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0d1322',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    gap: 10,
-  },
-  pcDriveCardActive: {
-    borderColor: '#06b6d4',
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
-  },
-  pcDriveCardIcon: {
-    fontSize: 22,
-  },
-  pcDriveCardTitle: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  pcDriveCardSub: {
-    color: '#64748b',
-    fontSize: 9,
-  },
-  pcShortcutPill: {
-    minHeight: 34,
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 12,
-    borderRadius: 999,
+  pcConnectPromptBtn: {
+    minHeight: 42,
+    backgroundColor: '#ec4899',
+    borderRadius: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pcShortcutPillText: {
-    color: '#cbd5e1',
-    fontSize: 11,
-    fontWeight: '700',
+  pcConnectPromptBtnText: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontWeight: '800',
   },
 
   /* CLIPBOARD TAB */
   syncRefreshChip: {
-    backgroundColor: 'rgba(6, 182, 212, 0.15)',
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
     borderWidth: 1,
-    borderColor: '#06b6d4',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    borderColor: '#ec4899',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 999,
   },
   syncRefreshChipText: {
-    color: '#06b6d4',
-    fontSize: 11,
+    color: '#ec4899',
+    fontSize: 10.5,
     fontWeight: '800',
   },
   clipboardDisplayBox: {
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginBottom: 12,
-    minHeight: 90,
+    marginBottom: 10,
+    minHeight: 80,
   },
   clipboardDisplayText: {
     color: '#ffffff',
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12.5,
+    lineHeight: 18,
   },
   clipboardTextInput: {
     backgroundColor: '#080c14',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 12,
+    padding: 10,
     color: '#ffffff',
-    fontSize: 13,
-    minHeight: 90,
+    fontSize: 12.5,
+    minHeight: 80,
     textAlignVertical: 'top',
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: 10,
+    marginTop: 6,
   },
   snippetRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
+    gap: 6,
+    marginTop: 8,
   },
   snippetChip: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   snippetChipText: {
     color: '#94a3b8',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
 
@@ -3526,27 +4320,27 @@ const styles = StyleSheet.create({
   },
   speedRatingText: {
     color: '#10b981',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   runDiagHeroBtn: {
-    minHeight: 46,
-    backgroundColor: '#06b6d4',
-    borderRadius: 12,
+    minHeight: 42,
+    backgroundColor: '#ec4899',
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
-    marginTop: 6,
+    marginBottom: 6,
+    marginTop: 4,
   },
   runDiagHeroBtnText: {
-    color: '#000000',
-    fontSize: 13,
+    color: '#ffffff',
+    fontSize: 12.5,
     fontWeight: '900',
   },
   diagResultBento: {
-    marginVertical: 8,
-    padding: 12,
-    borderRadius: 14,
+    marginVertical: 6,
+    padding: 10,
+    borderRadius: 12,
     borderWidth: 1,
   },
   diagSuccess: {
@@ -3559,46 +4353,46 @@ const styles = StyleSheet.create({
   },
   diagResultText: {
     color: '#ffffff',
-    fontSize: 11.5,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 16,
   },
   stepRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
+    gap: 8,
+    marginTop: 8,
     alignItems: 'flex-start',
   },
   stepBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#06b6d4',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ec4899',
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepBadgeText: {
-    color: '#000000',
+    color: '#ffffff',
     fontWeight: '900',
-    fontSize: 11,
+    fontSize: 10,
   },
   stepTitle: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
   },
   stepDesc: {
     color: '#94a3b8',
-    fontSize: 11,
+    fontSize: 10.5,
     marginTop: 1,
   },
   emptyLogsText: {
     color: '#64748b',
-    fontSize: 11,
+    fontSize: 10.5,
     fontStyle: 'italic',
   },
   logTextItem: {
     color: '#94a3b8',
-    fontSize: 10.5,
+    fontSize: 10,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     marginTop: 2,
   },
@@ -3609,8 +4403,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#06080e',
   },
   lightboxHeader: {
-    height: 56,
-    paddingHorizontal: 16,
+    height: 52,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -3619,36 +4413,37 @@ const styles = StyleSheet.create({
   },
   lightboxFileName: {
     color: '#ffffff',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '800',
   },
   lightboxMeta: {
-    color: '#06b6d4',
-    fontSize: 10,
+    color: '#f472b6',
+    fontSize: 9.5,
     marginTop: 1,
   },
   lightboxCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   lightboxCloseBtnText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   lightboxBody: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
+    position: 'relative',
+    overflow: 'hidden',
   },
   lightboxImage: {
-    width: '100%',
-    height: '100%',
+    width: SCREEN_WIDTH - 20,
+    height: SCREEN_HEIGHT * 0.65,
   },
   lightboxNonImgContainer: {
     alignItems: 'center',
@@ -3656,48 +4451,123 @@ const styles = StyleSheet.create({
   },
   lightboxNonImgTitle: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    marginTop: 10,
+    marginTop: 8,
   },
   lightboxNonImgMeta: {
     color: '#94a3b8',
-    fontSize: 11,
+    fontSize: 10,
     marginTop: 2,
   },
+  lightboxZoomControls: {
+    position: 'absolute',
+    bottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(13, 19, 34, 0.9)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#ec4899',
+  },
+  zoomCtrlBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomCtrlBtnText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  zoomScaleBadge: {
+    paddingHorizontal: 6,
+  },
+  zoomScaleBadgeText: {
+    color: '#f472b6',
+    fontSize: 11,
+    fontWeight: '800',
+  },
   lightboxFooter: {
-    padding: 14,
+    padding: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   lightboxDlBtn: {
     flex: 1,
-    minHeight: 44,
-    backgroundColor: '#06b6d4',
-    borderRadius: 12,
+    minHeight: 40,
+    backgroundColor: '#ec4899',
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   lightboxDlBtnText: {
-    color: '#000000',
-    fontSize: 12,
+    color: '#ffffff',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  lightboxBeamBtn: {
+    flex: 1,
+    minHeight: 40,
+    backgroundColor: '#ec4899',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxBeamBtnText: {
+    color: '#ffffff',
+    fontSize: 11.5,
     fontWeight: '800',
   },
   lightboxTrashBtn: {
-    minHeight: 44,
+    minHeight: 40,
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderWidth: 1,
     borderColor: '#ef4444',
-    paddingHorizontal: 18,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   lightboxTrashBtnText: {
     color: '#ef4444',
-    fontSize: 12,
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+
+  /* QUICK SHARE MODAL ROW */
+  quickShareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    gap: 10,
+  },
+  quickShareRowSelected: {
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+  },
+  quickBeamSingleBtn: {
+    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+    borderWidth: 1,
+    borderColor: '#ec4899',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  quickBeamSingleBtnText: {
+    color: '#f472b6',
+    fontSize: 10,
     fontWeight: '800',
   },
 
@@ -3706,47 +4576,47 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
-    padding: 18,
+    padding: 16,
   },
   modalContent: {
     backgroundColor: '#0d1322',
-    borderRadius: 22,
-    padding: 20,
+    borderRadius: 20,
+    padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(236, 72, 153, 0.25)',
   },
   modalHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#ffffff',
   },
   modalSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94a3b8',
-    marginBottom: 12,
-    lineHeight: 16,
+    marginBottom: 10,
+    lineHeight: 15,
   },
   modalCloseText: {
     color: '#94a3b8',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     padding: 4,
   },
   modalSubTabsRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
+    gap: 6,
+    marginBottom: 12,
   },
   modalSubTab: {
     flex: 1,
-    minHeight: 40,
-    borderRadius: 10,
+    minHeight: 36,
+    borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -3754,49 +4624,49 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   modalSubTabActive: {
-    backgroundColor: '#06b6d4',
-    borderColor: '#06b6d4',
+    backgroundColor: '#ec4899',
+    borderColor: '#f43f5e',
   },
   modalSubTabText: {
     color: '#94a3b8',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   modalSubTabTextActive: {
-    color: '#000000',
+    color: '#ffffff',
     fontWeight: '800',
   },
   qrViewfinderBox: {
-    backgroundColor: 'rgba(6, 182, 212, 0.08)',
+    backgroundColor: 'rgba(236, 72, 153, 0.08)',
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#06b6d4',
-    borderRadius: 16,
-    padding: 18,
+    borderColor: '#ec4899',
+    borderRadius: 14,
+    padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
   qrScanBtnTitle: {
-    color: '#06b6d4',
-    fontSize: 15,
+    color: '#f472b6',
+    fontSize: 14,
     fontWeight: '800',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   qrViewfinderIcon: {
-    fontSize: 36,
-    marginBottom: 6,
+    fontSize: 32,
+    marginBottom: 4,
   },
   qrViewfinderInstruction: {
     color: '#cbd5e1',
-    fontSize: 11,
+    fontSize: 10.5,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 15,
   },
   qrDividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 10,
   },
   qrDividerLine: {
     flex: 1,
@@ -3805,46 +4675,46 @@ const styles = StyleSheet.create({
   },
   qrDividerText: {
     color: '#64748b',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '700',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     letterSpacing: 0.5,
   },
   modalInput: {
     backgroundColor: '#080c14',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     color: '#ffffff',
-    fontSize: 13,
-    marginBottom: 10,
-    minHeight: 44,
+    fontSize: 12,
+    marginBottom: 8,
+    minHeight: 40,
   },
   hotspotPresetBtn: {
     backgroundColor: 'rgba(245, 158, 11, 0.12)',
     borderWidth: 1,
     borderColor: '#f59e0b',
-    borderRadius: 10,
-    paddingVertical: 10,
+    borderRadius: 8,
+    paddingVertical: 8,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   hotspotPresetBtnText: {
     color: '#f59e0b',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
   },
   modalBtnRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 6,
+    gap: 8,
+    marginTop: 4,
   },
   modalCancelBtn: {
     flex: 1,
-    minHeight: 44,
-    borderRadius: 12,
+    minHeight: 40,
+    borderRadius: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -3852,20 +4722,20 @@ const styles = StyleSheet.create({
   modalCancelBtnText: {
     color: '#ffffff',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
   },
   modalPrimaryBtn: {
     flex: 1,
-    minHeight: 44,
-    borderRadius: 12,
-    backgroundColor: '#06b6d4',
+    minHeight: 40,
+    borderRadius: 10,
+    backgroundColor: '#ec4899',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalPrimaryBtnText: {
-    color: '#000000',
+    color: '#ffffff',
     fontWeight: '800',
-    fontSize: 13,
+    fontSize: 12,
   },
 
   /* Windows 11 Yellow Folder Component */

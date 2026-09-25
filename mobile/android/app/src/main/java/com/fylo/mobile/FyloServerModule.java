@@ -18,7 +18,8 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
+import android.database.Cursor;
+import android.provider.OpenableColumns;
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
@@ -27,6 +28,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 import com.journeyapps.barcodescanner.CaptureActivity;
@@ -34,9 +36,12 @@ import com.journeyapps.barcodescanner.CaptureActivity;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -44,6 +49,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FyloServerModule extends ReactContextBaseJavaModule implements ActivityEventListener {
     private static final String TAG = "FyloServerModule";
+    private static volatile FyloServerModule sInstance;
+    private static final List<WritableMap> sPendingSharedFiles = Collections.synchronizedList(new ArrayList<>());
     private final ReactApplicationContext reactContext;
     private SafePromise mScanPromise;
 
@@ -84,6 +91,7 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         super(reactContext);
         this.reactContext = reactContext;
         this.reactContext.addActivityEventListener(this);
+        sInstance = this;
     }
 
     @NonNull
@@ -537,17 +545,234 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         }
     }
 
+    @ReactMethod
+    public void getPendingSharedFiles(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            WritableArray array = Arguments.createArray();
+            synchronized (sPendingSharedFiles) {
+                for (WritableMap item : sPendingSharedFiles) {
+                    WritableMap copy = Arguments.createMap();
+                    copy.merge(item);
+                    array.pushMap(copy);
+                }
+                sPendingSharedFiles.clear();
+            }
+            safePromise.resolve(array);
+        } catch (Throwable e) {
+            safePromise.reject("GET_SHARED_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void clearPendingSharedFiles(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            sPendingSharedFiles.clear();
+            safePromise.resolve(true);
+        } catch (Throwable e) {
+            safePromise.reject("CLEAR_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
     @Override
     public void onNewIntent(Intent intent) {
-        // No-op
+        processShareIntent(intent, reactContext);
     }
 
     @Override
     public void onCatalystInstanceDestroy() {
         super.onCatalystInstanceDestroy();
+        if (sInstance == this) {
+            sInstance = null;
+        }
         try {
             reactContext.removeActivityEventListener(this);
         } catch (Throwable ignored) {}
+    }
+
+    /**
+     * Process incoming Android SEND and SEND_MULTIPLE share intents from any app
+     */
+    public static void processShareIntent(Intent intent, Context context) {
+        if (intent == null || context == null) return;
+        String action = intent.getAction();
+        if (!Intent.ACTION_SEND.equals(action) && !Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+            return;
+        }
+
+        List<Uri> uris = new ArrayList<>();
+        if (Intent.ACTION_SEND.equals(action)) {
+            Uri streamUri = null;
+            try {
+                streamUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            } catch (Throwable ignored) {}
+            if (streamUri != null) {
+                uris.add(streamUri);
+            }
+        } else if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+            try {
+                ArrayList<Uri> streamUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+                if (streamUris != null) {
+                    uris.addAll(streamUris);
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        ClipData clipData = intent.getClipData();
+        if (clipData != null) {
+            for (int i = 0; i < clipData.getItemCount(); i++) {
+                ClipData.Item item = clipData.getItemAt(i);
+                if (item != null && item.getUri() != null && !uris.contains(item.getUri())) {
+                    uris.add(item.getUri());
+                }
+            }
+        }
+
+        // Shared text fallback (e.g. sharing URL or note)
+        String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+
+        // Process files in a background worker thread to prevent UI freezing
+        new Thread(() -> {
+            try {
+                File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                File sharedDir = new File(downloadsDir, "FyloShared");
+                if (!sharedDir.exists()) {
+                    sharedDir.mkdirs();
+                }
+                if (!sharedDir.canWrite()) {
+                    File externalFiles = context.getExternalFilesDir(null);
+                    sharedDir = new File(externalFiles != null ? externalFiles : context.getFilesDir(), "FyloShared");
+                    sharedDir.mkdirs();
+                }
+
+                List<WritableMap> processedFiles = new ArrayList<>();
+
+                for (Uri uri : uris) {
+                    if (uri == null) continue;
+                    try {
+                        String displayName = null;
+                        long fileSize = 0;
+
+                        try (Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+                            if (cursor != null && cursor.moveToFirst()) {
+                                int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+                                if (nameIndex >= 0) displayName = cursor.getString(nameIndex);
+                                if (sizeIndex >= 0) fileSize = cursor.getLong(sizeIndex);
+                            }
+                        } catch (Throwable ignored) {}
+
+                        if (displayName == null || displayName.trim().isEmpty()) {
+                            displayName = uri.getLastPathSegment();
+                        }
+                        if (displayName == null || displayName.trim().isEmpty()) {
+                            displayName = "shared_file_" + System.currentTimeMillis();
+                        }
+                        // Sanitize file name
+                        displayName = displayName.replaceAll("[\\\\/:*?\"<>|]", "_");
+
+                        File targetFile = new File(sharedDir, displayName);
+                        // Avoid overwriting existing files with same name
+                        if (targetFile.exists()) {
+                            String nameWithoutExt = displayName;
+                            String ext = "";
+                            int dot = displayName.lastIndexOf('.');
+                            if (dot > 0) {
+                                nameWithoutExt = displayName.substring(0, dot);
+                                ext = displayName.substring(dot);
+                            }
+                            targetFile = new File(sharedDir, nameWithoutExt + "_" + System.currentTimeMillis() + ext);
+                        }
+
+                        try (InputStream in = context.getContentResolver().openInputStream(uri);
+                             FileOutputStream out = new FileOutputStream(targetFile)) {
+                            if (in != null) {
+                                byte[] buf = new byte[65536];
+                                int len;
+                                while ((len = in.read(buf)) > 0) {
+                                    out.write(buf, 0, len);
+                                }
+                                out.flush();
+                            }
+                        }
+
+                        if (fileSize <= 0) {
+                            fileSize = targetFile.length();
+                        }
+
+                        String mimeType = context.getContentResolver().getType(uri);
+                        if (mimeType == null) {
+                            mimeType = "application/octet-stream";
+                        }
+
+                        WritableMap map = Arguments.createMap();
+                        map.putString("name", targetFile.getName());
+                        map.putString("path", targetFile.getAbsolutePath());
+                        map.putDouble("size", (double) fileSize);
+                        map.putString("mimeType", mimeType);
+                        map.putString("uri", uri.toString());
+                        processedFiles.add(map);
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Error copying shared uri: " + uri, t);
+                    }
+                }
+
+                // If no file URIs but shared text was provided, create a text file or text item
+                if (processedFiles.isEmpty() && sharedText != null && !sharedText.trim().isEmpty()) {
+                    try {
+                        String txtName = "shared_text_" + System.currentTimeMillis() + ".txt";
+                        File txtFile = new File(sharedDir, txtName);
+                        try (FileOutputStream fos = new FileOutputStream(txtFile)) {
+                            fos.write(sharedText.getBytes(StandardCharsets.UTF_8));
+                        }
+                        WritableMap map = Arguments.createMap();
+                        map.putString("name", txtName);
+                        map.putString("path", txtFile.getAbsolutePath());
+                        map.putDouble("size", (double) txtFile.length());
+                        map.putString("mimeType", "text/plain");
+                        map.putString("text", sharedText);
+                        processedFiles.add(map);
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Error saving shared text", t);
+                    }
+                }
+
+                if (!processedFiles.isEmpty()) {
+                    sPendingSharedFiles.addAll(processedFiles);
+
+                    // Emit event to React Native JS if instance is active
+                    if (sInstance != null && sInstance.reactContext != null) {
+                        WritableArray eventArray = Arguments.createArray();
+                        for (WritableMap item : processedFiles) {
+                            WritableMap copy = Arguments.createMap();
+                            copy.merge(item);
+                            eventArray.pushMap(copy);
+                        }
+                        try {
+                            sInstance.reactContext
+                                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                                .emit("onFilesShared", eventArray);
+                        } catch (Throwable t) {
+                            Log.w(TAG, "Error emitting onFilesShared: " + t.getMessage());
+                        }
+                        try {
+                            WritableArray eventArray2 = Arguments.createArray();
+                            for (WritableMap item : processedFiles) {
+                                WritableMap copy = Arguments.createMap();
+                                copy.merge(item);
+                                eventArray2.pushMap(copy);
+                            }
+                            sInstance.reactContext
+                                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                                .emit("onDirectShare", eventArray2);
+                        } catch (Throwable ignored) {}
+                    }
+                }
+            } catch (Throwable t) {
+                Log.e(TAG, "processShareIntent error", t);
+            }
+        }).start();
     }
 
     private String getDeviceIpAddress() {

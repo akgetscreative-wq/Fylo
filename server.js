@@ -1364,6 +1364,89 @@ app.post('/api/mobile/fs/download-direct', (req, res) => {
     });
 });
 
+// Direct upload/push from PC to Phone (Electron Host feature)
+app.post('/api/mobile/fs/upload-direct', (req, res) => {
+    const { deviceId, path: filePath, targetDir } = req.body;
+    const device = mobileDevices[deviceId];
+    if (!device) {
+        return res.status(404).json({ error: 'Mobile device not connected' });
+    }
+    if (!filePath || !fs.existsSync(filePath)) {
+        return res.status(400).json({ error: 'File does not exist on PC' });
+    }
+
+    try {
+        const fileName = path.basename(filePath);
+        const stat = fs.statSync(filePath);
+        const targetUrl = `http://${device.ip}:${device.port}/api/fs/upload?name=${encodeURIComponent(fileName)}&dir=${encodeURIComponent(targetDir || '')}&auth=${secretToken}`;
+
+        const reqOptions = {
+            method: 'POST',
+            headers: {
+                'Content-Length': stat.size,
+                'Content-Type': 'application/octet-stream'
+            }
+        };
+
+        const uploadReq = http.request(targetUrl, reqOptions, (remoteRes) => {
+            let body = '';
+            remoteRes.on('data', chunk => body += chunk);
+            remoteRes.on('end', () => {
+                try {
+                    const parsed = JSON.parse(body);
+                    res.json(parsed);
+                } catch (e) {
+                    res.json({ success: remoteRes.statusCode === 200, fileName });
+                }
+            });
+        });
+
+        uploadReq.on('error', (err) => {
+            res.status(502).json({ error: 'Failed to push file to phone: ' + err.message });
+        });
+
+        fs.createReadStream(filePath).pipe(uploadReq);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Stream upload for browser-based drag and drop to Phone
+app.post('/api/mobile/fs/upload-stream', (req, res) => {
+    const deviceId = req.query.deviceId;
+    const fileName = req.query.name || 'uploaded_file';
+    const targetDir = req.query.targetDir || '';
+    const device = mobileDevices[deviceId];
+    if (!device) {
+        return res.status(404).json({ error: 'Mobile device not connected' });
+    }
+
+    const targetUrl = `http://${device.ip}:${device.port}/api/fs/upload?name=${encodeURIComponent(fileName)}&dir=${encodeURIComponent(targetDir)}&auth=${secretToken}`;
+    const uploadReq = http.request(targetUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Length': req.headers['content-length'] || 0,
+            'Content-Type': 'application/octet-stream'
+        }
+    }, (remoteRes) => {
+        let body = '';
+        remoteRes.on('data', chunk => body += chunk);
+        remoteRes.on('end', () => {
+            try {
+                res.json(JSON.parse(body));
+            } catch (e) {
+                res.json({ success: remoteRes.statusCode === 200, fileName });
+            }
+        });
+    });
+
+    uploadReq.on('error', (err) => {
+        res.status(502).json({ error: 'Failed to stream to phone: ' + err.message });
+    });
+
+    req.pipe(uploadReq);
+});
+
 // Toggle mobile readOnly mode
 app.post('/api/mobile/toggle-readonly', (req, res) => {
     const { deviceId, readOnly } = req.body;

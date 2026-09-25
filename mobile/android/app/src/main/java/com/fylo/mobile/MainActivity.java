@@ -1,5 +1,8 @@
 package com.fylo.mobile;
 
+import android.content.Intent;
+import android.os.Bundle;
+
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
@@ -19,4 +22,24 @@ public class MainActivity extends ReactActivity {
             DefaultNewArchitectureEntryPoint.getFabricEnabled()
         );
     }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        handleShareIntent(getIntent());
+    }
+
+    @Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleShareIntent(intent);
+    }
+
+    private void handleShareIntent(Intent intent) {
+        if (intent != null) {
+            FyloServerModule.processShareIntent(intent, this);
+        }
+    }
 }
+

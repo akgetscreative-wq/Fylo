@@ -3202,6 +3202,113 @@
             max-width: 210px;
         }
 
+        /* Explorer Sorting Controls */
+        .sort-select-pill {
+            padding: 6px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.8rem;
+            font-weight: 700;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .sort-select-pill:hover, .sort-select-pill:focus {
+            border-color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.1);
+        }
+
+        /* Dedicated Phone Drop Zone */
+        .phone-drop-zone-card {
+            border: 2px dashed rgba(0, 210, 211, 0.45);
+            background: rgba(0, 210, 211, 0.04);
+            border-radius: 18px;
+            padding: 16px 20px;
+            margin: 12px 0;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .phone-drop-zone-card:hover, .phone-drop-zone-card.drag-over {
+            border-color: var(--accent);
+            background: rgba(0, 210, 211, 0.12);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(0, 210, 211, 0.18);
+        }
+        .phone-drop-inner {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            justify-content: space-between;
+        }
+        .phone-drop-icon-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: rgba(0, 210, 211, 0.15);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .phone-drop-details {
+            flex: 1;
+            min-width: 0;
+        }
+        .phone-drop-headline {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .phone-drop-caption {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+
+        /* Non-Disruptive Toast Notifications */
+        .fylo-toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .fylo-toast-pill {
+            pointer-events: auto;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: #f8fafc;
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transition: opacity 0.25s, transform 0.25s;
+            max-width: 400px;
+        }
+        .fylo-toast-pill.toast-success {
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+        .fylo-toast-pill.toast-error {
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
         .dash-shared-list .queue-item-row {
             display: flex;
             align-items: center;
@@ -5300,6 +5407,27 @@
                         </div>
                     </div>
 
+                    <!-- Direct PC-to-Phone Drag & Drop Zone -->
+                    <div class="phone-drop-zone-card" id="phone-drop-zone" title="Drag & drop files from your computer to transfer directly to Phone">
+                        <input type="file" id="phone-drop-file-input" multiple style="display: none;" />
+                        <div class="phone-drop-inner">
+                            <div class="phone-drop-icon-badge">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </div>
+                            <div class="phone-drop-details">
+                                <div class="phone-drop-headline">⚡ Drag & drop files here to send directly to Phone</div>
+                                <div class="phone-drop-caption">Drop files anywhere in this zone or click browse to upload files from PC to this phone</div>
+                            </div>
+                            <button class="btn btn-accent" id="phone-choose-files-btn" style="padding: 9px 18px; border-radius: 12px; font-weight: 700; font-size: 0.82rem; white-space: nowrap;">
+                                📤 Browse PC Files
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Option to Open Full File Explorer of Phone -->
                     <div style="margin-bottom: 12px;">
                         <button id="btn-open-full-phone-explorer" class="btn" style="width: 100%; justify-content: center; padding: 11px 20px; border-radius: 14px; background: rgba(0, 210, 211, 0.08); border: 1px solid var(--accent); color: var(--accent); font-weight: 800; font-size: 0.92rem; gap: 8px; transition: all 0.2s;">
@@ -5365,7 +5493,18 @@
                                 <button class="filter-btn" data-filter="docs">📄 Docs (<span id="phone-count-docs">0</span>)</button>
                                 <button class="filter-btn" data-filter="folders">📁 Folders</button>
                             </div>
-                            <div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="explorer-sort-wrap" style="display: flex; align-items: center; gap: 6px;">
+                                    <label for="phone-sort-select" style="font-size: 0.76rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Sort:</label>
+                                    <select id="phone-sort-select" class="sort-select-pill">
+                                        <option value="date-desc" selected>📅 Newest First (Default)</option>
+                                        <option value="date-asc">📅 Oldest First</option>
+                                        <option value="name-asc">🔤 Name (A → Z)</option>
+                                        <option value="name-desc">🔤 Name (Z → A)</option>
+                                        <option value="size-desc">📊 Size (Largest First)</option>
+                                        <option value="size-asc">📊 Size (Smallest First)</option>
+                                    </select>
+                                </div>
                                 <button class="btn" id="phone-select-all-btn" style="padding: 6px 14px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;">Select All</button>
                             </div>
                         </div>
@@ -5465,7 +5604,18 @@
                             <button class="filter-btn" data-pc-filter="docs">📄 Docs (<span id="pc-count-docs">0</span>)</button>
                             <button class="filter-btn" data-pc-filter="folders">📁 Folders</button>
                         </div>
-                        <div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="explorer-sort-wrap" style="display: flex; align-items: center; gap: 6px;">
+                                <label for="pc-sort-select" style="font-size: 0.76rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Sort:</label>
+                                <select id="pc-sort-select" class="sort-select-pill">
+                                    <option value="date-desc" selected>📅 Newest First (Default)</option>
+                                    <option value="date-asc">📅 Oldest First</option>
+                                    <option value="name-asc">🔤 Name (A → Z)</option>
+                                    <option value="name-desc">🔤 Name (Z → A)</option>
+                                    <option value="size-desc">📊 Size (Largest First)</option>
+                                    <option value="size-asc">📊 Size (Smallest First)</option>
+                                </select>
+                            </div>
                             <button class="btn" id="pc-select-all-btn" style="padding: 6px 14px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;">Select All</button>
                         </div>
                     </div>
@@ -5907,7 +6057,7 @@
                 }
 
                 if (!blob) {
-                    alert("File data could not be found locally. Please re-download.");
+                    showToast("File data could not be found locally. Please re-download.", "error");
                     return;
                 }
 
@@ -5978,7 +6128,7 @@
                 };
                 closeBtn.addEventListener('click', onClose);
             } catch (err) {
-                alert("Player Playback Error: " + err.message + "\nStack: " + err.stack);
+                showToast("Playback Error: " + err.message, "error");
             }
         }
 
@@ -6595,8 +6745,37 @@
             $('#app').classList.add('hidden');
         }
 
+        function showToast(msg, type = 'info') {
+            if (!msg) return;
+            let container = document.getElementById('fylo-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'fylo-toast-container';
+                container.className = 'fylo-toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `fylo-toast-pill toast-${type}`;
+            let icon = '✨';
+            if (type === 'success') icon = '✅';
+            else if (type === 'error') icon = '⚠️';
+            else if (type === 'upload') icon = '📤';
+            else if (type === 'download') icon = '📥';
+
+            toast.innerHTML = `<span style="font-size: 1.1rem;">${icon}</span><span>${escapeHtml(msg)}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(8px) scale(0.95)';
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 250);
+            }, 3200);
+        }
+
         function triggerNotificationAlert(message) {
-            // Disabled per user request (no annoying purple toasts)
+            showToast(message, 'info');
         }
 
         async function apiFetch(url, opts = {}) {
@@ -7127,7 +7306,7 @@
                     ipcRenderer.send('trigger-electron-download', downloadUrl);
                 }
             } catch (err) {
-                alert("Download Init Error: " + err.message + "\nStack: " + err.stack);
+                showToast("Download Init Error: " + err.message, "error");
             }
         }
 
@@ -7653,6 +7832,29 @@
             switchView('view-hub');
         });
 
+        // Dedicated Dashboard Hero Card Drop Handling
+        const dashDropHero = $('#dash-drop-hero');
+        if (dashDropHero) {
+            ['dragenter', 'dragover'].forEach(evt => dashDropHero.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dashDropHero.classList.add('drag-over');
+            }));
+            ['dragleave', 'drop'].forEach(evt => dashDropHero.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dashDropHero.classList.remove('drag-over');
+            }));
+            dashDropHero.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dashDropHero.classList.remove('drag-over');
+                await handleDrop(e);
+                showToast('✨ Files registered & ready to share across LAN!', 'success');
+                loadDashboardData();
+            });
+        }
+
         // Global window-level drag-and-drop
         const globalOverlay = $('#global-drop-overlay');
         let globalDragTimer;
@@ -7678,10 +7880,24 @@
             clearTimeout(globalDragTimer);
             globalOverlay.classList.remove('active');
             if (dropzone) dropzone.classList.remove('drag-over');
-            
+            if (dashDropHero) dashDropHero.classList.remove('drag-over');
+
+            const currentActivePanel = document.querySelector('.view-panel:not(.hidden)')?.id;
+
+            if (currentActivePanel === 'view-phone') {
+                await handlePhoneDrop(e);
+                return;
+            }
+
             const hadFiles = (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) || (e.dataTransfer && e.dataTransfer.items && e.dataTransfer.items.length > 0);
             await handleDrop(e);
-            if (hadFiles) switchView('view-hub');
+
+            if (currentActivePanel === 'view-dashboard') {
+                showToast('✨ Files registered & ready to share across LAN!', 'success');
+                loadDashboardData();
+            } else if (hadFiles && currentActivePanel === 'view-hub') {
+                switchView('view-hub');
+            }
         });
 
         const clipboardEl = $('#clipboard-text');
@@ -7800,7 +8016,7 @@
                 document.execCommand('copy');
                 handleCopySuccess();
             } catch (err) {
-                alert('Please manually select text to copy on this connection.');
+                showToast('Please manually select text to copy on this connection.', 'info');
             }
             document.body.removeChild(tmp);
         }
@@ -8001,6 +8217,36 @@
         let phoneHistory = ['/storage/emulated/0'];
         let phoneHistoryIdx = 0;
         let phoneSelectedPaths = new Set();
+        let phoneSortBy = 'date';
+        let phoneSortOrder = 'desc';
+
+        function sortExplorerItems(items, sortBy = 'date', sortOrder = 'desc') {
+            return items.sort((a, b) => {
+                // Folders ALWAYS first!
+                if (a.isDir && !b.isDir) return -1;
+                if (!a.isDir && b.isDir) return 1;
+
+                if (sortBy === 'date') {
+                    const timeA = Number(a.modified || a.mtime || 0);
+                    const timeB = Number(b.modified || b.mtime || 0);
+                    if (timeA !== timeB) {
+                        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+                    }
+                    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+                } else if (sortBy === 'name') {
+                    const cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+                    return sortOrder === 'asc' ? cmp : -cmp;
+                } else if (sortBy === 'size') {
+                    const sizeA = Number(a.size || 0);
+                    const sizeB = Number(b.size || 0);
+                    if (sizeA !== sizeB) {
+                        return sortOrder === 'asc' ? sizeA - sizeB : sizeB - sizeA;
+                    }
+                    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+                }
+                return 0;
+            });
+        }
 
         // Lightbox Gallery State
         let galleryMediaList = [];
@@ -8354,11 +8600,7 @@
                 return;
             }
 
-            filtered.sort((a, b) => {
-                if (a.isDir && !b.isDir) return -1;
-                if (!a.isDir && b.isDir) return 1;
-                return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-            });
+            sortExplorerItems(filtered, phoneSortBy, phoneSortOrder);
 
             // Pre-compile media list for lightbox
             galleryMediaList = filtered.filter(i => {
@@ -8782,6 +9024,13 @@
             renderPhoneFiles();
         });
 
+        $('#phone-sort-select')?.addEventListener('change', (e) => {
+            const [by, ord] = e.target.value.split('-');
+            phoneSortBy = by;
+            phoneSortOrder = ord;
+            renderPhoneFiles();
+        });
+
         $('#phone-search-clear')?.addEventListener('click', () => {
             const input = $('#phone-search-input');
             if (input) input.value = '';
@@ -8827,7 +9076,7 @@
                             if (data.success) successCount++;
                         } catch (e) {}
                     }
-                    alert(`Saved ${successCount} of ${paths.length} files to PC Downloads folder!`);
+                    showToast(`✅ Saved ${successCount} of ${paths.length} file(s) to PC Downloads!`, 'download');
                     phoneSelectedPaths.clear();
                     renderPhoneFiles();
                 } else {
@@ -8851,7 +9100,7 @@
                     renderPhoneFiles();
                 }
             } catch (err) {
-                alert(`Batch download failed: ${err.message}`);
+                showToast(`⚠️ Batch download failed: ${err.message}`, 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -8879,12 +9128,12 @@
                     });
                     const result = await res.json();
                     if (result.success) {
-                        alert(`Saved "${item.name}" to Downloads!`);
+                        showToast(`✅ Saved "${item.name}" to Downloads!`, 'download');
                     } else {
-                        alert(`Download failed: ${result.error || 'Unknown error'}`);
+                        showToast(`⚠️ Download failed: ${result.error || 'Unknown error'}`, 'error');
                     }
                 } catch (e) {
-                    alert(`Download failed: ${e.message}`);
+                    showToast(`⚠️ Download failed: ${e.message}`, 'error');
                 }
             } else {
                 const link = document.createElement('a');
@@ -8895,6 +9144,127 @@
                 document.body.removeChild(link);
             }
         }
+
+        // Direct Drag & Drop into Connected Phone
+        async function handlePhoneDrop(e) {
+            if (!e.dataTransfer && !e.target?.files) return;
+            const droppedFiles = e.dataTransfer ? e.dataTransfer.files : e.target.files;
+            if (!droppedFiles || droppedFiles.length === 0) return;
+
+            if (!currentPhoneId) {
+                showToast('⚠️ Please connect an Android phone first to send files', 'error');
+                return;
+            }
+
+            showToast(`📤 Sending ${droppedFiles.length} file(s) directly to Phone...`, 'upload');
+
+            if (isElectron) {
+                const regularFiles = [];
+                const folderPaths = [];
+                const fs = require('fs');
+
+                for (let i = 0; i < droppedFiles.length; i++) {
+                    const f = droppedFiles[i];
+                    if (f.path) {
+                        try {
+                            const st = fs.statSync(f.path);
+                            if (st.isDirectory()) folderPaths.push(f.path);
+                            else regularFiles.push(f);
+                        } catch (err) {
+                            regularFiles.push(f);
+                        }
+                    } else {
+                        regularFiles.push(f);
+                    }
+                }
+
+                if (folderPaths.length > 0) await queueFolders(folderPaths);
+                if (regularFiles.length > 0) await queueFiles(regularFiles);
+
+                let successCount = 0;
+                for (const f of regularFiles) {
+                    if (f.path) {
+                        try {
+                            const res = await apiFetch('/api/mobile/fs/upload-direct', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    deviceId: currentPhoneId,
+                                    path: f.path,
+                                    targetDir: currentPhonePath || ''
+                                })
+                            });
+                            const data = await res.json();
+                            if (data.success) successCount++;
+                        } catch (err) {
+                            console.error('Direct upload error:', err);
+                        }
+                    }
+                }
+                showToast(`✅ Transferred ${successCount} file(s) straight to Phone!`, 'success');
+                fetchPhoneFolder(currentPhonePath || '/storage/emulated/0', false);
+            } else {
+                await queueFiles(droppedFiles);
+                let successCount = 0;
+                for (let i = 0; i < droppedFiles.length; i++) {
+                    const f = droppedFiles[i];
+                    try {
+                        const res = await fetch(`/api/mobile/fs/upload-stream?deviceId=${encodeURIComponent(currentPhoneId)}&name=${encodeURIComponent(f.name)}&targetDir=${encodeURIComponent(currentPhonePath || '')}&auth=${secretToken}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/octet-stream' },
+                            body: f
+                        });
+                        if (res.ok) successCount++;
+                    } catch (err) {
+                        console.error('Upload stream error:', err);
+                    }
+                }
+                showToast(`✅ Transferred ${successCount} file(s) straight to Phone!`, 'success');
+                fetchPhoneFolder(currentPhonePath || '/storage/emulated/0', false);
+            }
+        }
+
+        const phoneDropZoneEl = $('#phone-drop-zone');
+        const phoneDropFileInputEl = $('#phone-drop-file-input');
+        const phoneChooseFilesBtn = $('#phone-choose-files-btn');
+
+        if (phoneDropZoneEl) {
+            ['dragenter', 'dragover'].forEach(evt => phoneDropZoneEl.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                phoneDropZoneEl.classList.add('drag-over');
+            }));
+
+            ['dragleave', 'drop'].forEach(evt => phoneDropZoneEl.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                phoneDropZoneEl.classList.remove('drag-over');
+            }));
+
+            phoneDropZoneEl.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                phoneDropZoneEl.classList.remove('drag-over');
+                await handlePhoneDrop(e);
+            });
+
+            phoneDropZoneEl.addEventListener('click', (e) => {
+                if (e.target.closest('#phone-choose-files-btn')) return;
+                phoneDropFileInputEl?.click();
+            });
+        }
+
+        phoneChooseFilesBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            phoneDropFileInputEl?.click();
+        });
+
+        phoneDropFileInputEl?.addEventListener('change', async (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                await handlePhoneDrop(e);
+                phoneDropFileInputEl.value = '';
+            }
+        });
 
         // Quick chip shortcuts
         document.querySelectorAll('.quick-chip').forEach(chip => {
@@ -9135,7 +9505,7 @@
                 const data = await res.json();
                 if (res.ok && data.success) {
                     $('#admin-change-password-modal')?.classList.remove('active');
-                    alert('Admin Security Password successfully updated! ✨');
+                    showToast('Admin Security Password successfully updated! ✨', 'success');
                 } else {
                     if (errEl) {
                         errEl.textContent = data.error || 'Failed to update password.';
@@ -9161,6 +9531,8 @@
         let pcHistory = [];
         let pcHistoryIdx = -1;
         let pcSelectedPaths = new Set();
+        let pcSortBy = 'date';
+        let pcSortOrder = 'desc';
 
         async function loadPCQuickAccess() {
             try {
@@ -9353,6 +9725,8 @@
                 grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-light); font-weight: 600;">No matching files or folders found.</div>';
                 return;
             }
+
+            sortExplorerItems(filtered, pcSortBy, pcSortOrder);
 
             filtered.forEach((item, idx) => {
                 const card = document.createElement('div');
@@ -9556,6 +9930,13 @@
                 currentPCFilter = btn.getAttribute('data-pc-filter') || 'all';
                 renderPCFiles();
             });
+        });
+
+        $('#pc-sort-select')?.addEventListener('change', (e) => {
+            const [by, ord] = e.target.value.split('-');
+            pcSortBy = by;
+            pcSortOrder = ord;
+            renderPCFiles();
         });
 
         $('#pc-select-all-btn')?.addEventListener('click', () => {
