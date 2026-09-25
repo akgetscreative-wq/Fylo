@@ -1066,7 +1066,7 @@ app.post('/api/mobile/connect', (req, res) => {
 
     // Resolve real client IP: if mobile provided a valid LAN IP, use it. Otherwise use socket remoteAddress.
     let resolvedIp = ip;
-    const socketRemote = (req.socket.remoteAddress || req.ip || '').replace(/^.*:/, '');
+    const socketRemote = (req.socket.remoteAddress || req.ip || '').replace(/^::ffff:/, '');
     if (!resolvedIp || resolvedIp === '127.0.0.1' || resolvedIp === 'Detecting...' || resolvedIp.startsWith('127.')) {
         resolvedIp = socketRemote || '127.0.0.1';
     }
@@ -1112,7 +1112,7 @@ app.get('/api/mobile/devices', (req, res) => {
         id: d.id,
         name: d.name,
         model: d.model,
-        ip: (d.ip || '').replace(/^.*:/, ''),
+        ip: (d.ip || '').replace(/^::ffff:/, ''),
         port: d.port,
         readOnly: d.readOnly,
         storage: d.storage,
@@ -1130,7 +1130,7 @@ app.get('/api/mobile/devices', (req, res) => {
                     id: d.id,
                     name: d.name || 'Mobile Phone',
                     model: d.model || 'Web Browser Companion',
-                    ip: (d.ip || '').replace(/^.*:/, ''),
+                    ip: (d.ip || '').replace(/^::ffff:/, ''),
                     port: PORT,
                     readOnly: true,
                     storage: { total: 0, free: 0 },
