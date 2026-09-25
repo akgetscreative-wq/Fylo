@@ -66,6 +66,14 @@
             android:exported="false"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
 
+        <activity
+            android:name=".FyloPlayerActivity"
+            android:label="Fylo Video Player"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:screenOrientation="sensor"
+            android:exported="false"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
         <!-- ZXing Camera QR Scanner Activity (Portrait) -->
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"

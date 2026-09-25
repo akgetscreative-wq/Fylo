@@ -825,36 +825,10 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                 return;
             }
 
-            Intent intent = new Intent(Intent.ACTION_VIEW);
+            Intent intent = new Intent(reactContext, FyloPlayerActivity.class);
+            intent.putExtra("url", urlOrPath.trim());
+            intent.putExtra("mimeType", mimeType);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-            Uri uri;
-            if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://") || urlOrPath.startsWith("content://")) {
-                uri = Uri.parse(urlOrPath);
-            } else {
-                File file = new File(urlOrPath);
-                if (!file.exists()) {
-                    safePromise.reject("NOT_FOUND", "Video file does not exist: " + urlOrPath);
-                    return;
-                }
-                try {
-                    uri = FileProvider.getUriForFile(
-                        reactContext,
-                        reactContext.getPackageName() + ".provider",
-                        file
-                    );
-                } catch (Throwable t) {
-                    try {
-                        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
-                    } catch (Throwable ignored) {}
-                    uri = Uri.fromFile(file);
-                }
-            }
-
-            String type = (mimeType != null && !mimeType.trim().isEmpty() && !"undefined".equals(mimeType))
-                ? mimeType.trim() : "video/*";
-            intent.setDataAndType(uri, type);
 
             Activity currentActivity = getCurrentActivity();
             if (currentActivity != null) {
@@ -863,9 +837,6 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                 reactContext.startActivity(intent);
             }
             safePromise.resolve(true);
-        } catch (ActivityNotFoundException anfe) {
-            Log.e(TAG, "No app available to play video: " + anfe.getMessage());
-            safePromise.reject("NO_PLAYER", "No video player app found to play this video.");
         } catch (Throwable e) {
             Log.e(TAG, "openVideoPlayer error: " + e.getMessage(), e);
             safePromise.reject("PLAYER_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());

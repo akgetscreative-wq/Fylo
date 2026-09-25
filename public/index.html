@@ -5722,7 +5722,7 @@
                             <div class="pairing-qr-wrapper">
                                 <div id="phone-pairing-qrcode"></div>
                             </div>
-                            <div style="font-weight: 800; font-size: 0.95rem; color: var(--text); margin-bottom: 4px;" id="pairing-studio-url">Connecting...</div>
+                            <div style="font-weight: 800; font-size: 0.95rem; color: var(--text); margin-bottom: 4px;" id="pairing-studio-url">Loading...</div>
                             <div style="font-size: 0.78rem; color: var(--text-light); margin-bottom: 14px;">Scan with Android camera or Fylo App</div>
                             <div style="display: flex; gap: 8px; width: 100%;">
                                 <button class="btn btn-accent" id="pairing-copy-btn" style="flex: 1; padding: 8px 12px; font-size: 0.82rem; border-radius: 12px; justify-content: center;">
@@ -5799,7 +5799,7 @@
                             <div>
                                 <div class="phone-device-title">
                                     <span id="phone-name-display">Android Device</span>
-                                    <span class="phone-status-pill">● Online</span>
+                                    <span class="phone-status-pill" id="phone-status-display">● Online</span>
                                 </div>
                                 <div class="phone-device-subtitle">
                                     <span id="phone-model-display">Model</span>
@@ -8937,12 +8937,25 @@
                 const topPhoneDot = $('#top-phone-dot');
 
                 if (onlineDevices.length === 0) {
-                    if (webCompanionContainer) webCompanionContainer.classList.add('hidden');
-                    if (emptyContainer) emptyContainer.classList.remove('hidden');
-                    if (activeContainer) activeContainer.classList.add('hidden');
-                    currentPhoneId = null;
-                    if (topPhoneVal) topPhoneVal.textContent = 'Phone Disconnected';
-                    if (topPhoneDot) topPhoneDot.classList.remove('live-pulse');
+                    // Check if any known devices exist but are offline
+                    const offlineDevices = mobileDeviceList.filter(d => !d.online && !d.isWebClient);
+                    if (offlineDevices.length > 0) {
+                        // Device was connected but is now offline
+                        const offlineDev = offlineDevices[0];
+                        if (topPhoneVal) topPhoneVal.textContent = `${offlineDev.name || 'Phone'} (Offline)`;
+                        if (topPhoneDot) topPhoneDot.classList.remove('live-pulse');
+                        // Keep active container visible but update header to show offline
+                        if (activeContainer && !activeContainer.classList.contains('hidden')) {
+                            updatePhoneHeader(offlineDev);
+                        }
+                    } else {
+                        if (webCompanionContainer) webCompanionContainer.classList.add('hidden');
+                        if (emptyContainer) emptyContainer.classList.remove('hidden');
+                        if (activeContainer) activeContainer.classList.add('hidden');
+                        currentPhoneId = null;
+                        if (topPhoneVal) topPhoneVal.textContent = 'Phone Disconnected';
+                        if (topPhoneDot) topPhoneDot.classList.remove('live-pulse');
+                    }
                     const webBanner = $('#phone-web-paired-banner');
                     if (webBanner) webBanner.remove();
                     return;
@@ -9081,6 +9094,21 @@
             if (roBadge) {
                 roBadge.textContent = device.readOnly ? '🔒 Read-Only Protected' : '⚡ Write-Access Active';
                 roBadge.style.color = device.readOnly ? '#ffa502' : '#2ed573';
+            }
+            // Dynamic online/offline status pill
+            const statusPill = $('#phone-status-display');
+            if (statusPill) {
+                if (device.online === false) {
+                    statusPill.textContent = '● Device Offline';
+                    statusPill.style.color = '#ef4444';
+                    statusPill.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                    statusPill.style.background = 'rgba(239, 68, 68, 0.1)';
+                } else {
+                    statusPill.textContent = '● Online';
+                    statusPill.style.color = '#2ed573';
+                    statusPill.style.borderColor = '';
+                    statusPill.style.background = '';
+                }
             }
         }
 

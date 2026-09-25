@@ -20,10 +20,20 @@ import {
   PanResponder,
   DeviceEventEmitter,
   Alert,
+  Animated,
+  requireNativeComponent,
 } from 'react-native';
 
 const { FyloModule } = NativeModules;
+const FyloVideoView = Platform.OS === 'android' ? requireNativeComponent('FyloVideoView') : null;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const formatDuration = (sec) => {
+  if (!sec || isNaN(sec) || sec <= 0) return '00:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+};
 
 // Persistent Key-Value Storage helper (AsyncStorage compatible API backed by native SharedPreferences)
 const _memoryStorage = {};
@@ -196,6 +206,7 @@ export default function App() {
   const [pcHostName, setPcHostName] = useState('');
   const [pcAuthToken, setPcAuthToken] = useState('');
   const [pingLatency, setPingLatency] = useState(null); // Real measured latency in ms
+  const [isPcReachable, setIsPcReachable] = useState(false); // True only when heartbeat succeeds
   const [showPairModal, setShowPairModal] = useState(false);
   const [pairModalTab, setPairModalTab] = useState('qr'); // 'qr' | 'manual'
   const [qrInputText, setQrInputText] = useState('');
@@ -268,14 +279,22 @@ export default function App() {
   const directShareModalVisibleRef = useRef(directShareModalVisible);
   directShareModalVisibleRef.current = directShareModalVisible;
 
-  // Universal Media Lightbox State with Pinch-to-Zoom & Pan
-  const [lightboxItem, setLightboxItem] = useState(null); // { item, source: 'phone' | 'pc' }
+  // Universal Media Lightbox State with Pinch-to-Zoom & Pan & Carousel Playlist
+  const [lightboxItem, setLightboxItem] = useState(null); // { item, source: 'phone' | 'pc', index: number, playlist: Array }
   const [zoomScale, setZoomScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const zoomScaleRef = useRef(1);
   const panOffsetRef = useRef({ x: 0, y: 0 });
   const lastTouchDistanceRef = useRef(null);
   const lastTapTimeRef = useRef(0);
+
+  // In-App Video Player State
+  const [videoPaused, setVideoPaused] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoMuted, setVideoMuted] = useState(false);
+  const [videoRepeat, setVideoRepeat] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const videoViewRef = useRef(null);
 
   // Admin Security Password Modal State
   const [adminModalVisible, setAdminModalVisible] = useState(false);
@@ -326,6 +345,50 @@ export default function App() {
     setTimeout(() => setClipboardToast(''), 3200);
   };
 
+  // Gallery Navigation Functions
+  const goToNextMedia = () => {
+    const current = lightboxItemRef.current;
+    if (!current?.playlist || current.playlist.length <= 1) return;
+    const { playlist, index, source } = current;
+    const nextIdx = (index + 1) % playlist.length;
+    const nextItem = playlist[nextIdx];
+    if (nextItem) {
+      setLightboxItem({
+        item: nextItem,
+        source,
+        index: nextIdx,
+        playlist,
+      });
+      resetZoom();
+      setVideoPaused(false);
+      setVideoDuration(0);
+    }
+  };
+
+  const goToPrevMedia = () => {
+    const current = lightboxItemRef.current;
+    if (!current?.playlist || current.playlist.length <= 1) return;
+    const { playlist, index, source } = current;
+    const prevIdx = (index - 1 + playlist.length) % playlist.length;
+    const prevItem = playlist[prevIdx];
+    if (prevItem) {
+      setLightboxItem({
+        item: prevItem,
+        source,
+        index: prevIdx,
+        playlist,
+      });
+      resetZoom();
+      setVideoPaused(false);
+      setVideoDuration(0);
+    }
+  };
+
+  const goToNextMediaRef = useRef(goToNextMedia);
+  goToNextMediaRef.current = goToNextMedia;
+  const goToPrevMediaRef = useRef(goToPrevMedia);
+  goToPrevMediaRef.current = goToPrevMedia;
+
   // Native Image Container Ref for 120Hz Hardware-Accelerated Pan & Zoom
   const imageContainerRef = useRef(null);
 
@@ -355,15 +418,19 @@ export default function App() {
 
   useEffect(() => {
     resetZoom();
-  }, [lightboxItem]);
+    setVideoPaused(false);
+    setVideoDuration(0);
+  }, [lightboxItem?.item?.path]);
 
   // =========================================================
-  // REQUIREMENT 3: PINCH-TO-ZOOM & PAN FOR PHOTOS & FILES
+  // FLUID MULTI-TOUCH PINCH-TO-ZOOM, PAN & SWIPE CAROUSEL
   // =========================================================
   const zoomPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6;
+      },
       onPanResponderGrant: (evt) => {
         if (evt.nativeEvent.touches.length === 2) {
           const [t1, t2] = evt.nativeEvent.touches;
@@ -410,32 +477,71 @@ export default function App() {
             panOffsetRef.current = { x: nextX, y: nextY };
             // Native direct update without React re-render!
             updateNativeTransform(zoomScaleRef.current, nextX, nextY);
-          } else if (gestureState.dy > 0) {
-            // Google Photos style: slide / pull image down to dismiss!
-            const dragY = gestureState.dy;
-            const dragScale = Math.max(0.65, 1 - (dragY / SCREEN_HEIGHT) * 0.45);
-            panOffsetRef.current = { x: gestureState.dx * 0.35, y: dragY };
-            updateNativeTransform(dragScale, gestureState.dx * 0.35, dragY);
+          } else {
+            // At 1.0x Scale: Pull down to dismiss or swipe left/right for carousel
+            if (gestureState.dy > 15 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.1) {
+              // Google Photos style: slide / pull image down to dismiss!
+              const dragY = gestureState.dy;
+              const dragScale = Math.max(0.65, 1 - (dragY / SCREEN_HEIGHT) * 0.45);
+              panOffsetRef.current = { x: gestureState.dx * 0.35, y: dragY };
+              updateNativeTransform(dragScale, gestureState.dx * 0.35, dragY);
+            } else if (Math.abs(gestureState.dx) > 10) {
+              // Horizontal swipe feedback
+              panOffsetRef.current = { x: gestureState.dx * 0.4, y: 0 };
+              updateNativeTransform(1, gestureState.dx * 0.4, 0);
+            }
           }
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
         lastTouchDistanceRef.current = null;
         if (zoomScaleRef.current <= 1.05) {
-          // If dragged down by > 110px or flicked down with velocity > 0.65: dismiss!
-          if (gestureState.dy > 110 || (gestureState.dy > 35 && gestureState.vy > 0.65)) {
+          // If dragged down by > 80px or flicked down: dismiss!
+          if (gestureState.dy > 80 || (gestureState.dy > 35 && gestureState.vy > 0.65)) {
             setLightboxItem(null);
             resetZoom();
             return;
           }
-          zoomScaleRef.current = 1;
-          panOffsetRef.current = { x: 0, y: 0 };
-          updateNativeTransform(1, 0, 0);
-          setZoomScale(1);
-          setPanOffset({ x: 0, y: 0 });
+
+          // Horizontal swipe left/right to change media (Google Photos carousel)
+          const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.1;
+          if (isHorizontal && (gestureState.dx < -50 || gestureState.vx < -0.5)) {
+            goToNextMediaRef.current();
+          } else if (isHorizontal && (gestureState.dx > 50 || gestureState.vx > 0.5)) {
+            goToPrevMediaRef.current();
+          } else {
+            zoomScaleRef.current = 1;
+            panOffsetRef.current = { x: 0, y: 0 };
+            updateNativeTransform(1, 0, 0);
+            setZoomScale(1);
+            setPanOffset({ x: 0, y: 0 });
+          }
         } else {
           setZoomScale(zoomScaleRef.current);
           setPanOffset({ ...panOffsetRef.current });
+        }
+      },
+    })
+  ).current;
+
+  // Video Swiping & Pull-Down Gestures
+  const videoPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return Math.abs(gestureState.dx) > 18 || Math.abs(gestureState.dy) > 18;
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dy > 80 || (gestureState.dy > 35 && gestureState.vy > 0.65)) {
+          setLightboxItem(null);
+          resetZoom();
+          return;
+        }
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.1;
+        if (isHorizontal && (gestureState.dx < -45 || gestureState.vx < -0.5)) {
+          goToNextMediaRef.current();
+        } else if (isHorizontal && (gestureState.dx > 45 || gestureState.vx > 0.5)) {
+          goToPrevMediaRef.current();
         }
       },
     })
@@ -456,6 +562,59 @@ export default function App() {
     }
     setZoomScale(next);
   };
+
+  // Left-anchored Drawer Slide Animation & Helpers
+  const drawerSlideAnim = useRef(new Animated.Value(-300)).current;
+
+  const openSidebar = () => {
+    setSidebarOpen(true);
+    drawerSlideAnim.setValue(-300);
+    Animated.timing(drawerSlideAnim, {
+      toValue: 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeSidebar = () => {
+    Animated.timing(drawerSlideAnim, {
+      toValue: -300,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(() => {
+      setSidebarOpen(false);
+    });
+  };
+
+  useEffect(() => {
+    if (sidebarOpen) {
+      Animated.timing(drawerSlideAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [sidebarOpen]);
+
+  // Swipe right on homepage to open sidebar gesture
+  const homePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Detect horizontal rightward swipe: dx > 25, dominant over vertical movement
+        if (gestureState.dx > 25 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.3) {
+          return true;
+        }
+        return false;
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dx > 50 || (gestureState.dx > 25 && gestureState.vx > 0.35)) {
+          openSidebar();
+        }
+      },
+      onPanResponderTerminate: () => {},
+    })
+  ).current;
 
   // Storage Access Preference Helper & Synchronization
   const syncStorageAccessPreference = async (allow, targetPc) => {
@@ -583,10 +742,11 @@ export default function App() {
   useEffect(() => {
     if (!pairedPc) {
       setPingLatency(null);
+      setIsPcReachable(false);
       return;
     }
 
-    let failCount = 0;
+    let consecutiveFails = 0;
     const sendHeartbeat = async () => {
       const startTime = Date.now();
       try {
@@ -606,31 +766,41 @@ export default function App() {
             readOnly: readOnlyMode,
             allowFullPhoneAccess: allowFullPhoneAccess !== false,
           }),
-        }, 5000);
+        }, 2500); // 2.5s timeout — fail fast
 
         const roundTripMs = Date.now() - startTime;
 
         if (res.ok) {
           setPingLatency(roundTripMs);
-          failCount = 0;
+          setIsPcReachable(true);
+          consecutiveFails = 0;
         } else if (res.status === 404) {
+          // PC doesn't recognize us, try re-pairing
           handleConnectToPc(pairedPc, pcAuthToken);
         } else {
-          failCount++;
+          // Non-OK response — PC unreachable or erroring
+          setPingLatency(null);
+          setIsPcReachable(false);
+          consecutiveFails++;
         }
       } catch (e) {
-        failCount++;
+        // Network error or timeout — immediately mark offline
+        setPingLatency(null);
+        setIsPcReachable(false);
+        consecutiveFails++;
       }
 
-      if (failCount >= 4) {
+      // After 8 consecutive failures (~28s), fully unpair
+      if (consecutiveFails >= 8) {
         addLog(`Lost connection to PC at ${pairedPc}`);
         setPairedPc(null);
         setPingLatency(null);
+        setIsPcReachable(false);
       }
     };
 
     sendHeartbeat();
-    const heartbeatTimer = setInterval(sendHeartbeat, 10000);
+    const heartbeatTimer = setInterval(sendHeartbeat, 3500); // 3.5s ping interval
     return () => clearInterval(heartbeatTimer);
   }, [pairedPc, pcAuthToken, storageInfo, readOnlyMode, batteryLevel]);
 
@@ -697,7 +867,7 @@ export default function App() {
       }
       // 2. Close sidebar drawer if open
       if (sidebarOpenRef.current) {
-        setSidebarOpen(false);
+        closeSidebar();
         return true;
       }
 
@@ -891,6 +1061,7 @@ export default function App() {
     }
     setPairedPc(null);
     setPingLatency(null);
+    setIsPcReachable(false);
     showToast('Unpaired from PC');
   };
 
@@ -956,6 +1127,7 @@ export default function App() {
         setPairedPc(`${host}:${port}`);
         setPcHostName(data.hostName || 'Windows Host');
         setPingLatency(roundTrip);
+        setIsPcReachable(true);
         if (data.authToken) {
           setPcAuthToken(data.authToken);
           if (FyloModule && FyloModule.setAuthToken) {
@@ -1714,7 +1886,7 @@ export default function App() {
             <TouchableOpacity
               activeOpacity={0.75}
               style={[styles.hamburgerBtn, !isDarkMode && styles.hamburgerBtnLight]}
-              onPress={() => setSidebarOpen(true)}>
+              onPress={openSidebar}>
               <Text style={[styles.hamburgerIcon, !isDarkMode && styles.hamburgerIconLight]}>☰</Text>
             </TouchableOpacity>
 
@@ -1740,7 +1912,7 @@ export default function App() {
           {/* Connection Status Pill */}
           <TouchableOpacity
             activeOpacity={0.75}
-            style={[styles.topStatusPill, pairedPc ? styles.topStatusPillActive : styles.topStatusPillIdle]}
+            style={[styles.topStatusPill, pairedPc ? (isPcReachable ? styles.topStatusPillActive : styles.topStatusPillOffline) : styles.topStatusPillIdle]}
             onPress={() => {
               if (pairedPc) {
                 setDiagVisible(true);
@@ -1749,9 +1921,9 @@ export default function App() {
                 setShowPairModal(true);
               }
             }}>
-            <View style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#64748b' }]} />
+            <View style={[styles.beaconDot, { backgroundColor: pairedPc ? (isPcReachable ? '#10b981' : '#ef4444') : '#64748b' }]} />
             <Text style={styles.topStatusPillText} numberOfLines={1}>
-              {pairedPc ? (pingLatency !== null ? `${pingLatency} ms` : 'Linked') : '⚡ Pair PC'}
+              {pairedPc ? (isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : 'Online') : '⚠️ PC Offline') : '⚡ Pair PC'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1768,9 +1940,10 @@ export default function App() {
       {/* TAB 1: STREAMLINED BENTO HOME DASHBOARD                   */}
       {/* ========================================================= */}
       {currentTab === 'home' && (
-        <ScrollView
-          contentContainerStyle={styles.bentoScroll}
-          showsVerticalScrollIndicator={false}>
+        <View style={{ flex: 1 }} {...homePanResponder.panHandlers}>
+          <ScrollView
+            contentContainerStyle={styles.bentoScroll}
+            showsVerticalScrollIndicator={false}>
 
           {/* Storage Permission Banner if Missing */}
           {!hasPermission && (
@@ -1791,27 +1964,29 @@ export default function App() {
             </View>
           )}
 
-          {/* 1. PROMINENT CONNECTION STATUS BEACON CARD */}
+           {/* 1. PROMINENT CONNECTION STATUS BEACON CARD */}
           <View style={styles.bentoCardHero}>
             {pairedPc ? (
               // Connected State
               <View>
                 <View style={styles.beaconHeaderRow}>
                   <View style={styles.beaconRowLeft}>
-                    <View style={styles.beaconGlowConnected}>
-                      <View style={[styles.beaconDot, { backgroundColor: '#10b981' }]} />
+                    <View style={isPcReachable ? styles.beaconGlowConnected : styles.beaconGlowOffline}>
+                      <View style={[styles.beaconDot, { backgroundColor: isPcReachable ? '#10b981' : '#ef4444' }]} />
                     </View>
                     <View>
-                      <Text style={styles.beaconStatusLabel}>CONNECTED TO PC</Text>
+                      <Text style={isPcReachable ? styles.beaconStatusLabel : styles.beaconStatusLabelOffline}>
+                        {isPcReachable ? 'CONNECTED TO PC' : '⚠️ PC OFFLINE'}
+                      </Text>
                       <Text style={styles.beaconHostTitle} numberOfLines={1}>
                         {pcHostName || 'Windows Host'}
                       </Text>
                       <Text style={styles.beaconIpSub}>{pairedPc}</Text>
                     </View>
                   </View>
-                  <View style={styles.latencyBadge}>
-                    <Text style={styles.latencyBadgeText}>
-                      {pingLatency !== null ? `${pingLatency} ms` : 'Online'}
+                  <View style={isPcReachable ? styles.latencyBadge : styles.latencyBadgeOffline}>
+                    <Text style={isPcReachable ? styles.latencyBadgeText : styles.latencyBadgeTextOffline}>
+                      {isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : 'Online') : 'Offline'}
                     </Text>
                   </View>
                 </View>
@@ -2012,63 +2187,7 @@ export default function App() {
             </View>
           </View>
 
-          {/* 3. QUICK CATEGORY JUMPERS */}
-          <View style={styles.bentoCard}>
-            <Text style={styles.bentoCardTitle}>⚡ Quick Category Jumpers</Text>
-            <Text style={styles.bentoCardSubtitle}>Instant 1-tap folder access</Text>
-
-            <View style={styles.categoryJumperGrid}>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.jumperTile}
-                onPress={() => handleCategoryJump('photos')}>
-                <Text style={styles.jumperEmoji}>📸</Text>
-                <Text style={styles.jumperTitle}>Photos</Text>
-                <Text style={styles.jumperSubtitle}>DCIM</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.jumperTile}
-                onPress={() => handleCategoryJump('downloads')}>
-                <Text style={styles.jumperEmoji}>📥</Text>
-                <Text style={styles.jumperTitle}>Downloads</Text>
-                <Text style={styles.jumperSubtitle}>Files</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.jumperTile}
-                onPress={() => handleCategoryJump('videos')}>
-                <Text style={styles.jumperEmoji}>🎬</Text>
-                <Text style={styles.jumperTitle}>Videos</Text>
-                <Text style={styles.jumperSubtitle}>Movies</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.jumperTile}
-                onPress={() => handleCategoryJump('audio')}>
-                <Text style={styles.jumperEmoji}>🎵</Text>
-                <Text style={styles.jumperTitle}>Audio</Text>
-                <Text style={styles.jumperSubtitle}>Music</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.jumperTileWide}
-                onPress={() => handleCategoryJump('all')}>
-                <Text style={styles.jumperEmoji}>📁</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.jumperTitle}>All Device Files</Text>
-                  <Text style={styles.jumperSubtitle}>Full directory tree explorer</Text>
-                </View>
-                <Text style={styles.jumperArrow}>›</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* 4. LAN SHARED CLIPBOARD PREVIEW CARD */}
+          {/* 3. LAN SHARED CLIPBOARD PREVIEW CARD */}
           <View style={styles.bentoCard}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
@@ -2157,6 +2276,7 @@ export default function App() {
             </View>
           </View>
         </ScrollView>
+        </View>
       )}
 
       {/* ========================================================= */}
@@ -2307,7 +2427,14 @@ export default function App() {
                         } else if (item.isDir) {
                           loadPhoneFolder(item.path);
                         } else {
-                          setLightboxItem({ item, source: 'phone' });
+                          const playlist = filteredPhoneItems.filter((f) => !f.isDir && isMediaFile(f.ext));
+                          const idx = playlist.findIndex((f) => f.path === item.path);
+                          setLightboxItem({
+                            item,
+                            source: 'phone',
+                            index: idx >= 0 ? idx : 0,
+                            playlist: playlist.length > 0 ? playlist : [item],
+                          });
                         }
                       }}
                       onLongPress={() => {
@@ -2375,7 +2502,14 @@ export default function App() {
                       } else if (item.isDir) {
                         loadPhoneFolder(item.path);
                       } else {
-                        setLightboxItem({ item, source: 'phone' });
+                        const playlist = filteredPhoneItems.filter((f) => !f.isDir && isMediaFile(f.ext));
+                        const idx = playlist.findIndex((f) => f.path === item.path);
+                        setLightboxItem({
+                          item,
+                          source: 'phone',
+                          index: idx >= 0 ? idx : 0,
+                          playlist: playlist.length > 0 ? playlist : [item],
+                        });
                       }
                     }}>
                     {item.isDir ? (
@@ -2702,7 +2836,14 @@ export default function App() {
                             } else if (item.isDir) {
                               loadPcFolder(item.path);
                             } else {
-                              setLightboxItem({ item, source: 'pc' });
+                              const playlist = filteredPcItems.filter((f) => !f.isDir && isMediaFile(f.ext));
+                              const idx = playlist.findIndex((f) => f.path === item.path);
+                              setLightboxItem({
+                                item,
+                                source: 'pc',
+                                index: idx >= 0 ? idx : 0,
+                                playlist: playlist.length > 0 ? playlist : [item],
+                              });
                             }
                           }}>
                           {item.isDir ? (
@@ -2756,7 +2897,14 @@ export default function App() {
                           } else if (item.isDir) {
                             loadPcFolder(item.path);
                           } else {
-                            setLightboxItem({ item, source: 'pc' });
+                            const playlist = filteredPcItems.filter((f) => !f.isDir && isMediaFile(f.ext));
+                            const idx = playlist.findIndex((f) => f.path === item.path);
+                            setLightboxItem({
+                              item,
+                              source: 'pc',
+                              index: idx >= 0 ? idx : 0,
+                              playlist: playlist.length > 0 ? playlist : [item],
+                            });
                           }
                         }}>
                         {item.isDir ? (
@@ -3026,16 +3174,32 @@ export default function App() {
       )}
 
       {/* ========================================================= */}
-      {/* REQUIREMENT 3: UNIVERSAL MEDIA LIGHTBOX WITH PINCH & ZOOM  */}
+      {/* UNIVERSAL MEDIA LIGHTBOX & GALLERY CAROUSEL WITH VIDEO    */}
       {/* ========================================================= */}
       {lightboxItem && (
-        <Modal visible={!!lightboxItem} transparent animationType="fade">
+        <Modal
+          visible={!!lightboxItem}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setLightboxItem(null);
+            resetZoom();
+          }}>
           <View style={styles.lightboxOverlay}>
             <View style={styles.lightboxHeader}>
               <View style={{ flex: 1, marginRight: 12 }}>
-                <Text style={styles.lightboxFileName} numberOfLines={1}>
-                  {lightboxItem?.item?.name || 'File'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.lightboxFileName} numberOfLines={1}>
+                    {lightboxItem?.item?.name || 'File'}
+                  </Text>
+                  {lightboxItem?.playlist && lightboxItem.playlist.length > 1 && (
+                    <View style={styles.lightboxIndexBadge}>
+                      <Text style={styles.lightboxIndexBadgeText}>
+                        {lightboxItem.index + 1} of {lightboxItem.playlist.length}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.lightboxMeta}>
                   {lightboxItem?.source === 'pc' ? '💻 Windows PC' : '📱 Local Phone'} • {formatFileSize(lightboxItem?.item?.size)}
                 </Text>
@@ -3052,56 +3216,108 @@ export default function App() {
               </TouchableOpacity>
             </View>
 
-            {/* Pinchable & Zoomable Media Body */}
-            <View style={styles.lightboxBody} {...(isImageFile(lightboxItem?.item?.ext) ? zoomPanResponder.panHandlers : {})}>
-              {isVideoFile(lightboxItem?.item?.ext) ? (
-                /* Enhanced Video Player Hub Card */
-                <View style={styles.lightboxVideoHub}>
-                  <View style={styles.lightboxVideoPreviewCard}>
-                    <View style={styles.lightboxVideoGlowCircle}>
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={styles.lightboxVideoBigPlayBtn}
-                        onPress={() => {
-                          const pathOrUrl = lightboxItem?.source === 'pc'
-                            ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`
-                            : lightboxItem?.item?.path;
-                          if (FyloModule && FyloModule.openVideoPlayer) {
-                            FyloModule.openVideoPlayer(pathOrUrl, 'video/*')
-                              .catch((e) => showToast('⚠️ Video error: ' + (e?.message || e)));
-                          } else {
-                            showToast('⚠️ Video player module unavailable');
-                          }
-                        }}>
-                        <Text style={styles.lightboxVideoPlayIcon}>▶</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <Text style={styles.lightboxVideoName} numberOfLines={2}>
-                      {lightboxItem?.item?.name}
-                    </Text>
-                    <Text style={styles.lightboxVideoSub}>
-                      {formatFileSize(lightboxItem?.item?.size)} • {lightboxItem?.source === 'pc' ? 'Remote PC Stream' : 'Local Video'}
-                    </Text>
-                  </View>
+            {/* Pinchable, Zoomable & Swipeable Media Body */}
+            <View
+              style={styles.lightboxBody}
+              {...(isImageFile(lightboxItem?.item?.ext) ? zoomPanResponder.panHandlers : videoPanResponder.panHandlers)}>
 
-                  <View style={styles.lightboxVideoActionGroup}>
+              {/* Navigation chevrons for carousel playlists */}
+              {lightboxItem?.playlist && lightboxItem.playlist.length > 1 && (
+                <>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.lightboxChevronLeft}
+                    onPress={goToPrevMedia}>
+                    <Text style={styles.lightboxChevronText}>‹</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.lightboxChevronRight}
+                    onPress={goToNextMedia}>
+                    <Text style={styles.lightboxChevronText}>›</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {isVideoFile(lightboxItem?.item?.ext) ? (
+                /* Native In-App Video View Component */
+                <View style={styles.lightboxVideoContainer}>
+                  {FyloVideoView ? (
+                    <FyloVideoView
+                      ref={videoViewRef}
+                      style={styles.lightboxNativeVideoView}
+                      source={
+                        lightboxItem?.source === 'pc'
+                          ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`
+                          : (lightboxItem?.item?.path || '')
+                      }
+                      paused={videoPaused}
+                      controls={true}
+                      repeat={videoRepeat}
+                      muted={videoMuted}
+                      resizeMode="contain"
+                      onVideoLoad={(e) => {
+                        setVideoDuration(e?.nativeEvent?.duration || 0);
+                        setVideoLoading(false);
+                      }}
+                      onVideoEnd={() => {
+                        if (!videoRepeat) {
+                          setVideoPaused(true);
+                        }
+                      }}
+                      onVideoError={(e) => {
+                        setVideoLoading(false);
+                        showToast('⚠️ Video error: ' + (e?.nativeEvent?.error || 'Playback failed'));
+                      }}
+                    />
+                  ) : (
+                    <View style={styles.lightboxNonImgContainer}>
+                      <Text style={{ fontSize: 48 }}>🎬</Text>
+                      <Text style={styles.lightboxNonImgTitle}>{lightboxItem?.item?.name}</Text>
+                    </View>
+                  )}
+
+                  {/* Custom In-App Playback HUD */}
+                  <View style={styles.lightboxVideoHud}>
                     <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={styles.lightboxVideoPrimaryPlayBtn}
+                      activeOpacity={0.75}
+                      style={styles.lightboxHudBtn}
+                      onPress={() => setVideoPaused(!videoPaused)}>
+                      <Text style={styles.lightboxHudBtnText}>{videoPaused ? '▶' : '⏸'}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      style={styles.lightboxHudBtn}
+                      onPress={() => setVideoMuted(!videoMuted)}>
+                      <Text style={styles.lightboxHudBtnText}>{videoMuted ? '🔇' : '🔊'}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      style={styles.lightboxHudBtn}
+                      onPress={() => setVideoRepeat(!videoRepeat)}>
+                      <Text style={[styles.lightboxHudBtnText, videoRepeat && { color: '#60cdff' }]}>🔁</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.lightboxHudDurationWrap}>
+                      <Text style={styles.lightboxHudDurationText}>
+                        {formatDuration(videoDuration)}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      style={styles.lightboxHudBtn}
                       onPress={() => {
                         const pathOrUrl = lightboxItem?.source === 'pc'
                           ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`
                           : lightboxItem?.item?.path;
                         if (FyloModule && FyloModule.openVideoPlayer) {
-                          FyloModule.openVideoPlayer(pathOrUrl, 'video/*')
-                            .catch((e) => showToast('⚠️ Video error: ' + (e?.message || e)));
-                        } else {
-                          showToast('⚠️ Video player module unavailable');
+                          FyloModule.openVideoPlayer(pathOrUrl, 'video/*');
                         }
                       }}>
-                      <Text style={styles.lightboxVideoPrimaryPlayBtnText}>
-                        ▶ Play in System Video Player
-                      </Text>
+                      <Text style={styles.lightboxHudBtnText}>⛶</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -3207,14 +3423,14 @@ export default function App() {
       {/* ========================================================= */}
       {/* COLLAPSIBLE NAVIGATION SIDEBAR DRAWER                     */}
       {/* ========================================================= */}
-      <Modal visible={sidebarOpen} transparent animationType="fade">
+      <Modal visible={sidebarOpen} transparent animationType="fade" onRequestClose={closeSidebar}>
         <View style={styles.drawerBackdrop}>
-          <TouchableOpacity
-            style={styles.drawerDismissArea}
-            activeOpacity={1}
-            onPress={() => setSidebarOpen(false)}
-          />
-          <View style={[styles.drawerPanel, !isDarkMode && styles.drawerPanelLight]}>
+          <Animated.View
+            style={[
+              styles.drawerPanel,
+              !isDarkMode && styles.drawerPanelLight,
+              { transform: [{ translateX: drawerSlideAnim }] },
+            ]}>
             {/* Drawer Brand Header */}
             <View style={[styles.drawerHeader, !isDarkMode && styles.drawerHeaderLight]}>
               <View style={styles.drawerHeaderBrand}>
@@ -3229,7 +3445,7 @@ export default function App() {
               <TouchableOpacity
                 style={styles.drawerCloseBtn}
                 activeOpacity={0.75}
-                onPress={() => setSidebarOpen(false)}>
+                onPress={closeSidebar}>
                 <Text style={styles.drawerCloseBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -3239,20 +3455,20 @@ export default function App() {
               activeOpacity={0.8}
               style={[styles.drawerConnCard, pairedPc && styles.drawerConnCardActive]}
               onPress={() => {
-                setSidebarOpen(false);
+                closeSidebar();
                 if (pairedPc) {
                   setShowSettingsModal(true);
                 } else {
                   setShowPairModal(true);
                 }
               }}>
-              <View style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#64748b' }]} />
+              <View style={[styles.beaconDot, { backgroundColor: pairedPc ? (isPcReachable ? '#10b981' : '#ef4444') : '#64748b' }]} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.drawerConnTitle}>
-                  {pairedPc ? `Linked to ${pcHostName || 'PC'}` : 'Not Paired to PC'}
+                  {pairedPc ? (isPcReachable ? `Linked to ${pcHostName || 'PC'}` : `${pcHostName || 'PC'} (Offline)`) : 'Not Paired to PC'}
                 </Text>
                 <Text style={styles.drawerConnSub}>
-                  {pairedPc ? `${pairedPc} • ${pingLatency !== null ? `${pingLatency} ms latency` : 'Connected'}` : 'Tap to scan QR or connect via IP'}
+                  {pairedPc ? (isPcReachable ? `${pairedPc} • ${pingLatency !== null ? `${pingLatency} ms latency` : 'Connected'}` : `${pairedPc} • ⚠️ PC Unreachable`) : 'Tap to scan QR or connect via IP'}
                 </Text>
               </View>
               <Text style={{ color: '#60a5fa', fontSize: 16 }}>{pairedPc ? '⚙️' : '⚡'}</Text>
@@ -3265,7 +3481,7 @@ export default function App() {
                 style={[styles.drawerNavItem, currentTab === 'home' && styles.drawerNavItemActive]}
                 onPress={() => {
                   setCurrentTab('home');
-                  setSidebarOpen(false);
+                  closeSidebar();
                 }}>
                 <Text style={styles.drawerNavIcon}>🏠</Text>
                 <View style={{ flex: 1 }}>
@@ -3281,7 +3497,7 @@ export default function App() {
                 style={[styles.drawerNavItem, currentTab === 'pc-explorer' && styles.drawerNavItemActive]}
                 onPress={() => {
                   setCurrentTab('pc-explorer');
-                  setSidebarOpen(false);
+                  closeSidebar();
                 }}>
                 <Text style={styles.drawerNavIcon}>💻</Text>
                 <View style={{ flex: 1 }}>
@@ -3297,7 +3513,7 @@ export default function App() {
                 style={[styles.drawerNavItem, currentTab === 'phone-explorer' && styles.drawerNavItemActive]}
                 onPress={() => {
                   setCurrentTab('phone-explorer');
-                  setSidebarOpen(false);
+                  closeSidebar();
                 }}>
                 <Text style={styles.drawerNavIcon}>📱</Text>
                 <View style={{ flex: 1 }}>
@@ -3313,7 +3529,7 @@ export default function App() {
                 style={[styles.drawerNavItem, currentTab === 'clipboard' && styles.drawerNavItemActive]}
                 onPress={() => {
                   setCurrentTab('clipboard');
-                  setSidebarOpen(false);
+                  closeSidebar();
                 }}>
                 <Text style={styles.drawerNavIcon}>📋</Text>
                 <View style={{ flex: 1 }}>
@@ -3329,7 +3545,7 @@ export default function App() {
                 style={[styles.drawerNavItem, currentTab === 'transfer' && styles.drawerNavItemActive]}
                 onPress={() => {
                   setCurrentTab('transfer');
-                  setSidebarOpen(false);
+                  closeSidebar();
                 }}>
                 <Text style={styles.drawerNavIcon}>⚡</Text>
                 <View style={{ flex: 1 }}>
@@ -3344,7 +3560,7 @@ export default function App() {
                 activeOpacity={0.75}
                 style={styles.drawerNavItem}
                 onPress={() => {
-                  setSidebarOpen(false);
+                  closeSidebar();
                   setShowSettingsModal(true);
                 }}>
                 <Text style={styles.drawerNavIcon}>⚙️</Text>
@@ -3421,14 +3637,19 @@ export default function App() {
                   activeOpacity={0.75}
                   style={styles.drawerUnpairBtn}
                   onPress={() => {
-                    setSidebarOpen(false);
+                    closeSidebar();
                     handleUnpair();
                   }}>
                   <Text style={styles.drawerUnpairBtnText}>Disconnect</Text>
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+          </Animated.View>
+          <TouchableOpacity
+            style={styles.drawerDismissArea}
+            activeOpacity={1}
+            onPress={closeSidebar}
+          />
         </View>
       </Modal>
 
@@ -4167,6 +4388,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(37, 99, 235, 0.12)',
     borderColor: '#2563eb',
   },
+  topStatusPillOffline: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderColor: '#ef4444',
+  },
   topStatusPillText: {
     color: '#ffffff',
     fontSize: 10.5,
@@ -4278,6 +4503,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  beaconGlowOffline: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   beaconStatusLabel: {
     fontSize: 9.5,
     color: '#10b981',
@@ -4287,6 +4520,12 @@ const styles = StyleSheet.create({
   beaconStatusLabelIdle: {
     fontSize: 9.5,
     color: '#60a5fa',
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  beaconStatusLabelOffline: {
+    fontSize: 9.5,
+    color: '#ef4444',
     fontWeight: '900',
     letterSpacing: 0.5,
   },
@@ -4307,6 +4546,17 @@ const styles = StyleSheet.create({
   },
   latencyBadgeText: {
     color: '#10b981',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  latencyBadgeOffline: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+  },
+  latencyBadgeTextOffline: {
+    color: '#ef4444',
     fontSize: 10,
     fontWeight: '800',
   },
@@ -5533,6 +5783,105 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '800',
   },
+  lightboxIndexBadge: {
+    backgroundColor: 'rgba(37, 99, 235, 0.25)',
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  lightboxIndexBadgeText: {
+    color: '#93c5fd',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  lightboxChevronLeft: {
+    position: 'absolute',
+    left: 10,
+    top: '48%',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  lightboxChevronRight: {
+    position: 'absolute',
+    right: 10,
+    top: '48%',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  lightboxChevronText: {
+    color: '#ffffff',
+    fontSize: 24,
+    lineHeight: 26,
+    fontWeight: '300',
+  },
+  lightboxVideoContainer: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    backgroundColor: '#000000',
+  },
+  lightboxNativeVideoView: {
+    width: '100%',
+    height: '100%',
+  },
+  lightboxVideoHud: {
+    position: 'absolute',
+    bottom: 16,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    zIndex: 30,
+  },
+  lightboxHudBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxHudBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  lightboxHudDurationWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxHudDurationText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
 
   /* QUICK SHARE MODAL ROW */
   quickShareRow: {
@@ -5802,6 +6151,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     display: 'flex',
     flexDirection: 'column',
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 5, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 15,
   },
   drawerPanelLight: {
     backgroundColor: '#ffffff',

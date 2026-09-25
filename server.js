@@ -950,7 +950,7 @@ app.get('/api/devices', (req, res) => {
     });
 
     const deviceList = Object.values(deviceMap).map(d => {
-        const isOnline = (now - d.lastActive) < 30000;
+        const isOnline = (now - d.lastActive) <= 6000;
         return {
             id: d.id,
             name: d.name,
@@ -1133,29 +1133,27 @@ app.get('/api/mobile/devices', (req, res) => {
         allowFullPhoneAccess: d.allowFullPhoneAccess !== false,
         storage: d.storage,
         battery: d.battery,
-        online: (now - d.lastActive) < 30000,
+        online: (now - d.lastActive) <= 6000,
         isWebClient: false
     }));
 
     // Include active remote web companion clients (e.g. mobile Chrome / Safari)
     Object.values(devices).forEach(d => {
         if (!d.isHost && (d.isWebClient || d.kind === 'android' || d.kind === 'mobile' || d.kind === 'ios') && !list.some(m => m.id === d.id)) {
-            const isOnline = (now - d.lastActive) < 30000;
-            if (isOnline) {
-                list.push({
-                    id: d.id,
-                    name: d.name || 'Mobile Phone',
-                    model: d.model || 'Web Browser Companion',
-                    ip: (d.ip || '').replace(/^::ffff:/, ''),
-                    port: PORT,
-                    readOnly: true,
-                    allowFullPhoneAccess: false,
-                    storage: { total: 0, free: 0 },
-                    battery: null,
-                    online: true,
-                    isWebClient: true
-                });
-            }
+            const isOnline = (now - d.lastActive) <= 6000;
+            list.push({
+                id: d.id,
+                name: d.name || 'Mobile Phone',
+                model: d.model || 'Web Browser Companion',
+                ip: (d.ip || '').replace(/^::ffff:/, ''),
+                port: PORT,
+                readOnly: true,
+                allowFullPhoneAccess: false,
+                storage: { total: 0, free: 0 },
+                battery: null,
+                online: isOnline,
+                isWebClient: true
+            });
         }
     });
 
@@ -1264,6 +1262,10 @@ app.get('/api/mobile/fs/list', (req, res) => {
         return res.status(404).json({ error: 'Mobile device not connected' });
     }
 
+    if (Date.now() - device.lastActive > 6000) {
+        return res.status(503).json({ error: 'Mobile device is offline', offline: true, items: [] });
+    }
+
     if (device.allowFullPhoneAccess === false) {
         return res.status(403).json({
             success: false,
@@ -1306,6 +1308,10 @@ app.get('/api/mobile/fs/file', (req, res) => {
     const device = mobileDevices[deviceId];
     if (!device) {
         return res.status(404).send('Mobile device not connected');
+    }
+
+    if (Date.now() - device.lastActive > 6000) {
+        return res.status(503).send('Mobile device is offline');
     }
 
     if (device.allowFullPhoneAccess === false) {
@@ -1359,6 +1365,10 @@ app.get('/api/mobile/fs/thumbnail', (req, res) => {
         return res.status(404).send('Mobile device not connected');
     }
 
+    if (Date.now() - device.lastActive > 6000) {
+        return res.status(503).send('Mobile device is offline');
+    }
+
     if (device.allowFullPhoneAccess === false) {
         return res.status(403).send('Full phone storage sharing is disabled by phone user.');
     }
@@ -1384,6 +1394,10 @@ app.post('/api/mobile/fs/download-direct', (req, res) => {
     const device = mobileDevices[deviceId];
     if (!device) {
         return res.status(404).json({ error: 'Mobile device not connected' });
+    }
+
+    if (Date.now() - device.lastActive > 6000) {
+        return res.status(503).json({ error: 'Mobile device is offline' });
     }
 
     const fileName = path.basename(filePath);
