@@ -9,3 +9,9 @@
 -keep public class com.facebook.react.** { *; }
 -keep class com.facebook.react.bridge.** { *; }
 -keep class com.fylo.mobile.** { *; }
+
+# ZXing Android Embedded Proguard rules
+-keep class com.journeyapps.barcodescanner.** { *; }
+-keep class com.google.zxing.** { *; }
+-dontwarn com.journeyapps.barcodescanner.**
+-dontwarn com.google.zxing.**

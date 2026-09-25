@@ -495,6 +495,41 @@ export default function App() {
     handleConnectToPc(`${host}:${port}`, token);
   };
 
+  const handleStartQrScan = async () => {
+    try {
+      if (!FyloModule || typeof FyloModule.scanQrCode !== 'function') {
+        Alert.alert(
+          'Scanner Unavailable',
+          'The camera QR scanner module is not available on this device.'
+        );
+        return;
+      }
+      const scannedCode = await FyloModule.scanQrCode();
+      if (scannedCode && typeof scannedCode === 'string' && scannedCode.trim()) {
+        setShowPairModal(false);
+        setQrInputText(scannedCode.trim());
+        handleParseAndConnectQr(scannedCode.trim());
+      }
+    } catch (err) {
+      console.warn('QR scan error:', err);
+      Alert.alert(
+        'Camera Error',
+        'Could not open camera for QR scanning. Please check camera permission in Android settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Settings',
+            onPress: () => {
+              if (FyloModule && FyloModule.openAppSettings) {
+                FyloModule.openAppSettings();
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
   // Real device storage calculation (Zero mock metrics)
   const storageStats = useMemo(() => {
     const freeStr = storageInfo?.freeGB || '';
@@ -1056,10 +1091,7 @@ export default function App() {
                   <TouchableOpacity
                     activeOpacity={0.75}
                     style={styles.heroPrimaryBtn}
-                    onPress={() => {
-                      setPairModalTab('qr');
-                      setShowPairModal(true);
-                    }}>
+                    onPress={handleStartQrScan}>
                     <Text style={styles.heroPrimaryBtnText}>📷 Scan PC QR Code</Text>
                   </TouchableOpacity>
 
@@ -2227,11 +2259,21 @@ export default function App() {
 
             {pairModalTab === 'qr' ? (
               <View>
-                <View style={styles.qrViewfinderBox}>
-                  <Text style={styles.qrViewfinderIcon}>📷</Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.qrViewfinderBox}
+                  onPress={handleStartQrScan}>
+                  <Text style={styles.qrViewfinderIcon}>📸</Text>
+                  <Text style={styles.qrScanBtnTitle}>Open Camera Scanner</Text>
                   <Text style={styles.qrViewfinderInstruction}>
-                    Scan the QR code displayed on your PC screen in Fylo, or paste the QR text string below:
+                    Tap to open your camera and scan the QR code displayed on your PC screen in Fylo
                   </Text>
+                </TouchableOpacity>
+
+                <View style={styles.qrDividerRow}>
+                  <View style={styles.qrDividerLine} />
+                  <Text style={styles.qrDividerText}>OR PASTE STRING</Text>
+                  <View style={styles.qrDividerLine} />
                 </View>
 
                 <TextInput
@@ -2276,7 +2318,7 @@ export default function App() {
                     activeOpacity={0.75}
                     style={styles.modalPrimaryBtn}
                     onPress={() => handleParseAndConnectQr(qrInputText)}>
-                    <Text style={styles.modalPrimaryBtnText}>Pair via QR</Text>
+                    <Text style={styles.modalPrimaryBtnText}>Pair via Text</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -3725,7 +3767,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   qrViewfinderBox: {
-    backgroundColor: 'rgba(6, 182, 212, 0.06)',
+    backgroundColor: 'rgba(6, 182, 212, 0.08)',
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: '#06b6d4',
@@ -3733,7 +3775,13 @@ const styles = StyleSheet.create({
     padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 6,
+  },
+  qrScanBtnTitle: {
+    color: '#06b6d4',
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4,
   },
   qrViewfinderIcon: {
     fontSize: 36,
@@ -3744,6 +3792,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  qrDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  qrDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  qrDividerText: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    letterSpacing: 0.5,
   },
   modalInput: {
     backgroundColor: '#080c14',

@@ -19,6 +19,7 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -26,6 +27,9 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+import com.journeyapps.barcodescanner.CaptureActivity;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -38,9 +42,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class FyloServerModule extends ReactContextBaseJavaModule {
+public class FyloServerModule extends ReactContextBaseJavaModule implements ActivityEventListener {
     private static final String TAG = "FyloServerModule";
     private final ReactApplicationContext reactContext;
+    private SafePromise mScanPromise;
 
     /**
      * Safe wrapper around React Native Promise to guarantee resolve() or reject()
@@ -78,6 +83,7 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
     public FyloServerModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+        this.reactContext.addActivityEventListener(this);
     }
 
     @NonNull
@@ -460,6 +466,88 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
             Log.w(TAG, "checkStoragePermission error: " + e.getMessage());
             return false;
         }
+    }
+
+    @ReactMethod
+    public void scanQrCode(Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity == null) {
+            SafePromise safePromise = new SafePromise(promise);
+            safePromise.reject("NO_ACTIVITY", "Current Android activity is unavailable.");
+            return;
+        }
+
+        if (this.mScanPromise != null) {
+            this.mScanPromise.resolve("");
+            this.mScanPromise = null;
+        }
+        this.mScanPromise = new SafePromise(promise);
+
+        try {
+            IntentIntegrator integrator = new IntentIntegrator(currentActivity);
+            integrator.setPrompt("Scan Fylo QR Code on your PC screen");
+            integrator.setBeepEnabled(true);
+            integrator.setOrientationLocked(true);
+            integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
+            integrator.setCaptureActivity(CaptureActivity.class);
+            integrator.initiateScan();
+        } catch (Throwable t) {
+            Log.e(TAG, "scanQrCode error: " + t.getMessage(), t);
+            if (this.mScanPromise != null) {
+                this.mScanPromise.reject("SCAN_ERROR", t.getMessage() != null ? t.getMessage() : t.toString());
+                this.mScanPromise = null;
+            }
+        }
+    }
+
+    @ReactMethod
+    public void openAppSettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + reactContext.getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            reactContext.startActivity(intent);
+        } catch (Throwable e) {
+            Log.e(TAG, "openAppSettings error: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+        try {
+            IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+            if (result != null) {
+                if (mScanPromise != null) {
+                    String contents = result.getContents();
+                    if (contents != null && !contents.trim().isEmpty()) {
+                        mScanPromise.resolve(contents.trim());
+                    } else {
+                        // User cancelled scan (e.g. pressed back button)
+                        mScanPromise.resolve("");
+                    }
+                    mScanPromise = null;
+                }
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "onActivityResult QR parse error: " + t.getMessage(), t);
+            if (mScanPromise != null) {
+                mScanPromise.resolve("");
+                mScanPromise = null;
+            }
+        }
+    }
+
+    @Override
+    public void onNewIntent(Intent intent) {
+        // No-op
+    }
+
+    @Override
+    public void onCatalystInstanceDestroy() {
+        super.onCatalystInstanceDestroy();
+        try {
+            reactContext.removeActivityEventListener(this);
+        } catch (Throwable ignored) {}
     }
 
     private String getDeviceIpAddress() {
