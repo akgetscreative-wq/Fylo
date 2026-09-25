@@ -1063,7 +1063,7 @@ app.patch('/api/settings', (req, res) => {
 
 // Register mobile device on QR scan handshake
 app.post('/api/mobile/connect', (req, res) => {
-    const { deviceId, deviceName, model, ip, port, authToken, readOnly, storage, battery } = req.body;
+    const { deviceId, deviceName, model, ip, port, authToken, readOnly, storage, battery, allowFullPhoneAccess } = req.body;
 
     // Validate token: allow if matched or on local network
     const isLocalReq = req.ip === '127.0.0.1' || req.ip === '::1' || 
@@ -1095,6 +1095,7 @@ app.post('/api/mobile/connect', (req, res) => {
         ip: resolvedIp,
         port: phonePort,
         readOnly: readOnly !== undefined ? readOnly : true,
+        allowFullPhoneAccess: allowFullPhoneAccess !== undefined ? !!allowFullPhoneAccess : true,
         storage: storage || { total: 0, free: 0 },
         battery: battery !== undefined ? battery : null,
         lastActive: Date.now()
@@ -1109,7 +1110,7 @@ app.post('/api/mobile/connect', (req, res) => {
         lastActive: Date.now()
     };
 
-    console.log(`[Fylo v4] Mobile connected: ${phoneName} (${resolvedIp}:${phonePort}), Read-Only: ${readOnly}`);
+    console.log(`[Fylo v4] Mobile connected: ${phoneName} (${resolvedIp}:${phonePort}), Read-Only: ${readOnly}, Full Phone Access: ${mobileDevices[deviceId].allowFullPhoneAccess}`);
     res.json({ 
         success: true, 
         message: 'Paired with Fylo PC', 
@@ -1129,6 +1130,7 @@ app.get('/api/mobile/devices', (req, res) => {
         ip: (d.ip || '').replace(/^::ffff:/, ''),
         port: d.port,
         readOnly: d.readOnly,
+        allowFullPhoneAccess: d.allowFullPhoneAccess !== false,
         storage: d.storage,
         battery: d.battery,
         online: (now - d.lastActive) < 30000,
@@ -1147,6 +1149,7 @@ app.get('/api/mobile/devices', (req, res) => {
                     ip: (d.ip || '').replace(/^::ffff:/, ''),
                     port: PORT,
                     readOnly: true,
+                    allowFullPhoneAccess: false,
                     storage: { total: 0, free: 0 },
                     battery: null,
                     online: true,
@@ -1159,14 +1162,29 @@ app.get('/api/mobile/devices', (req, res) => {
     res.json(list);
 });
 
+// Update mobile device capabilities (e.g. storage access permission)
+app.post(['/api/device/update-capabilities', '/api/mobile/update-capabilities'], (req, res) => {
+    const { deviceId, allowFullPhoneAccess } = req.body;
+    if (deviceId && mobileDevices[deviceId]) {
+        if (allowFullPhoneAccess !== undefined) {
+            mobileDevices[deviceId].allowFullPhoneAccess = !!allowFullPhoneAccess;
+        }
+        mobileDevices[deviceId].lastActive = Date.now();
+        console.log(`[Fylo v4] Mobile capabilities updated for ${mobileDevices[deviceId].name}: allowFullPhoneAccess=${mobileDevices[deviceId].allowFullPhoneAccess}`);
+        return res.json({ success: true, allowFullPhoneAccess: mobileDevices[deviceId].allowFullPhoneAccess });
+    }
+    res.json({ success: true });
+});
+
 // Mobile heartbeat
 app.post('/api/mobile/heartbeat', (req, res) => {
-    const { deviceId, battery, storage, readOnly } = req.body;
+    const { deviceId, battery, storage, readOnly, allowFullPhoneAccess } = req.body;
     if (deviceId && mobileDevices[deviceId]) {
         mobileDevices[deviceId].lastActive = Date.now();
         if (battery !== undefined) mobileDevices[deviceId].battery = battery;
         if (storage) mobileDevices[deviceId].storage = storage;
         if (readOnly !== undefined) mobileDevices[deviceId].readOnly = readOnly;
+        if (allowFullPhoneAccess !== undefined) mobileDevices[deviceId].allowFullPhoneAccess = !!allowFullPhoneAccess;
         if (devices[deviceId]) {
             devices[deviceId].lastActive = Date.now();
         }
@@ -1246,6 +1264,15 @@ app.get('/api/mobile/fs/list', (req, res) => {
         return res.status(404).json({ error: 'Mobile device not connected' });
     }
 
+    if (device.allowFullPhoneAccess === false) {
+        return res.status(403).json({
+            success: false,
+            error: 'Full phone storage sharing is disabled by phone user. Only ShareHub is enabled.',
+            storageAccessDisabled: true,
+            items: []
+        });
+    }
+
     device.lastActive = Date.now();
     const targetUrl = `http://${device.ip}:${device.port}/api/fs/list?path=${encodeURIComponent(dirPath || '')}&auth=${secretToken}`;
 
@@ -1279,6 +1306,10 @@ app.get('/api/mobile/fs/file', (req, res) => {
     const device = mobileDevices[deviceId];
     if (!device) {
         return res.status(404).send('Mobile device not connected');
+    }
+
+    if (device.allowFullPhoneAccess === false) {
+        return res.status(403).send('Full phone storage sharing is disabled by phone user. Only ShareHub is enabled.');
     }
 
     device.lastActive = Date.now();
@@ -1326,6 +1357,10 @@ app.get('/api/mobile/fs/thumbnail', (req, res) => {
     const device = mobileDevices[deviceId];
     if (!device) {
         return res.status(404).send('Mobile device not connected');
+    }
+
+    if (device.allowFullPhoneAccess === false) {
+        return res.status(403).send('Full phone storage sharing is disabled by phone user.');
     }
 
     const targetUrl = `http://${device.ip}:${device.port}/api/fs/thumbnail?path=${encodeURIComponent(filePath)}&auth=${secretToken}`;
@@ -1880,6 +1915,9 @@ app.post('/api/mobile/fs/download-batch', async (req, res) => {
     if (!device) {
         return res.status(404).json({ error: 'Mobile device not connected' });
     }
+    if (device.allowFullPhoneAccess === false) {
+        return res.status(403).json({ error: 'Full phone storage sharing is disabled by phone user. Only ShareHub is enabled.' });
+    }
     if (!Array.isArray(paths) || paths.length === 0) {
         return res.status(400).json({ error: 'No files specified' });
     }
@@ -1984,6 +2022,9 @@ app.post('/api/mobile/fs/trash-file', (req, res) => {
     const device = mobileDevices[deviceId];
     if (!device) {
         return res.status(404).json({ error: 'Mobile device not connected' });
+    }
+    if (device.allowFullPhoneAccess === false) {
+        return res.status(403).json({ error: 'Full phone storage sharing is disabled by phone user. Only ShareHub is enabled.' });
     }
 
     const postData = JSON.stringify({ path: filePath });

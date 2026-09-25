@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>fylo — LAN Share</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -9119,16 +9120,28 @@
                 if (!res.ok) {
                     let errData = {};
                     try { errData = await res.json(); } catch(e) {}
-                    if (res.status === 403 || errData.permissionRequired) {
-                        if (grid) grid.innerHTML = `
-                            <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
-                                <div style="font-size: 2rem; margin-bottom: 8px;">🔒</div>
-                                <div style="color: #f59e0b; font-weight: 800; font-size: 1.1rem; margin-bottom: 4px;">Storage Permission Required on Phone</div>
-                                <div style="color: var(--text-light); font-size: 0.85rem; max-width: 420px; margin: 0 auto;">
-                                    Please open the Fylo app on your Android phone and grant "All Files Access" permission to browse files.
+                    if (res.status === 403 || errData.permissionRequired || errData.storageAccessDisabled) {
+                        if (errData.storageAccessDisabled || (errData.error && errData.error.includes('ShareHub is enabled')) || (errData.error && errData.error.includes('storage sharing is disabled'))) {
+                            if (grid) grid.innerHTML = `
+                                <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px;">
+                                    <div style="font-size: 2.5rem; margin-bottom: 12px;">🔒</div>
+                                    <div style="color: #f59e0b; font-weight: 800; font-size: 1.15rem; margin-bottom: 6px;">Phone Storage Browsing Disabled</div>
+                                    <div style="color: var(--text-light); font-size: 0.9rem; max-width: 480px; margin: 0 auto; line-height: 1.5;">
+                                        🔒 Phone storage browsing is disabled by the user. Use ShareHub below to exchange files directly!
+                                    </div>
                                 </div>
-                            </div>
-                        `;
+                            `;
+                        } else {
+                            if (grid) grid.innerHTML = `
+                                <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+                                    <div style="font-size: 2rem; margin-bottom: 8px;">🔒</div>
+                                    <div style="color: #f59e0b; font-weight: 800; font-size: 1.1rem; margin-bottom: 4px;">Storage Permission Required on Phone</div>
+                                    <div style="color: var(--text-light); font-size: 0.85rem; max-width: 420px; margin: 0 auto;">
+                                        Please open the Fylo app on your Android phone and grant "All Files Access" permission to browse files.
+                                    </div>
+                                </div>
+                            `;
+                        }
                     } else {
                         if (grid) grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--danger-text); font-weight: 700;">Could not load folder: ${escapeHtml(errData.error || 'Check connection')}</div>`;
                     }

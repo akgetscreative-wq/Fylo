@@ -50,6 +50,7 @@ public class FyloHttpServer {
     private final Context context;
     private final int port;
     private volatile boolean readOnly = true;
+    private volatile boolean allowFullPhoneAccess = true;
     private volatile String authToken = null;
     private volatile boolean isRunning = false;
     private ServerSocket serverSocket;
@@ -67,6 +68,14 @@ public class FyloHttpServer {
 
     public boolean isReadOnly() {
         return readOnly;
+    }
+
+    public void setAllowFullPhoneAccess(boolean allowFullPhoneAccess) {
+        this.allowFullPhoneAccess = allowFullPhoneAccess;
+    }
+
+    public boolean isAllowFullPhoneAccess() {
+        return allowFullPhoneAccess;
     }
 
     public void setAuthToken(String token) {
@@ -337,6 +346,7 @@ public class FyloHttpServer {
         json.put("appName", "Fylo Mobile");
         json.put("version", "4.0.0");
         json.put("readOnly", readOnly);
+        json.put("allowFullPhoneAccess", allowFullPhoneAccess);
         String brand = Build.MANUFACTURER != null ? Build.MANUFACTURER : "";
         String model = Build.MODEL != null ? Build.MODEL : "Android";
         String deviceName = (!brand.isEmpty() && !model.toLowerCase().contains(brand.toLowerCase()))
@@ -385,6 +395,11 @@ public class FyloHttpServer {
     }
 
     private void handleList(OutputStream out, Map<String, String> queryParams) throws Exception {
+        if (!allowFullPhoneAccess) {
+            sendJsonResponse(out, 403, "{\"success\":false,\"error\":\"Full phone storage sharing is disabled by phone user. Only ShareHub is enabled.\",\"storageAccessDisabled\":true,\"items\":[]}");
+            return;
+        }
+
         String targetPath = queryParams.get("path");
         if (targetPath == null || targetPath.trim().isEmpty()) {
             File ext = Environment.getExternalStorageDirectory();
@@ -607,6 +622,11 @@ public class FyloHttpServer {
     }
 
     private void handleThumbnail(OutputStream out, Map<String, String> queryParams) throws Exception {
+        if (!allowFullPhoneAccess) {
+            sendJsonResponse(out, 403, "{\"error\":\"Full phone storage sharing is disabled by phone user.\"}");
+            return;
+        }
+
         String targetPath = queryParams.get("path");
         if (targetPath == null || targetPath.trim().isEmpty()) {
             sendJsonResponse(out, 400, "{\"error\":\"Missing path\"}");
@@ -710,6 +730,11 @@ public class FyloHttpServer {
     }
 
     private void handleTrash(OutputStream out, byte[] body) throws Exception {
+        if (!allowFullPhoneAccess) {
+            sendJsonResponse(out, 403, "{\"error\":\"Full phone storage sharing is disabled by phone user.\"}");
+            return;
+        }
+
         if (this.readOnly) {
             sendJsonResponse(out, 403, "{\"error\":\"Host is in Read-Only Safe Mode. Modifications disabled.\"}");
             return;

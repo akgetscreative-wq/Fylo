@@ -84,6 +84,7 @@ public class FyloForegroundService extends Service {
 
         int port = intent != null ? intent.getIntExtra("port", 8080) : 8080;
         boolean readOnly = intent != null ? intent.getBooleanExtra("readOnly", true) : true;
+        boolean allowFullPhoneAccess = intent != null ? intent.getBooleanExtra("allowFullPhoneAccess", true) : true;
         String authToken = intent != null ? intent.getStringExtra("authToken") : null;
 
         Notification notification = createNotification(port);
@@ -113,6 +114,7 @@ public class FyloForegroundService extends Service {
             if (httpServer == null) {
                 try {
                     httpServer = new FyloHttpServer(this, port, readOnly);
+                    httpServer.setAllowFullPhoneAccess(allowFullPhoneAccess);
                     if (authToken != null && !authToken.trim().isEmpty()) {
                         httpServer.setAuthToken(authToken.trim());
                     }
@@ -123,6 +125,7 @@ public class FyloForegroundService extends Service {
                 }
             } else {
                 httpServer.setReadOnly(readOnly);
+                httpServer.setAllowFullPhoneAccess(allowFullPhoneAccess);
                 if (authToken != null && !authToken.trim().isEmpty()) {
                     httpServer.setAuthToken(authToken.trim());
                 }

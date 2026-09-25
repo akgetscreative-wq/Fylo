@@ -19,10 +19,42 @@ import {
   BackHandler,
   PanResponder,
   DeviceEventEmitter,
+  Alert,
 } from 'react-native';
 
 const { FyloModule } = NativeModules;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Persistent Key-Value Storage helper (AsyncStorage compatible API backed by native SharedPreferences)
+const _memoryStorage = {};
+const AsyncStorage = {
+  getItem: async (key) => {
+    try {
+      if (FyloModule && FyloModule.getSetting) {
+        const val = await FyloModule.getSetting(key);
+        if (val !== null && val !== undefined) return val;
+      }
+    } catch (e) {}
+    return _memoryStorage[key] !== undefined ? _memoryStorage[key] : null;
+  },
+  setItem: async (key, val) => {
+    const str = String(val);
+    _memoryStorage[key] = str;
+    try {
+      if (FyloModule && FyloModule.setSetting) {
+        await FyloModule.setSetting(key, str);
+      }
+    } catch (e) {}
+  },
+  removeItem: async (key) => {
+    delete _memoryStorage[key];
+    try {
+      if (FyloModule && FyloModule.removeSetting) {
+        await FyloModule.removeSetting(key);
+      }
+    } catch (e) {}
+  },
+};
 
 // Robust AbortController-wrapped fetch helper to prevent socket hanging and unhandled rejections
 const apiFetch = async (url, options = {}, timeoutMs = 6000) => {
@@ -153,6 +185,13 @@ export default function App() {
   const [serverPort, setServerPort] = useState(8080);
   const [hasPermission, setHasPermission] = useState(false);
   const [readOnlyMode, setReadOnlyMode] = useState(true);
+  const [allowFullPhoneAccess, setAllowFullPhoneAccess] = useState(null); // null (undecided) | true | false
+  const [showStorageAccessPrompt, setShowStorageAccessPrompt] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const showStorageAccessPromptRef = useRef(showStorageAccessPrompt);
+  showStorageAccessPromptRef.current = showStorageAccessPrompt;
+  const showSettingsModalRef = useRef(showSettingsModal);
+  showSettingsModalRef.current = showSettingsModal;
   const [pairedPc, setPairedPc] = useState(null); // '192.168.1.10:3000'
   const [pcHostName, setPcHostName] = useState('');
   const [pcAuthToken, setPcAuthToken] = useState('');
@@ -418,12 +457,86 @@ export default function App() {
     setZoomScale(next);
   };
 
+  // Storage Access Preference Helper & Synchronization
+  const syncStorageAccessPreference = async (allow, targetPc) => {
+    const pc = targetPc || pairedPc;
+    if (!pc) return;
+    try {
+      await apiFetch(`http://${pc}/api/device/update-capabilities`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Token': pcAuthToken || '',
+        },
+        body: JSON.stringify({
+          deviceId: deviceIdRef.current,
+          allowFullPhoneAccess: allow,
+        }),
+      }, 4000);
+    } catch (e) {
+      try {
+        await apiFetch(`http://${pc}/api/mobile/heartbeat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deviceId: deviceIdRef.current,
+            allowFullPhoneAccess: allow,
+          }),
+        }, 3000);
+      } catch (ignored) {}
+    }
+  };
+
+  const handleSetStorageAccess = async (allow) => {
+    try {
+      setShowStorageAccessPrompt(false);
+      setAllowFullPhoneAccess(allow);
+      await AsyncStorage.setItem('fylo_allow_full_phone_access', String(allow));
+      if (FyloModule && FyloModule.setAllowFullPhoneAccess) {
+        await FyloModule.setAllowFullPhoneAccess(allow);
+      }
+      if (pairedPc) {
+        await syncStorageAccessPreference(allow, pairedPc);
+      }
+      showToast(allow ? '📁 Full Phone Storage Sharing: ALLOWED' : '🛡️ Phone Storage Sharing: DENIED (ShareHub Only)');
+      addLog(`Phone Storage Sharing: ${allow ? 'FULL ACCESS' : 'RESTRICTED (ShareHub Only)'}`);
+    } catch (err) {
+      console.warn('handleSetStorageAccess error:', err);
+    }
+  };
+
+  // Load persistent storage access permission preference on launch
+  useEffect(() => {
+    const loadStoragePref = async () => {
+      try {
+        let stored = await AsyncStorage.getItem('fylo_allow_full_phone_access');
+        if (stored === null && FyloModule && FyloModule.getAllowFullPhoneAccess) {
+          const nativeVal = await FyloModule.getAllowFullPhoneAccess();
+          if (nativeVal !== null && nativeVal !== undefined) {
+            stored = String(nativeVal);
+            await AsyncStorage.setItem('fylo_allow_full_phone_access', stored);
+          }
+        }
+        if (stored !== null && stored !== undefined) {
+          const isAllowed = stored === 'true' || stored === true;
+          setAllowFullPhoneAccess(isAllowed);
+          if (FyloModule && FyloModule.setAllowFullPhoneAccess) {
+            FyloModule.setAllowFullPhoneAccess(isAllowed).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading storage access pref:', e);
+      }
+    };
+    loadStoragePref();
+  }, []);
+
   // Periodic device & server status check and persistent pairing restore
   useEffect(() => {
     // Restore pairing from Android SharedPreferences across app restarts
     if (FyloModule && FyloModule.getSavedPairedDevice) {
       FyloModule.getSavedPairedDevice()
-        .then((saved) => {
+        .then(async (saved) => {
           if (saved && saved.paired_pc && saved.paired_pc.trim() !== '') {
             const savedHost = saved.paired_pc.trim();
             const savedName = (saved.pc_hostname || 'Windows Host').trim();
@@ -432,6 +545,21 @@ export default function App() {
             setPcHostName(savedName);
             if (savedToken) setPcAuthToken(savedToken);
             addLog(`Restored persistent pairing to ${savedHost} (${savedName})`);
+
+            // Check if user has decided on storage access permission
+            try {
+              const storedAccess = await AsyncStorage.getItem('fylo_allow_full_phone_access');
+              if (storedAccess === null || storedAccess === undefined) {
+                setShowStorageAccessPrompt(true);
+              } else {
+                const isAllowed = storedAccess === 'true' || storedAccess === true;
+                setAllowFullPhoneAccess(isAllowed);
+                if (FyloModule && FyloModule.setAllowFullPhoneAccess) {
+                  FyloModule.setAllowFullPhoneAccess(isAllowed).catch(() => {});
+                }
+                syncStorageAccessPreference(isAllowed, savedHost);
+              }
+            } catch (ignored) {}
           }
         })
         .catch((e) => console.warn('getSavedPairedDevice error:', e));
@@ -476,6 +604,7 @@ export default function App() {
               free: storageInfo?.freeGB || 'Unknown',
             },
             readOnly: readOnlyMode,
+            allowFullPhoneAccess: allowFullPhoneAccess !== false,
           }),
         }, 5000);
 
@@ -600,6 +729,14 @@ export default function App() {
       }
       if (diagVisibleRef.current) {
         setDiagVisible(false);
+        return true;
+      }
+      if (showStorageAccessPromptRef.current) {
+        handleSetStorageAccess(false);
+        return true;
+      }
+      if (showSettingsModalRef.current) {
+        setShowSettingsModal(false);
         return true;
       }
 
@@ -796,6 +933,7 @@ export default function App() {
         port: serverPort || 8080,
         authToken: token ? token.trim() : (pcAuthToken || ''),
         readOnly: readOnlyMode,
+        allowFullPhoneAccess: allowFullPhoneAccess !== false,
         battery: batteryLevel,
         storage: {
           total: storageInfo?.totalGB || 'Unknown',
@@ -831,6 +969,19 @@ export default function App() {
         addLog(`Successfully paired with PC (${host}:${port})!`);
         // Non-blocking toast replacing disruptive popup!
         showToast(`⚡ Linked to ${data.hostName || 'PC'} (${roundTrip} ms)`);
+
+        // Check if full phone storage access has been decided yet
+        const storedAccess = await AsyncStorage.getItem('fylo_allow_full_phone_access');
+        if (storedAccess === null || storedAccess === undefined) {
+          setShowStorageAccessPrompt(true);
+        } else {
+          const isAllowed = storedAccess === 'true' || storedAccess === true;
+          setAllowFullPhoneAccess(isAllowed);
+          if (FyloModule && FyloModule.setAllowFullPhoneAccess) {
+            FyloModule.setAllowFullPhoneAccess(isAllowed).catch(() => {});
+          }
+          syncStorageAccessPreference(isAllowed, `${host}:${port}`);
+        }
       } else {
         showToast(`⚠️ Pairing Failed: ${data?.error || 'PC rejected pairing request.'}`);
       }
@@ -3090,8 +3241,7 @@ export default function App() {
               onPress={() => {
                 setSidebarOpen(false);
                 if (pairedPc) {
-                  setDiagVisible(true);
-                  runNetworkDiagnostic();
+                  setShowSettingsModal(true);
                 } else {
                   setShowPairModal(true);
                 }
@@ -3189,24 +3339,40 @@ export default function App() {
                   <Text style={styles.drawerNavSub}>Ping latency, server status & logs</Text>
                 </View>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.drawerNavItem}
+                onPress={() => {
+                  setSidebarOpen(false);
+                  setShowSettingsModal(true);
+                }}>
+                <Text style={styles.drawerNavIcon}>⚙️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.drawerNavLabel}>App Settings</Text>
+                  <Text style={styles.drawerNavSub}>Storage sharing & preferences</Text>
+                </View>
+              </TouchableOpacity>
             </ScrollView>
 
-            {/* Live Clipboard Sync Toggle in Sidebar (OFF by Default) */}
-            <View style={[styles.drawerThemeRow, !isDarkMode && styles.drawerThemeRowLight]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Text style={{ fontSize: 20 }}>📋</Text>
-                <Text style={[styles.drawerThemeText, !isDarkMode && styles.drawerThemeTextLight]}>
-                  Live Clipboard Sync
+            {/* Allow Full Phone Storage Access Toggle in Sidebar */}
+            <View style={[styles.drawerSettingRow, !isDarkMode && styles.drawerSettingRowLight]}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <Text style={{ fontSize: 18 }}>📱</Text>
+                  <Text style={[styles.drawerThemeText, !isDarkMode && styles.drawerThemeTextLight]}>
+                    Allow Full Phone Storage Access
+                  </Text>
+                </View>
+                <Text style={styles.drawerSettingSub}>
+                  Allow paired PC to browse phone folders. When disabled, only ShareHub transfers work.
                 </Text>
               </View>
               <Switch
-                value={clipboardAutoSync}
-                onValueChange={(val) => {
-                  setClipboardAutoSync(val);
-                  showToast(val ? '🔄 Live Clipboard Sync Enabled' : '⏸️ Live Clipboard Sync Disabled');
-                }}
+                value={allowFullPhoneAccess !== false}
+                onValueChange={(val) => handleSetStorageAccess(val)}
                 trackColor={{ false: '#94a3b8', true: '#2563eb' }}
-                thumbColor={clipboardAutoSync ? '#60a5fa' : '#ffffff'}
+                thumbColor={allowFullPhoneAccess !== false ? '#60a5fa' : '#ffffff'}
               />
             </View>
 
@@ -3751,6 +3917,172 @@ export default function App() {
                 <Text style={styles.modalPrimaryBtnText}>Re-Test</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========================================================= */}
+      {/* STORAGE ACCESS PERMISSION PROMPT MODAL (AFTER QR/PAIRING) */}
+      {/* ========================================================= */}
+      <Modal
+        visible={showStorageAccessPrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => handleSetStorageAccess(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.storagePromptCard, !isDarkMode && styles.storagePromptCardLight]}>
+            <View style={styles.storagePromptHeader}>
+              <View style={styles.storagePromptIconWrap}>
+                <Text style={{ fontSize: 26 }}>📱</Text>
+              </View>
+              <Text style={[styles.storagePromptTitle, !isDarkMode && styles.storagePromptTitleLight]}>
+                Share Full Phone Storage?
+              </Text>
+            </View>
+
+            <Text style={[styles.storagePromptDesc, !isDarkMode && styles.storagePromptDescLight]}>
+              Allow paired PC to browse your phone folders and storage? If you deny, only ShareHub (direct send/receive) will be active, just like the Web companion.
+            </Text>
+
+            <View style={styles.storagePromptBadgeRow}>
+              <View style={styles.storagePromptBadge}>
+                <Text style={styles.storagePromptBadgeText}>📦 ShareHub Always Available</Text>
+              </View>
+            </View>
+
+            <View style={styles.storagePromptBtnRow}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.storagePromptSecondaryBtn, !isDarkMode && styles.storagePromptSecondaryBtnLight]}
+                onPress={() => handleSetStorageAccess(false)}>
+                <Text style={[styles.storagePromptSecondaryBtnText, !isDarkMode && styles.storagePromptSecondaryBtnTextLight]}>
+                  Deny (ShareHub Only)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.storagePromptPrimaryBtn}
+                onPress={() => handleSetStorageAccess(true)}>
+                <Text style={styles.storagePromptPrimaryBtnText}>
+                  Allow Full Storage
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========================================================= */}
+      {/* APP SETTINGS MODAL                                        */}
+      {/* ========================================================= */}
+      <Modal
+        visible={showSettingsModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSettingsModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.settingsModalCard, !isDarkMode && styles.settingsModalCardLight]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 20 }}>⚙️</Text>
+                <Text style={[styles.modalTitle, !isDarkMode && styles.sortModalTitleLight]}>
+                  App Settings
+                </Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => setShowSettingsModal(false)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              {/* Setting 1: Full Phone Storage Access */}
+              <View style={[styles.settingsItemRow, !isDarkMode && styles.settingsItemRowLight]}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.settingsItemTitle, !isDarkMode && styles.settingsItemTitleLight]}>
+                    Allow Full Phone Storage Access
+                  </Text>
+                  <Text style={styles.settingsItemSub}>
+                    Allow paired PC to browse phone folders. When disabled, only ShareHub transfers work.
+                  </Text>
+                  <View style={{ marginTop: 6 }}>
+                    <Text style={{ fontSize: 10.5, fontWeight: '700', color: allowFullPhoneAccess !== false ? '#10b981' : '#f59e0b' }}>
+                      {allowFullPhoneAccess !== false ? '✅ Full Storage Browsing Enabled' : '🛡️ ShareHub Only (Storage Browsing Blocked)'}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={allowFullPhoneAccess !== false}
+                  onValueChange={(val) => handleSetStorageAccess(val)}
+                  trackColor={{ false: '#94a3b8', true: '#2563eb' }}
+                  thumbColor={allowFullPhoneAccess !== false ? '#60a5fa' : '#ffffff'}
+                />
+              </View>
+
+              {/* Setting 2: Read-Only Safe Mode */}
+              <View style={[styles.settingsItemRow, !isDarkMode && styles.settingsItemRowLight]}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.settingsItemTitle, !isDarkMode && styles.settingsItemTitleLight]}>
+                    PC Read-Only Mode
+                  </Text>
+                  <Text style={styles.settingsItemSub}>
+                    Prevent paired PC from writing or trashing phone storage files.
+                  </Text>
+                </View>
+                <Switch
+                  value={readOnlyMode}
+                  onValueChange={handleToggleReadOnly}
+                  trackColor={{ false: '#94a3b8', true: '#2563eb' }}
+                  thumbColor={readOnlyMode ? '#60a5fa' : '#ffffff'}
+                />
+              </View>
+
+              {/* Setting 3: Live Clipboard Sync */}
+              <View style={[styles.settingsItemRow, !isDarkMode && styles.settingsItemRowLight]}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.settingsItemTitle, !isDarkMode && styles.settingsItemTitleLight]}>
+                    Live Clipboard Sync
+                  </Text>
+                  <Text style={styles.settingsItemSub}>
+                    Bidirectional real-time clipboard mirror with PC.
+                  </Text>
+                </View>
+                <Switch
+                  value={clipboardAutoSync}
+                  onValueChange={(val) => {
+                    setClipboardAutoSync(val);
+                    showToast(val ? '🔄 Live Clipboard Sync Enabled' : '⏸️ Live Clipboard Sync Disabled');
+                  }}
+                  trackColor={{ false: '#94a3b8', true: '#2563eb' }}
+                  thumbColor={clipboardAutoSync ? '#60a5fa' : '#ffffff'}
+                />
+              </View>
+
+              {/* Setting 4: Dark / Light Mode */}
+              <View style={[styles.settingsItemRow, !isDarkMode && styles.settingsItemRowLight, { borderBottomWidth: 0 }]}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.settingsItemTitle, !isDarkMode && styles.settingsItemTitleLight]}>
+                    Theme Mode ({isDarkMode ? 'Dark' : 'Light'})
+                  </Text>
+                  <Text style={styles.settingsItemSub}>
+                    Toggle dark / light appearance.
+                  </Text>
+                </View>
+                <Switch
+                  value={isDarkMode}
+                  onValueChange={(val) => setIsDarkMode(val)}
+                  trackColor={{ false: '#94a3b8', true: '#2563eb' }}
+                  thumbColor={isDarkMode ? '#60a5fa' : '#ffffff'}
+                />
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.modalPrimaryBtn, { marginTop: 14 }]}
+              onPress={() => setShowSettingsModal(false)}>
+              <Text style={styles.modalPrimaryBtnText}>Done</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -6164,5 +6496,190 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 13,
     fontWeight: '700',
+  },
+
+  /* Storage Access Permission Prompt Modal */
+  storagePromptCard: {
+    backgroundColor: '#0d1322',
+    borderRadius: 22,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+    maxWidth: 420,
+    width: '100%',
+    alignSelf: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 14,
+  },
+  storagePromptCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    shadowColor: '#000000',
+    shadowOpacity: 0.15,
+  },
+  storagePromptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  storagePromptIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.3)',
+  },
+  storagePromptTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#ffffff',
+    flex: 1,
+  },
+  storagePromptTitleLight: {
+    color: '#0f172a',
+  },
+  storagePromptDesc: {
+    fontSize: 13,
+    color: '#94a3b8',
+    lineHeight: 19,
+    marginBottom: 14,
+  },
+  storagePromptDescLight: {
+    color: '#475569',
+  },
+  storagePromptBadgeRow: {
+    marginBottom: 18,
+  },
+  storagePromptBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+    alignSelf: 'flex-start',
+  },
+  storagePromptBadgeText: {
+    color: '#10b981',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  storagePromptBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  storagePromptSecondaryBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  storagePromptSecondaryBtnLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+  },
+  storagePromptSecondaryBtnText: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  storagePromptSecondaryBtnTextLight: {
+    color: '#334155',
+  },
+  storagePromptPrimaryBtn: {
+    flex: 1.2,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  storagePromptPrimaryBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+
+  /* Drawer / Settings Switch styling */
+  drawerSettingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginTop: 10,
+  },
+  drawerSettingRowLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  drawerSettingSub: {
+    color: '#64748b',
+    fontSize: 10.5,
+    lineHeight: 14,
+    marginTop: 2,
+  },
+
+  /* Settings Modal Card */
+  settingsModalCard: {
+    backgroundColor: '#0d1322',
+    borderRadius: 22,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.3)',
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  settingsModalCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  settingsItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  settingsItemRowLight: {
+    borderBottomColor: '#f1f5f9',
+  },
+  settingsItemTitle: {
+    color: '#ffffff',
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  settingsItemTitleLight: {
+    color: '#0f172a',
+  },
+  settingsItemSub: {
+    color: '#64748b',
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 2,
   },
 });

@@ -109,9 +109,13 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
     public void startServer(int port, boolean readOnly, String authToken, Promise promise) {
         SafePromise safePromise = new SafePromise(promise);
         try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            boolean allowFull = prefs.getBoolean("allow_full_phone_access", true);
+
             Intent intent = new Intent(reactContext, FyloForegroundService.class);
             intent.putExtra("port", port > 0 ? port : 8080);
             intent.putExtra("readOnly", readOnly);
+            intent.putExtra("allowFullPhoneAccess", allowFull);
             if (authToken != null && !authToken.trim().isEmpty()) {
                 intent.putExtra("authToken", authToken.trim());
             }
@@ -168,6 +172,82 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         } catch (Throwable e) {
             Log.e(TAG, "setReadOnly error: " + e.getMessage(), e);
             safePromise.reject("CONFIG_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void setAllowFullPhoneAccess(boolean allow, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            prefs.edit().putBoolean("allow_full_phone_access", allow).apply();
+            FyloHttpServer server = FyloForegroundService.getHttpServer();
+            if (server != null) {
+                server.setAllowFullPhoneAccess(allow);
+            }
+            safePromise.resolve(true);
+        } catch (Throwable e) {
+            Log.e(TAG, "setAllowFullPhoneAccess error: " + e.getMessage(), e);
+            safePromise.reject("CONFIG_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void getAllowFullPhoneAccess(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            if (!prefs.contains("allow_full_phone_access")) {
+                safePromise.resolve(null);
+            } else {
+                safePromise.resolve(prefs.getBoolean("allow_full_phone_access", true));
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, "getAllowFullPhoneAccess error: " + e.getMessage(), e);
+            safePromise.reject("CONFIG_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void setSetting(String key, String value, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            if (value == null) {
+                prefs.edit().remove(key).apply();
+            } else {
+                prefs.edit().putString(key, value).apply();
+            }
+            safePromise.resolve(true);
+        } catch (Throwable e) {
+            safePromise.reject("PREF_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void getSetting(String key, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            if (!prefs.contains(key)) {
+                safePromise.resolve(null);
+            } else {
+                safePromise.resolve(prefs.getString(key, null));
+            }
+        } catch (Throwable e) {
+            safePromise.reject("PREF_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void removeSetting(String key, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            prefs.edit().remove(key).apply();
+            safePromise.resolve(true);
+        } catch (Throwable e) {
+            safePromise.reject("PREF_ERROR", e.getMessage());
         }
     }
 
