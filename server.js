@@ -1216,10 +1216,8 @@ app.get('/api/mobile/fs/list', (req, res) => {
             const webFiles = fileRegistry.filter(f => f.uploadedBy === webDevice.name || f.sessionId === deviceId || f.uploadedBy === 'Mobile Companion');
             return res.json({
                 isWebCompanion: true,
-                locked: true,
-                permissionRequired: true,
                 path: dirPath || '/storage/emulated/0',
-                message: 'Android OS isolates mobile browser storage. Tap "Send Photos & Files" on phone or launch Fylo APK.',
+                message: 'Web Companion Mode: Showing files uploaded during this session.',
                 items: webFiles.map(f => ({
                     name: f.name,
                     path: f.path || f.name,

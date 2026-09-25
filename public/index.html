@@ -6164,6 +6164,10 @@
             if (targetId === 'view-dashboard') {
                 loadDashboardData();
             }
+
+            if (targetId === 'view-clipboard') {
+                loadClipboard();
+            }
         }
 
         function returnToDashboard() {
@@ -7683,6 +7687,8 @@
 
         async function loadClipboard() {
             try {
+                const res = await apiFetch('/api/clipboard');
+                const data = await res.json();
                 const dedicatedClipboardEl = $('#clipboard-text-dedicated');
                 if (!clipboardDirty && data.text !== clipboardEl.value) {
                     clipboardEl.value = data.text;
@@ -8083,10 +8089,6 @@
                     if (topPhoneVal) topPhoneVal.textContent = `${webDev.name || 'Phone'} (Web Linked)`;
                     if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
 
-                    // HIDE phone-empty-container (which has the QR code) and phone-active-container!
-                    if (emptyContainer) emptyContainer.classList.add('hidden');
-                    if (activeContainer) activeContainer.classList.add('hidden');
-
                     // SHOW clean web companion status card
                     if (webCompanionContainer) {
                         webCompanionContainer.classList.remove('hidden');
@@ -8096,6 +8098,35 @@
                         if (deviceTitle) deviceTitle.textContent = `📱 ${escapeHtml(webDev.name || 'Mobile Phone')} (Web Linked)`;
                         if (deviceSub) deviceSub.textContent = `Connected via Web Browser • ${webDev.ip ? 'IP: ' + escapeHtml(webDev.ip) : 'LAN Ready'}`;
                         if (statIp) statIp.textContent = webDev.ip || 'LAN Connected';
+                    }
+
+                    // HIDE phone-empty-container and SHOW phone-active-container!
+                    if (emptyContainer) emptyContainer.classList.add('hidden');
+                    if (activeContainer) activeContainer.classList.remove('hidden');
+
+                    if (!currentPhoneId || !webOnlineDevices.some(d => d.id === currentPhoneId)) {
+                        currentPhoneId = webDev.id;
+                        updatePhoneHeader(webDev);
+                        fetchPhoneFolder(currentPhonePath || '/storage/emulated/0', false);
+                    } else {
+                        const currentDev = webOnlineDevices.find(d => d.id === currentPhoneId) || webDev;
+                        updatePhoneHeader(currentDev);
+                    }
+
+                    // Update device dropdown if multiple phones
+                    const selector = $('#phone-device-selector');
+                    if (selector && webOnlineDevices.length > 1) {
+                        selector.style.display = 'block';
+                        selector.innerHTML = '';
+                        webOnlineDevices.forEach(d => {
+                            const opt = document.createElement('option');
+                            opt.value = d.id;
+                            opt.textContent = `${d.name} (${d.model})`;
+                            opt.selected = (d.id === currentPhoneId);
+                            selector.appendChild(opt);
+                        });
+                    } else if (selector) {
+                        selector.style.display = 'none';
                     }
 
                     // Secondary link "Show QR code" toggle
@@ -8205,7 +8236,7 @@
                     return;
                 }
                 const data = await res.json();
-                currentPhoneItems = Array.isArray(data.items) ? data.items : [];
+                currentPhoneItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
                 renderPhoneBreadcrumbs(currentPhonePath);
                 updateCategoryCounts();
                 renderPhoneFiles();
