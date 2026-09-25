@@ -22,6 +22,61 @@ import {
 const { FyloModule } = NativeModules;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Robust AbortController-wrapped fetch helper to prevent socket hanging and unhandled rejections
+const apiFetch = async (url, options = {}, timeoutMs = 6000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+};
+
+// Safe JSON parser that never throws SyntaxError on non-JSON HTML error responses
+const safeJson = async (res) => {
+  if (!res) return null;
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+};
+
+// Robust SafeImage component with onError fallback handler to prevent corrupt image crashes
+const SafeImage = ({ source, style, resizeMode, fallbackEmoji = '🖼️' }) => {
+  const [hasError, setHasError] = useState(false);
+  const uri = source?.uri;
+  const prevUriRef = useRef(uri);
+
+  useEffect(() => {
+    if (prevUriRef.current !== uri) {
+      prevUriRef.current = uri;
+      setHasError(false);
+    }
+  }, [uri]);
+
+  if (hasError || !uri) {
+    return (
+      <View style={[style, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
+        <Text style={{ fontSize: 24 }}>{fallbackEmoji}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={source}
+      style={style}
+      resizeMode={resizeMode}
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
 // Authentic Windows 11 Yellow Folder Vector Icon
 const Win11FolderIcon = ({ size = 28 }) => {
   const scale = size / 28;
@@ -140,7 +195,7 @@ export default function App() {
     const sendHeartbeat = async () => {
       const startTime = Date.now();
       try {
-        const res = await fetch(`http://${pairedPc}/api/mobile/heartbeat`, {
+        const res = await apiFetch(`http://${pairedPc}/api/mobile/heartbeat`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -150,12 +205,12 @@ export default function App() {
             deviceId: deviceIdRef.current,
             battery: batteryLevel,
             storage: {
-              total: storageInfo.totalGB || 'Unknown',
-              free: storageInfo.freeGB || 'Unknown',
+              total: storageInfo?.totalGB || 'Unknown',
+              free: storageInfo?.freeGB || 'Unknown',
             },
             readOnly: readOnlyMode,
           }),
-        });
+        }, 5000);
 
         const roundTripMs = Date.now() - startTime;
 
@@ -209,27 +264,32 @@ export default function App() {
 
   const checkStatus = async () => {
     try {
-      if (FyloModule) {
+      if (FyloModule && FyloModule.getServerInfo) {
         const info = await FyloModule.getServerInfo();
-        setServerRunning(info.running);
-        setDeviceIp(info.ip || '127.0.0.1');
-        setServerPort(info.port || 8080);
-        setHasPermission(info.hasStoragePermission);
-        if (info.battery !== undefined && info.battery >= 0) {
-          setBatteryLevel(info.battery);
-        }
-        if (info.deviceName) {
-          setPhoneModelName(info.deviceName);
-        }
-        if (info.storage) {
-          setStorageInfo(info.storage);
-        }
-        // Auto-start background server if storage permission granted so PC can browse files immediately
-        if (info.hasStoragePermission && !info.running) {
-          try {
-            await FyloModule.startServer(info.port || 8080, readOnlyMode, pcAuthToken || '');
-            setServerRunning(true);
-          } catch (ignored) {}
+        if (info) {
+          setServerRunning(!!info.running);
+          setDeviceIp(info.ip || '127.0.0.1');
+          setServerPort(info.port || 8080);
+          setHasPermission(!!info.hasStoragePermission);
+          if (info.battery !== undefined && info.battery >= 0) {
+            setBatteryLevel(info.battery);
+          }
+          if (info.deviceName) {
+            setPhoneModelName(info.deviceName);
+          }
+          if (info.storage) {
+            setStorageInfo({
+              totalGB: info.storage.totalGB || '--',
+              freeGB: info.storage.freeGB || '--',
+            });
+          }
+          // Auto-start background server if storage permission granted so PC can browse files immediately
+          if (info.hasStoragePermission && !info.running) {
+            try {
+              await FyloModule.startServer(info.port || 8080, readOnlyMode, pcAuthToken || '');
+              setServerRunning(true);
+            } catch (ignored) {}
+          }
         }
       } else {
         setDeviceIp('192.168.1.105');
@@ -272,7 +332,7 @@ export default function App() {
         addLog(`Server toggled: ${!serverRunning ? 'RUNNING' : 'STOPPED'}`);
       }
     } catch (err) {
-      Alert.alert('Server Error', err.message);
+      Alert.alert('Server Error', err?.message || String(err));
     }
   };
 
@@ -295,11 +355,11 @@ export default function App() {
   const handleUnpair = async () => {
     if (!pairedPc) return;
     try {
-      await fetch(`http://${pairedPc}/api/mobile/disconnect`, {
+      await apiFetch(`http://${pairedPc}/api/mobile/disconnect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
         body: JSON.stringify({ deviceId: deviceIdRef.current }),
-      });
+      }, 3000);
     } catch (e) {}
     addLog(`Unpaired from ${pairedPc}`);
     setPairedPc(null);
@@ -345,23 +405,23 @@ export default function App() {
         readOnly: readOnlyMode,
         battery: batteryLevel,
         storage: {
-          total: storageInfo.totalGB || 'Unknown',
-          free: storageInfo.freeGB || 'Unknown',
+          total: storageInfo?.totalGB || 'Unknown',
+          free: storageInfo?.freeGB || 'Unknown',
         },
       };
 
-      const res = await fetch(`http://${host}:${port}/api/mobile/connect`, {
+      const res = await apiFetch(`http://${host}:${port}/api/mobile/connect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Auth-Token': token ? token.trim() : '',
         },
         body: JSON.stringify(payload),
-      });
+      }, 7000);
 
       const roundTrip = Date.now() - startTime;
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await safeJson(res);
+      if (res.ok && data && data.success) {
         setPairedPc(`${host}:${port}`);
         setPcHostName(data.hostName || 'Windows Host');
         setPingLatency(roundTrip);
@@ -379,7 +439,7 @@ export default function App() {
           [{ text: 'Browse PC Drives', onPress: () => setCurrentTab('pc-explorer') }]
         );
       } else {
-        Alert.alert('Pairing Failed', data.error || 'PC rejected pairing request.');
+        Alert.alert('Pairing Failed', data?.error || 'PC rejected pairing request.');
       }
     } catch (e) {
       Alert.alert(
@@ -390,7 +450,7 @@ export default function App() {
   };
 
   const handleParseAndConnectQr = (rawText) => {
-    if (!rawText || !rawText.trim()) {
+    if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
       Alert.alert('Input Required', 'Please enter or paste the QR code string shown on your PC.');
       return;
     }
@@ -401,7 +461,7 @@ export default function App() {
 
     try {
       const urlStr = (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('fylo://'))
-        ? clean.replace(/^fylo:\/\//, 'http://')
+        ? clean.replace(/^fylo:\/\//i, 'http://')
         : 'http://' + clean;
 
       const parsed = new URL(urlStr);
@@ -409,19 +469,21 @@ export default function App() {
       port = parsed.port || '3000';
       token = parsed.searchParams.get('auth') || parsed.searchParams.get('token') || '';
     } catch (e) {
-      const withoutProto = clean.replace(/^https?:\/\//, '').replace(/^fylo:\/\//, '');
+      const withoutProto = clean.replace(/^https?:\/\//i, '').replace(/^fylo:\/\//i, '');
       const [addrPart, queryPart] = withoutProto.split('?');
-      if (addrPart.includes(':')) {
+      if (addrPart && addrPart.includes(':')) {
         const parts = addrPart.split(':');
         host = parts[0];
         port = parts[1].replace(/[^0-9]/g, '') || '3000';
-      } else {
+      } else if (addrPart) {
         host = addrPart.replace(/\/.*$/, '');
         port = '3000';
       }
       if (queryPart) {
-        const match = queryPart.match(/(?:auth|token)=([^&]+)/);
-        if (match) token = decodeURIComponent(match[1]);
+        try {
+          const match = queryPart.match(/(?:auth|token)=([^&]+)/i);
+          if (match && match[1]) token = decodeURIComponent(match[1]);
+        } catch (ignored) {}
       }
     }
 
@@ -435,18 +497,18 @@ export default function App() {
 
   // Real device storage calculation (Zero mock metrics)
   const storageStats = useMemo(() => {
-    const freeStr = storageInfo.freeGB || '';
-    const totalStr = storageInfo.totalGB || '';
+    const freeStr = storageInfo?.freeGB || '';
+    const totalStr = storageInfo?.totalGB || '';
     const freeVal = parseFloat(freeStr) || 0;
     const totalVal = parseFloat(totalStr) || 0;
     if (totalVal > 0) {
       const usedVal = Math.max(0, totalVal - freeVal);
       const percent = Math.min(100, Math.max(1, Math.round((usedVal / totalVal) * 100)));
       return {
-        freeGB: freeVal > 0 ? freeVal.toFixed(1) + ' GB' : freeStr,
-        totalGB: totalVal > 0 ? totalVal.toFixed(1) + ' GB' : totalStr,
+        freeGB: freeVal > 0 ? freeVal.toFixed(1) + ' GB' : (freeStr || '--'),
+        totalGB: totalVal > 0 ? totalVal.toFixed(1) + ' GB' : (totalStr || '--'),
         usedGB: usedVal.toFixed(1) + ' GB',
-        usedPercent: percent,
+        usedPercent: isNaN(percent) ? 0 : percent,
       };
     }
     return {
@@ -463,12 +525,12 @@ export default function App() {
   const fetchPcClipboard = async () => {
     if (!pairedPc) return;
     try {
-      const res = await fetch(`http://${pairedPc}/api/clipboard`, {
+      const res = await apiFetch(`http://${pairedPc}/api/clipboard`, {
         headers: { 'X-Auth-Token': pcAuthToken || '' },
-      });
+      }, 4000);
       if (res.ok) {
-        const data = await res.json();
-        if (data.text !== undefined) {
+        const data = await safeJson(res);
+        if (data && data.text !== undefined) {
           setPcClipboardText(data.text);
           setPcClipboardUpdatedBy(data.updatedBy || 'PC Host');
         }
@@ -489,14 +551,14 @@ export default function App() {
     }
 
     try {
-      const res = await fetch(`http://${pairedPc}/api/clipboard`, {
+      const res = await apiFetch(`http://${pairedPc}/api/clipboard`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Auth-Token': pcAuthToken || '',
         },
         body: JSON.stringify({ text }),
-      });
+      }, 6000);
 
       if (res.ok) {
         setPcClipboardText(text);
@@ -508,7 +570,7 @@ export default function App() {
         Alert.alert('Failed', 'PC rejected clipboard update.');
       }
     } catch (e) {
-      Alert.alert('Error', 'Could not reach PC: ' + e.message);
+      Alert.alert('Error', 'Could not reach PC: ' + (e?.message || String(e)));
     }
   };
 
@@ -539,9 +601,11 @@ export default function App() {
     try {
       if (FyloModule && FyloModule.listDirectory) {
         const result = await FyloModule.listDirectory(folderPath || '');
-        setPhoneCurrentPath(result.path);
-        setPhoneParentPath(result.parent || '');
-        setPhoneItems(result.items || []);
+        if (result) {
+          setPhoneCurrentPath(result.path || folderPath || '/storage/emulated/0');
+          setPhoneParentPath(result.parent || '');
+          setPhoneItems(Array.isArray(result.items) ? result.items : []);
+        }
       } else {
         setPhoneCurrentPath(folderPath || '/storage/emulated/0');
         setPhoneParentPath(folderPath ? '/storage/emulated/0' : '');
@@ -549,7 +613,7 @@ export default function App() {
       }
       setPhoneSelectedPaths(new Set());
     } catch (err) {
-      Alert.alert('Error', 'Could not open folder on phone: ' + err.message);
+      Alert.alert('Error', 'Could not open folder on phone: ' + (err?.message || String(err)));
     } finally {
       setPhoneLoading(false);
     }
@@ -557,7 +621,7 @@ export default function App() {
 
   // Directory Breadcrumb navigation helper
   const renderBreadcrumbs = (currentPath, onSelectPath, isPc = false) => {
-    if (!currentPath) return null;
+    if (!currentPath || typeof currentPath !== 'string') return null;
     const delimiter = isPc && currentPath.includes('\\') ? '\\' : '/';
     const parts = currentPath.split(delimiter).filter(Boolean);
 
@@ -600,14 +664,19 @@ export default function App() {
   const loadPcQuickAccess = async () => {
     if (!pairedPc) return;
     try {
-      const res = await fetch(`http://${pairedPc}/api/pc/explorer/quick-access`, {
+      const res = await apiFetch(`http://${pairedPc}/api/pc/explorer/quick-access`, {
         headers: { 'X-Auth-Token': pcAuthToken || '' },
-      });
+      }, 5000);
       if (res.ok) {
-        const data = await res.json();
-        setPcQuickAccess(data);
-        if (data.shortcuts && data.shortcuts.length > 0 && !pcCurrentPath) {
-          loadPcFolder(data.shortcuts[0].path);
+        const data = await safeJson(res);
+        if (data) {
+          setPcQuickAccess({
+            drives: Array.isArray(data.drives) ? data.drives : [],
+            shortcuts: Array.isArray(data.shortcuts) ? data.shortcuts : [],
+          });
+          if (Array.isArray(data.shortcuts) && data.shortcuts.length > 0 && !pcCurrentPath && data.shortcuts[0]?.path) {
+            loadPcFolder(data.shortcuts[0].path);
+          }
         }
       }
     } catch (err) {
@@ -623,20 +692,22 @@ export default function App() {
         ? `http://${pairedPc}/api/pc/explorer/list?path=${encodeURIComponent(folderPath)}`
         : `http://${pairedPc}/api/pc/explorer/list`;
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         headers: { 'X-Auth-Token': pcAuthToken || '' },
-      });
+      }, 8000);
       if (res.ok) {
-        const data = await res.json();
-        setPcCurrentPath(data.path);
-        setPcParentPath(data.parent);
-        setPcItems(data.items || []);
-        setPcSelectedPaths(new Set());
+        const data = await safeJson(res);
+        if (data) {
+          setPcCurrentPath(data.path || folderPath || 'C:\\');
+          setPcParentPath(data.parent || '');
+          setPcItems(Array.isArray(data.items) ? data.items : []);
+          setPcSelectedPaths(new Set());
+        }
       } else {
         Alert.alert('Error', 'Could not open folder on PC');
       }
     } catch (err) {
-      Alert.alert('Network Error', 'Failed to reach PC: ' + err.message);
+      Alert.alert('Network Error', 'Failed to reach PC: ' + (err?.message || String(err)));
     } finally {
       setPcLoading(false);
     }
@@ -670,12 +741,15 @@ export default function App() {
 
   // Filter items
   const filteredPhoneItems = useMemo(() => {
+    if (!Array.isArray(phoneItems)) return [];
+    const searchLower = (phoneSearch || '').toLowerCase().trim();
     return phoneItems.filter((item) => {
-      if (phoneSearch && !item.name.toLowerCase().includes(phoneSearch.toLowerCase())) {
+      if (!item || !item.name) return false;
+      if (searchLower && !item.name.toLowerCase().includes(searchLower)) {
         return false;
       }
       if (phoneFilter === 'all') return true;
-      if (phoneFilter === 'folders') return item.isDir;
+      if (phoneFilter === 'folders') return !!item.isDir;
       if (item.isDir) return false;
       const ext = (item.ext || '').toLowerCase();
       if (phoneFilter === 'photos') return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].includes(ext);
@@ -687,12 +761,15 @@ export default function App() {
   }, [phoneItems, phoneFilter, phoneSearch]);
 
   const filteredPcItems = useMemo(() => {
+    if (!Array.isArray(pcItems)) return [];
+    const searchLower = (pcSearch || '').toLowerCase().trim();
     return pcItems.filter((item) => {
-      if (pcSearch && !item.name.toLowerCase().includes(pcSearch.toLowerCase())) {
+      if (!item || !item.name) return false;
+      if (searchLower && !item.name.toLowerCase().includes(searchLower)) {
         return false;
       }
       if (pcFilter === 'all') return true;
-      if (pcFilter === 'folders') return item.isDir;
+      if (pcFilter === 'folders') return !!item.isDir;
       if (item.isDir) return false;
       const ext = (item.ext || '').toLowerCase();
       if (pcFilter === 'photos') return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
@@ -724,7 +801,7 @@ export default function App() {
       setAdminModalVisible(false);
       setAdminPasswordInput('');
     } catch (e) {
-      Alert.alert('Action Failed', e.message || 'Incorrect password or operation error.');
+      Alert.alert('Action Failed', e?.message || 'Incorrect password or operation error.');
     }
   };
 
@@ -737,24 +814,24 @@ export default function App() {
       if (!pairedPc) {
         setDiagStatus('warning');
         setDiagMessage(
-          `📱 Device IP: ${deviceIp}\n\n⚠️ No PC is paired yet.\n\n⚡ For Maximum Speed (>50-80 MB/s):\n1. Turn on Android Mobile Hotspot.\n2. Connect PC to this Hotspot.\n3. Open Fylo on PC and enter the IP shown.`
+          `📱 Device IP: ${deviceIp}\n\n⚠️ No PC is paired yet.\n\n⚡ For fastest transfer:\n1. Turn on Android Mobile Hotspot.\n2. Connect PC to this Hotspot.\n3. Open Fylo on PC and enter the IP shown.`
         );
         return;
       }
 
       try {
         const start = Date.now();
-        const res = await fetch(`http://${pairedPc}/api/connection-info`, {
+        const res = await apiFetch(`http://${pairedPc}/api/connection-info`, {
           headers: { 'X-Auth-Token': pcAuthToken || '' },
-        });
+        }, 4000);
         const latency = Date.now() - start;
 
         if (res.ok) {
-          const data = await res.json();
+          const data = await safeJson(res);
           setPingLatency(latency);
           setDiagStatus('success');
           setDiagMessage(
-            `🟢 Connection Excellent!\n\n• Target PC: ${pairedPc}\n• Real Latency: ${latency} ms\n• Network: ${data.networkName || 'Direct Wi-Fi / Hotspot'}\n• Zero packet drop detected.`
+            `🟢 Connection Excellent!\n\n• Target PC: ${pairedPc}\n• Real Latency: ${latency} ms\n• Network: ${data?.networkName || 'Direct Wi-Fi / Hotspot'}\n• Zero packet drop detected.`
           );
         } else {
           setDiagStatus('warning');
@@ -1346,13 +1423,14 @@ export default function App() {
                       {item.isDir ? (
                         <Win11FolderIcon size={38} />
                       ) : isPhoto ? (
-                        <Image
-                          source={{ uri: 'file://' + item.path }}
+                        <SafeImage
+                          source={{ uri: 'file://' + (item?.path || '') }}
                           style={styles.gridThumbnailImage}
                           resizeMode="cover"
+                          fallbackEmoji={getFileIcon(item?.ext, false)}
                         />
                       ) : (
-                        <Text style={styles.gridFileIconEmoji}>{getFileIcon(item.ext, false)}</Text>
+                        <Text style={styles.gridFileIconEmoji}>{getFileIcon(item?.ext, false)}</Text>
                       )}
 
                       <Text style={styles.gridFileName} numberOfLines={1}>
@@ -1424,7 +1502,20 @@ export default function App() {
                   style={styles.floatingTrashBtn}
                   onPress={() => {
                     requestAdminProtectedAction('Delete Selected Phone Files', async () => {
-                      Alert.alert('Notice', 'Admin verified. Selected files safely moved to .trash.');
+                      let trashedCount = 0;
+                      if (phoneSelectedPaths && phoneSelectedPaths.size > 0) {
+                        for (const path of phoneSelectedPaths) {
+                          try {
+                            if (FyloModule && FyloModule.trashFile) {
+                              await FyloModule.trashFile(path);
+                              trashedCount++;
+                            }
+                          } catch (err) {
+                            console.warn('Failed to trash phone file:', path, err);
+                          }
+                        }
+                      }
+                      showToast(`Moved ${trashedCount} item(s) to .trash 🗑️`);
                       setPhoneSelectedPaths(new Set());
                       loadPhoneFolder(phoneCurrentPath);
                     });
@@ -1474,20 +1565,20 @@ export default function App() {
               <View style={styles.pcHeaderSection}>
                 {/* Windows Drives Cards */}
                 <View style={styles.pcDrivesRow}>
-                  {pcQuickAccess.drives && pcQuickAccess.drives.length > 0 ? (
+                  {Array.isArray(pcQuickAccess?.drives) && pcQuickAccess.drives.length > 0 ? (
                     pcQuickAccess.drives.map((d, i) => (
                       <TouchableOpacity
                         key={'drv-' + i}
                         activeOpacity={0.75}
                         style={[
                           styles.pcDriveCard,
-                          pcCurrentPath === d.path && styles.pcDriveCardActive,
+                          pcCurrentPath === d?.path && styles.pcDriveCardActive,
                         ]}
-                        onPress={() => loadPcFolder(d.path)}>
+                        onPress={() => d?.path && loadPcFolder(d.path)}>
                         <Text style={styles.pcDriveCardIcon}>💽</Text>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.pcDriveCardTitle} numberOfLines={1}>
-                            {d.name || d.path}
+                            {d?.name || d?.path || 'Drive'}
                           </Text>
                           <Text style={styles.pcDriveCardSub}>Windows Drive</Text>
                         </View>
@@ -1538,10 +1629,12 @@ export default function App() {
                       activeOpacity={0.75}
                       style={styles.pcShortcutPill}
                       onPress={() => {
-                        const match = pcQuickAccess.shortcuts?.find((s) =>
-                          s.name.toLowerCase().includes(sc.name.toLowerCase())
-                        );
-                        loadPcFolder(match ? match.path : sc.path);
+                        const match = Array.isArray(pcQuickAccess?.shortcuts)
+                          ? pcQuickAccess.shortcuts.find((s) =>
+                              s?.name && sc?.name && s.name.toLowerCase().includes(sc.name.toLowerCase())
+                            )
+                          : null;
+                        loadPcFolder(match?.path || sc.path);
                       }}>
                       <Text style={styles.pcShortcutPillText}>
                         {sc.icon} {sc.name}
@@ -1748,14 +1841,25 @@ export default function App() {
                     style={styles.floatingTrashBtn}
                     onPress={() => {
                       requestAdminProtectedAction('Delete PC Files to Recycle Bin', async (password) => {
-                        for (const path of pcSelectedPaths) {
-                          await fetch(`http://${pairedPc}/api/pc/trash-file`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
-                            body: JSON.stringify({ filePath: path, adminPassword: password }),
-                          });
+                        let trashedCount = 0;
+                        if (pcSelectedPaths && pcSelectedPaths.size > 0) {
+                          for (const path of pcSelectedPaths) {
+                            try {
+                              const res = await apiFetch(`http://${pairedPc}/api/pc/trash-file`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
+                                body: JSON.stringify({ filePath: path, adminPassword: password }),
+                              }, 5000);
+                              const data = await safeJson(res);
+                              if (data && data.success) {
+                                trashedCount++;
+                              }
+                            } catch (e) {
+                              console.warn('Failed to trash PC file:', path, e);
+                            }
+                          }
                         }
-                        Alert.alert('Notice', 'Files moved to Windows Recycle Bin.');
+                        showToast(`Moved ${trashedCount} file(s) to Windows Recycle Bin 🗑️`);
                         setPcSelectedPaths(new Set());
                         loadPcFolder(pcCurrentPath);
                       });
@@ -1924,10 +2028,10 @@ export default function App() {
             )}
           </View>
 
-          {/* High-Speed Direct Hotspot Mode Guide (50-80 MB/s) */}
+          {/* Direct Hotspot Mode Guide */}
           <View style={styles.bentoCard}>
-            <Text style={styles.bentoCardTitle}>🔥 Direct Hotspot Mode (50–80 MB/s)</Text>
-            <Text style={styles.bentoCardSubtitle}>Bypass router throttling for zero bottleneck sync</Text>
+            <Text style={styles.bentoCardTitle}>🔥 Direct Hotspot Mode</Text>
+            <Text style={styles.bentoCardSubtitle}>Direct peer-to-peer Wi-Fi connection without router bottlenecks</Text>
 
             <View style={styles.stepRow}>
               <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>1</Text></View>
@@ -1990,10 +2094,10 @@ export default function App() {
             <View style={styles.lightboxHeader}>
               <View style={{ flex: 1, marginRight: 12 }}>
                 <Text style={styles.lightboxFileName} numberOfLines={1}>
-                  {lightboxItem.item.name}
+                  {lightboxItem?.item?.name || 'File'}
                 </Text>
                 <Text style={styles.lightboxMeta}>
-                  {lightboxItem.source === 'pc' ? '💻 Windows PC' : '📱 Local Phone'} • {formatFileSize(lightboxItem.item.size)}
+                  {lightboxItem?.source === 'pc' ? '💻 Windows PC' : '📱 Local Phone'} • {formatFileSize(lightboxItem?.item?.size)}
                 </Text>
               </View>
 
@@ -2006,39 +2110,41 @@ export default function App() {
             </View>
 
             <View style={styles.lightboxBody}>
-              {isMediaFile(lightboxItem.item.ext) && lightboxItem.source === 'pc' && pairedPc ? (
-                <Image
+              {isMediaFile(lightboxItem?.item?.ext) && lightboxItem?.source === 'pc' && pairedPc ? (
+                <SafeImage
                   source={{
-                    uri: `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem.item.path)}`,
+                    uri: `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}`,
                     headers: { 'X-Auth-Token': pcAuthToken || '' },
                   }}
                   style={styles.lightboxImage}
                   resizeMode="contain"
+                  fallbackEmoji="🎬"
                 />
-              ) : isMediaFile(lightboxItem.item.ext) && lightboxItem.source === 'phone' ? (
-                <Image
-                  source={{ uri: `file://${lightboxItem.item.path}` }}
+              ) : isMediaFile(lightboxItem?.item?.ext) && lightboxItem?.source === 'phone' ? (
+                <SafeImage
+                  source={{ uri: `file://${lightboxItem?.item?.path || ''}` }}
                   style={styles.lightboxImage}
                   resizeMode="contain"
+                  fallbackEmoji="🎬"
                 />
               ) : (
                 <View style={styles.lightboxNonImgContainer}>
-                  <Text style={{ fontSize: 64 }}>{getFileIcon(lightboxItem.item.ext, false)}</Text>
-                  <Text style={styles.lightboxNonImgTitle}>{lightboxItem.item.name}</Text>
-                  <Text style={styles.lightboxNonImgMeta}>{formatFileSize(lightboxItem.item.size)}</Text>
+                  <Text style={{ fontSize: 64 }}>{getFileIcon(lightboxItem?.item?.ext, false)}</Text>
+                  <Text style={styles.lightboxNonImgTitle}>{lightboxItem?.item?.name || 'File'}</Text>
+                  <Text style={styles.lightboxNonImgMeta}>{formatFileSize(lightboxItem?.item?.size)}</Text>
                 </View>
               )}
             </View>
 
             <View style={styles.lightboxFooter}>
-              {lightboxItem.source === 'pc' && (
+              {lightboxItem?.source === 'pc' && (
                 <TouchableOpacity
                   activeOpacity={0.75}
                   style={styles.lightboxDlBtn}
                   onPress={() => {
                     Alert.alert(
                       'Download to Phone',
-                      `Streaming directly from PC at:\nhttp://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem.item.path)}&download=1`
+                      `Streaming directly from PC at:\nhttp://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&download=1`
                     );
                   }}>
                   <Text style={styles.lightboxDlBtnText}>⬇ Save to Phone</Text>
@@ -2049,23 +2155,30 @@ export default function App() {
                 activeOpacity={0.75}
                 style={styles.lightboxTrashBtn}
                 onPress={() => {
-                  requestAdminProtectedAction(`Delete "${lightboxItem.item.name}"`, async (password) => {
-                    if (lightboxItem.source === 'pc' && pairedPc) {
-                      const res = await fetch(`http://${pairedPc}/api/pc/trash-file`, {
+                  requestAdminProtectedAction(`Delete "${lightboxItem?.item?.name || 'file'}"`, async (password) => {
+                    if (lightboxItem?.source === 'pc' && pairedPc) {
+                      const res = await apiFetch(`http://${pairedPc}/api/pc/trash-file`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
-                        body: JSON.stringify({ filePath: lightboxItem.item.path, adminPassword: password }),
-                      });
-                      const data = await res.json();
-                      if (data.success) {
-                        Alert.alert('Moved to Trash', 'File moved to Windows Recycle Bin.');
+                        body: JSON.stringify({ filePath: lightboxItem?.item?.path, adminPassword: password }),
+                      }, 5000);
+                      const data = await safeJson(res);
+                      if (data && data.success) {
+                        showToast('Moved to Windows Recycle Bin 🗑️');
                         setLightboxItem(null);
                         loadPcFolder(pcCurrentPath);
                       } else {
-                        throw new Error(data.error || 'PC rejected deletion');
+                        throw new Error(data?.error || 'PC rejected deletion');
                       }
                     } else {
-                      Alert.alert('Moved to Trash', 'Phone file moved to .trash safely.');
+                      if (FyloModule && FyloModule.trashFile && lightboxItem?.item?.path) {
+                        try {
+                          await FyloModule.trashFile(lightboxItem.item.path);
+                          showToast('Moved to .trash safely 🗑️');
+                        } catch (err) {
+                          Alert.alert('Trash Error', err?.message || 'Could not move file to .trash');
+                        }
+                      }
                       setLightboxItem(null);
                       loadPhoneFolder(phoneCurrentPath);
                     }

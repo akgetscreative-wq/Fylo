@@ -78,14 +78,26 @@ public class FyloForegroundService extends Service {
         String authToken = intent != null ? intent.getStringExtra("authToken") : null;
 
         Notification notification = createNotification(port);
+        boolean foregroundStarted = false;
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
             } else {
                 startForeground(NOTIFICATION_ID, notification);
             }
+            foregroundStarted = true;
         } catch (Throwable t) {
-            Log.e(TAG, "startForeground failed (API " + Build.VERSION.SDK_INT + "): " + t.getMessage());
+            Log.e(TAG, "startForeground with DATA_SYNC failed (API " + Build.VERSION.SDK_INT + "): " + t.getMessage());
+            try {
+                // Secondary fallback attempt without specific type in case DATA_SYNC type was rejected
+                startForeground(NOTIFICATION_ID, notification);
+                foregroundStarted = true;
+            } catch (Throwable t2) {
+                Log.e(TAG, "Fallback startForeground also failed: " + t2.getMessage());
+                // Avoid fatal ForegroundServiceDidNotStartInTimeException ANR crash by terminating service cleanly
+                stopSelf();
+                return START_NOT_STICKY;
+            }
         }
 
         synchronized (SERVER_LOCK) {

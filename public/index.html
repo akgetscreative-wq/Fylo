@@ -2606,6 +2606,14 @@
             transform: scale(0.96) !important;
         }
 
+        @media (max-width: 768px) {
+            #startup-landing {
+                display: none !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+        }
+
         .landing-ambient-glow {
             position: absolute;
             width: 650px;
@@ -4266,6 +4274,245 @@
             }
         }
 
+        /* ========================================================
+           Mobile Web Companion Interface & Responsive Mode (< 768px)
+           ======================================================== */
+        .mobile-companion-header {
+            display: none;
+        }
+        .mobile-apk-banner {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            #startup-landing {
+                display: none !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+
+            /* Hide PC desktop sidebar, window controls, QR shelf, and clutter */
+            sidebar, .sidebar {
+                display: none !important;
+            }
+            #sidebar-qr-shelf, #top-qr-toggle-btn, #sidebar-toggle-btn, #top-notif-btn, #sidebar-hide-btn {
+                display: none !important;
+            }
+            .top-header-bar {
+                display: none !important;
+            }
+            .btn-back-dashboard {
+                display: none !important;
+            }
+
+            /* Clean full-width responsive layout */
+            .app-layout {
+                flex-direction: column !important;
+                padding: 10px 10px 30px 10px !important;
+                gap: 12px !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+                box-sizing: border-box !important;
+            }
+            .main-content {
+                width: 100% !important;
+                padding: 0 !important;
+                overflow-x: hidden !important;
+            }
+
+            /* Mobile-First Header Bar */
+            .mobile-companion-header {
+                display: flex !important;
+                flex-direction: column;
+                gap: 12px;
+                background: var(--card-bg);
+                backdrop-filter: blur(28px);
+                -webkit-backdrop-filter: blur(28px);
+                border: 1px solid var(--border);
+                border-radius: 20px;
+                padding: 12px 14px;
+                box-shadow: var(--glass-shadow);
+                position: sticky;
+                top: 8px;
+                z-index: 1000;
+                margin-bottom: 14px;
+            }
+
+            .mobile-top-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+            }
+
+            .mobile-brand-group {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .mobile-logo {
+                font-size: 1.55rem;
+                font-weight: 900;
+                letter-spacing: -0.8px;
+                background: linear-gradient(135deg, var(--accent), #ff7675);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                line-height: 1;
+            }
+
+            .mobile-beacon {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 10px;
+                border-radius: 9999px;
+                background: rgba(46, 213, 115, 0.14);
+                border: 1px solid rgba(46, 213, 115, 0.35);
+                color: #2ed573;
+                font-weight: 700;
+                font-size: 0.76rem;
+            }
+
+            .mobile-nav-tabs {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+                background: rgba(0, 0, 0, 0.24);
+                padding: 4px;
+                border-radius: 14px;
+                border: 1px solid var(--border);
+            }
+
+            .mobile-tab-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                padding: 8px 4px;
+                border-radius: 10px;
+                border: none;
+                background: transparent;
+                color: var(--text-light);
+                font-family: inherit;
+                font-size: clamp(0.68rem, 2.4vw, 0.8rem);
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                white-space: nowrap;
+                text-align: center;
+                user-select: none;
+            }
+
+            .mobile-tab-btn:hover {
+                color: var(--text);
+            }
+
+            .mobile-tab-btn.active {
+                background: var(--accent);
+                color: #fff;
+                box-shadow: 0 2px 10px rgba(0, 210, 211, 0.35);
+            }
+
+            /* Persistent APK Banner */
+            .mobile-apk-banner {
+                display: flex !important;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(124, 58, 237, 0.12));
+                border: 1px solid rgba(59, 130, 246, 0.35);
+                border-radius: 16px;
+                padding: 10px 14px;
+                margin-bottom: 14px;
+                box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
+            }
+
+            .mobile-apk-banner-content {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                min-width: 0;
+            }
+
+            .mobile-apk-icon {
+                font-size: 1.5rem;
+                flex-shrink: 0;
+            }
+
+            .mobile-apk-text {
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+            }
+
+            .mobile-apk-text strong {
+                font-size: 0.82rem;
+                color: var(--text);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .mobile-apk-text span {
+                font-size: 0.74rem;
+                color: var(--text-light);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .mobile-apk-btn {
+                flex-shrink: 0;
+                padding: 6px 14px;
+                font-size: 0.78rem;
+                font-weight: 800;
+                border-radius: 12px;
+                text-decoration: none;
+                white-space: nowrap;
+            }
+
+            /* PC Drives & Explorer Responsive Tweaks */
+            .pc-drives-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .explorer-nav-bar {
+                flex-direction: column;
+                align-items: stretch !important;
+                gap: 8px !important;
+            }
+            .explorer-nav-buttons {
+                justify-content: flex-start;
+            }
+            .explorer-tools {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .explorer-search-box {
+                flex: 1;
+            }
+            .explorer-search-box input {
+                width: 100% !important;
+            }
+            .phone-filters-row {
+                flex-direction: column;
+                align-items: stretch !important;
+                gap: 10px !important;
+            }
+            .phone-filters {
+                overflow-x: auto;
+                white-space: nowrap;
+                padding-bottom: 4px;
+            }
+            .card {
+                padding: 16px !important;
+                border-radius: 20px !important;
+            }
+            .view-panel-hub {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
     </style>
 </head>
 
@@ -4339,7 +4586,7 @@
                         <div class="landing-step-badge">1</div>
                         <div class="landing-step-text">
                             <strong>Same Network or Hotspot</strong>
-                            <span>Ensure PC and Phone are on the same Wi-Fi, or turn on Windows Mobile Hotspot for direct 50+ MB/s transfers.</span>
+                            <span>Ensure PC and Phone are on the same Wi-Fi, or turn on Windows Mobile Hotspot for direct local Wi-Fi or Hotspot transfers.</span>
                         </div>
                     </div>
 
@@ -4473,6 +4720,60 @@
         </sidebar>
 
         <main class="main-content">
+            <!-- Mobile Web Companion Top Header Bar (< 768px) -->
+            <header class="mobile-companion-header" id="mobile-companion-header">
+                <div class="mobile-top-bar">
+                    <div class="mobile-brand-group">
+                        <div class="mobile-logo">fylo</div>
+                        <div class="mobile-beacon">
+                            <span class="pill-dot live-pulse"></span>
+                            <span>Linked to PC</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="mobile-pc-name" style="font-size: 0.75rem; color: var(--text-light); font-weight: 700;">Fylo PC</span>
+                        <button class="btn-top-icon" id="mobile-theme-toggle" title="Toggle Dark/Light Mode" style="width: 32px; height: 32px;">
+                            <svg viewBox="0 0 24 24" style="width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;">
+                                <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Clean segmented switch / tabs -->
+                <nav class="mobile-nav-tabs" id="mobile-nav-tabs">
+                    <button class="mobile-tab-btn active" data-target="view-pc-explorer">
+                        <span>💻 PC Files</span>
+                    </button>
+                    <button class="mobile-tab-btn" data-target="view-hub">
+                        <span>📤 Upload to PC</span>
+                    </button>
+                    <button class="mobile-tab-btn" data-target="view-clipboard">
+                        <span>📋 Clipboard</span>
+                    </button>
+                    <button class="mobile-tab-btn" data-target="view-apk">
+                        <span>📥 Get APK</span>
+                    </button>
+                </nav>
+            </header>
+
+            <!-- Persistent Mobile APK Download Banner -->
+            <div id="mobile-apk-banner" class="mobile-apk-banner">
+                <div class="mobile-apk-banner-content">
+                    <span class="mobile-apk-icon">📱</span>
+                    <div class="mobile-apk-text">
+                        <strong>Want to browse phone gallery from PC?</strong>
+                        <span>Install the Fylo Android App</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <a href="/fylo.apk" download="fylo-v4.0.0.apk" class="btn btn-accent mobile-apk-btn">
+                        📥 Get APK
+                    </a>
+                    <button id="mobile-apk-banner-dismiss" style="background: none; border: none; color: var(--text-light); font-size: 1.1rem; cursor: pointer; padding: 2px 6px;" title="Dismiss">&times;</button>
+                </div>
+            </div>
+
             <!-- Top System Header Bar -->
             <!-- Top System Header Bar with Pill Navigation (Reference Design) -->
             <header class="top-header-bar">
@@ -4924,6 +5225,97 @@
 
             <!-- Fylo v4: Phone Explorer View (Default Active) -->
             <div id="view-phone" class="view-panel hidden">
+                <!-- Web Companion Active Status Card (Shown when phone links via mobile web) -->
+                <div id="phone-web-companion-container" class="hidden" style="margin-bottom: 20px;">
+                    <div class="feature-focus-header">
+                        <button class="btn-back-dashboard" onclick="returnToDashboard()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
+                            <span>← Back to Dashboard</span>
+                        </button>
+                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">📱 Connected Mobile Web Companion</span>
+                    </div>
+
+                    <div class="card" style="padding: 28px 24px; border-radius: 24px; background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.12) 0%, rgba(15, 23, 42, 0.3) 100%), var(--card-bg); border: 1px solid rgba(59, 130, 246, 0.35); box-shadow: var(--glass-shadow);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 22px;">
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <div style="width: 56px; height: 56px; border-radius: 18px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(14, 165, 233, 0.2)); border: 1px solid rgba(59, 130, 246, 0.4); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2); flex-shrink: 0;">
+                                    📱
+                                </div>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <h2 style="font-size: 1.35rem; font-weight: 900; color: var(--text); margin: 0;" id="phone-web-device-title">
+                                            📱 Mobile Phone (Web Linked)
+                                        </h2>
+                                        <span class="mobile-beacon" style="padding: 3px 10px; font-size: 0.75rem;">
+                                            <span class="pill-dot live-pulse"></span>
+                                            <span>Web Linked</span>
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 0.82rem; color: var(--text-light); margin-top: 4px;" id="phone-web-device-sub">
+                                        Connected via Web Browser • Ready for Transfers & Sync
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <a href="/fylo.apk" download="fylo-v4.0.0.apk" class="btn btn-accent" style="padding: 9px 16px; border-radius: 12px; font-weight: 800; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                                    📥 Download Fylo APK
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Connection Stats Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 22px;">
+                            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px;">
+                                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Client IP</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: var(--text); margin-top: 4px;" id="phone-web-stat-ip">Detecting...</div>
+                            </div>
+                            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px;">
+                                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Connection Mode</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: #38bdf8; margin-top: 4px;">Web Companion</div>
+                            </div>
+                            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px;">
+                                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">LAN Direct Speed</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: #2ed573; margin-top: 4px;">High Speed</div>
+                            </div>
+                            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px;">
+                                <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: var(--text); margin-top: 4px;">● Online</div>
+                            </div>
+                        </div>
+
+                        <!-- Informative Note -->
+                        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 16px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px;">
+                            <div style="font-size: 1.4rem; line-height: 1;">💡</div>
+                            <div style="font-size: 0.86rem; color: var(--text); line-height: 1.5;">
+                                <strong>Connected via Web Browser.</strong> For deep phone filesystem access & gallery browsing from PC, open the Fylo APK.
+                                <div style="font-size: 0.78rem; color: var(--text-light); margin-top: 4px;">
+                                    The web companion allows downloading PC files, uploading files to PC, and live clipboard syncing. To explore your phone's Android DCIM gallery & storage directly from this PC, install and launch the Fylo APK on your phone.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Navigation & Secondary QR Link -->
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border);">
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn" onclick="switchView('view-pc-explorer')" style="padding: 7px 14px; border-radius: 10px; font-weight: 700; font-size: 0.82rem;">
+                                    💻 Browse PC Files
+                                </button>
+                                <button class="btn" onclick="switchView('view-hub')" style="padding: 7px 14px; border-radius: 10px; font-weight: 700; font-size: 0.82rem;">
+                                    ⚡ Share Hub & Uploads
+                                </button>
+                                <button class="btn" onclick="switchView('view-clipboard')" style="padding: 7px 14px; border-radius: 10px; font-weight: 700; font-size: 0.82rem;">
+                                    📋 Live Clipboard
+                                </button>
+                            </div>
+                            <div>
+                                <a href="#" id="web-companion-show-qr-link" style="color: var(--text-light); font-size: 0.8rem; text-decoration: underline; cursor: pointer;">
+                                    Show QR code
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Empty State: Interactive Pairing Studio -->
                 <div id="phone-empty-container" class="phone-empty-state" style="padding: 0; background: transparent; border: none;">
                     <div class="pairing-studio-card">
@@ -5306,6 +5698,45 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Fylo v4: Mobile APK Download Dedicated View Panel -->
+            <div id="view-apk" class="view-panel hidden">
+                <div class="card" style="padding: 32px 24px; text-align: center; border-radius: 24px; background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15) 0%, rgba(15, 23, 42, 0.4) 100%), var(--card-bg); border: 1px solid rgba(59, 130, 246, 0.35); box-shadow: var(--glass-shadow); max-width: 680px; margin: 0 auto;">
+                    <div style="width: 64px; height: 64px; margin: 0 auto 16px auto; border-radius: 20px; background: linear-gradient(135deg, #3b82f6, #06b6d4); display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);">
+                        📱
+                    </div>
+                    <h2 style="font-size: 1.35rem; font-weight: 900; color: var(--text); margin-bottom: 8px; letter-spacing: -0.3px;">
+                        Want to browse your phone's gallery and folders from PC?
+                    </h2>
+                    <p style="font-size: 0.92rem; color: var(--text-light); max-width: 480px; margin: 0 auto 20px auto; line-height: 1.5;">
+                        Install the Fylo Android App to unlock full 2-way sync, browse phone storage & camera photos from PC, and transfer files at high LAN speed.
+                    </p>
+                    <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+                        <a href="/fylo.apk" download="fylo-v4.0.0.apk" class="btn btn-accent" style="padding: 13px 26px; border-radius: 16px; font-weight: 800; font-size: 0.95rem; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0, 210, 211, 0.35);">
+                            <span>📥 Download Fylo Android App</span>
+                        </a>
+                    </div>
+
+                    <!-- Feature Highlights Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; text-align: left; margin-top: 16px;">
+                        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
+                            <div style="font-size: 1.25rem; margin-bottom: 6px;">📸</div>
+                            <div style="font-weight: 800; font-size: 0.88rem; color: var(--text);">Gallery & Camera</div>
+                            <div style="font-size: 0.76rem; color: var(--text-light); margin-top: 2px;">View phone DCIM photos & videos instantly on PC</div>
+                        </div>
+                        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
+                            <div style="font-size: 1.25rem; margin-bottom: 6px;">⚡</div>
+                            <div style="font-weight: 800; font-size: 0.88rem; color: var(--text);">Direct Local Speed</div>
+                            <div style="font-size: 0.76rem; color: var(--text-light); margin-top: 2px;">Blazing fast LAN transfers without internet</div>
+                        </div>
+                        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 16px; padding: 14px;">
+                            <div style="font-size: 1.25rem; margin-bottom: 6px;">🔒</div>
+                            <div style="font-weight: 800; font-size: 0.88rem; color: var(--text);">100% Private</div>
+                            <div style="font-size: 0.76rem; color: var(--text-light); margin-top: 2px;">Encrypted point-to-point connection on your LAN</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -5392,7 +5823,7 @@
                     </div>
                     <div>
                         <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text); margin: 0;">Mobile Hotspot & Wi-Fi Setup</h3>
-                        <p style="font-size: 0.8rem; color: var(--text-light); margin: 2px 0 0 0;">Ultra-fast offline direct transfer between PC & Phone (50+ MB/s)</p>
+                        <p style="font-size: 0.8rem; color: var(--text-light); margin: 2px 0 0 0;">Offline direct local transfer between PC & Phone</p>
                     </div>
                 </div>
                 <button id="hotspot-modal-close" class="modal-close" style="position: static; font-size: 1.5rem; background: none; border: none; color: var(--text-light); cursor: pointer; padding: 4px 8px;">&times;</button>
@@ -5407,7 +5838,7 @@
                 <div style="display: flex; gap: 18px; align-items: center; font-size: 0.9rem; font-weight: 700; color: var(--text); flex-wrap: wrap;">
                     <div>Host IP: <span id="hotspot-ip-val" style="color: var(--accent); font-family: monospace;">...</span></div>
                     <div>Port: <span style="font-family: monospace;">3000</span></div>
-                    <div>Bandwidth: <span style="color: #2ed573;">Up to 80 MB/s</span></div>
+                    <div>Bandwidth: <span style="color: #2ed573;">Local Wi-Fi / Direct Link</span></div>
                 </div>
                 <div style="font-size: 0.78rem; color: var(--text-light); margin-top: 6px; line-height: 1.4;">
                     💡 Windows Mobile Hotspot creates a direct point-to-point Wi-Fi connection between your PC and phone without router slowdowns or internet usage.
@@ -5440,7 +5871,7 @@
                     <div style="display: flex; gap: 12px; align-items: flex-start;">
                         <span style="width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</span>
                         <div>
-                            <strong>Turn Hotspot On:</strong> Toggle "Mobile Hotspot" to <em>ON</em>. Choose Band <em>5 GHz</em> for up to 80 MB/s transfer speeds!
+                            <strong>Turn Hotspot On:</strong> Toggle "Mobile Hotspot" to <em>ON</em>. 5 GHz band is recommended for fastest local transfer speeds.
                         </div>
                     </div>
                     <div style="display: flex; gap: 12px; align-items: flex-start;">
@@ -5452,7 +5883,7 @@
                     <div style="display: flex; gap: 12px; align-items: flex-start;">
                         <span style="width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">4</span>
                         <div>
-                            <strong>Scan & Transfer:</strong> Scan the Fylo QR code on your PC screen. Both devices will pair with zero lag!
+                            <strong>Scan & Transfer:</strong> Scan the Fylo QR code on your PC screen. Both devices will pair directly.
                         </div>
                     </div>
                 </div>
@@ -5529,6 +5960,12 @@
 
     <script>
         const $ = (sel) => document.querySelector(sel);
+
+        const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+        if (isMobile) {
+            const landing = document.getElementById('startup-landing');
+            if (landing) landing.classList.add('hidden-landing');
+        }
 
         const isElectron = (typeof require !== 'undefined');
         const ipcRenderer = isElectron ? require('electron').ipcRenderer : null;
@@ -5846,7 +6283,8 @@
             'view-hub': { icon: '⚡', title: 'Share Hub & Transfer', tagline: 'Drag and drop files to stream and share across local network' },
             'view-clipboard': { icon: '📋', title: 'Live Shared Clipboard', tagline: 'Real-time bidirectional text synchronization across devices' },
             'view-devices': { icon: '👥', title: 'Connected Devices', tagline: 'Active devices detected on local LAN subnet' },
-            'view-settings': { icon: '⚙️', title: 'Settings & Security', tagline: 'App display profile, download paths, and Admin password control' }
+            'view-settings': { icon: '⚙️', title: 'Settings & Security', tagline: 'App display profile, download paths, and Admin password control' },
+            'view-apk': { icon: '📥', title: 'Get Fylo Android App', tagline: 'Native mobile app for full phone filesystem access & gallery browsing' }
         };
 
         function switchView(targetId) {
@@ -5862,6 +6300,21 @@
             document.querySelectorAll('.top-nav-pill').forEach(p => p.classList.remove('active'));
             const topPill = document.querySelector(`.top-nav-pill[data-target="${targetId}"]`);
             if (topPill) topPill.classList.add('active');
+
+            // Update mobile companion tabs
+            document.querySelectorAll('.mobile-tab-btn').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-target') === targetId);
+            });
+
+            // Toggle mobile apk banner
+            const mobileApkBanner = $('#mobile-apk-banner');
+            if (mobileApkBanner) {
+                if (targetId === 'view-apk') {
+                    mobileApkBanner.style.setProperty('display', 'none', 'important');
+                } else if (isMobile) {
+                    mobileApkBanner.style.removeProperty('display');
+                }
+            }
 
             // Show/hide view panels
             document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
@@ -6158,6 +6611,10 @@
             setTimeout(() => $('#file-input')?.click(), 80);
         });
         $('#top-qr-toggle-btn')?.addEventListener('click', () => {
+            if (isMobile) {
+                switchView('view-apk');
+                return;
+            }
             const landing = $('#startup-landing');
             if (landing) {
                 if (landing.classList.contains('hidden-landing')) {
@@ -6169,6 +6626,19 @@
             } else {
                 switchView('view-phone');
             }
+        });
+
+        // Mobile Companion Tabs & Actions
+        document.querySelectorAll('.mobile-tab-btn[data-target]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.getAttribute('data-target');
+                if (target) switchView(target);
+            });
+        });
+        $('#mobile-theme-toggle')?.addEventListener('click', toggleTheme);
+        $('#mobile-apk-banner-dismiss')?.addEventListener('click', () => {
+            const banner = $('#mobile-apk-banner');
+            if (banner) banner.style.setProperty('display', 'none', 'important');
         });
 
         // Startup Landing Interface Bindings
@@ -6241,6 +6711,10 @@
 
         $('#dash-open-hub-link')?.addEventListener('click', () => switchView('view-hub'));
         $('#dash-open-pairing-btn')?.addEventListener('click', () => {
+            if (isMobile) {
+                switchView('view-apk');
+                return;
+            }
             const landing = $('#startup-landing');
             if (landing) {
                 landing.classList.remove('hidden-landing');
@@ -6394,6 +6868,16 @@
             try {
                 const me = await (await apiFetch('/api/me')).json();
                 isHost = me.isHost;
+
+                if (isMobile || !isHost) {
+                    $('#startup-landing')?.classList.add('hidden-landing');
+                }
+
+                const mobilePcName = $('#mobile-pc-name');
+                if (mobilePcName) {
+                    mobilePcName.textContent = me.name || (isHost ? 'Fylo Host PC' : 'Fylo PC');
+                }
+
                 const shelf = $('#sidebar-qr-shelf');
                 if (shelf) {
                     if (!isHost) {
@@ -7709,10 +8193,12 @@
 
                 const emptyContainer = $('#phone-empty-container');
                 const activeContainer = $('#phone-active-container');
+                const webCompanionContainer = $('#phone-web-companion-container');
                 const topPhoneVal = $('#top-phone-val');
                 const topPhoneDot = $('#top-phone-dot');
 
                 if (onlineDevices.length === 0) {
+                    if (webCompanionContainer) webCompanionContainer.classList.add('hidden');
                     if (emptyContainer) emptyContainer.classList.remove('hidden');
                     if (activeContainer) activeContainer.classList.add('hidden');
                     currentPhoneId = null;
@@ -7729,6 +8215,7 @@
                     if (topPhoneVal) topPhoneVal.textContent = `${primaryDevice.name || 'Phone'} (Connected)`;
                     if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
 
+                    if (webCompanionContainer) webCompanionContainer.classList.add('hidden');
                     if (emptyContainer) emptyContainer.classList.add('hidden');
                     if (activeContainer) activeContainer.classList.remove('hidden');
 
@@ -7763,37 +8250,39 @@
                     if (topPhoneVal) topPhoneVal.textContent = `${webDev.name || 'Phone'} (Web Linked)`;
                     if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
 
-                    if (emptyContainer) emptyContainer.classList.remove('hidden');
+                    // HIDE phone-empty-container (which has the QR code) and phone-active-container!
+                    if (emptyContainer) emptyContainer.classList.add('hidden');
                     if (activeContainer) activeContainer.classList.add('hidden');
 
-                    // Inject active web client indicator card into pairing studio
-                    let webBanner = $('#phone-web-paired-banner');
-                    if (!webBanner && emptyContainer) {
-                        webBanner = document.createElement('div');
-                        webBanner.id = 'phone-web-paired-banner';
-                        webBanner.style.cssText = 'margin-bottom: 16px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 16px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; box-shadow: 0 8px 24px rgba(0,0,0,0.25);';
-                        emptyContainer.insertBefore(webBanner, emptyContainer.firstChild);
+                    // SHOW clean web companion status card
+                    if (webCompanionContainer) {
+                        webCompanionContainer.classList.remove('hidden');
+                        const deviceTitle = $('#phone-web-device-title');
+                        const deviceSub = $('#phone-web-device-sub');
+                        const statIp = $('#phone-web-stat-ip');
+                        if (deviceTitle) deviceTitle.textContent = `📱 ${escapeHtml(webDev.name || 'Mobile Phone')} (Web Linked)`;
+                        if (deviceSub) deviceSub.textContent = `Connected via Web Browser • ${webDev.ip ? 'IP: ' + escapeHtml(webDev.ip) : 'LAN Ready'}`;
+                        if (statIp) statIp.textContent = webDev.ip || 'LAN Connected';
                     }
-                    if (webBanner) {
-                        webBanner.innerHTML = `
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="font-size: 2rem;">📱</div>
-                                <div>
-                                    <div style="font-weight: 800; font-size: 1rem; color: #60a5fa; display: flex; align-items: center; gap: 8px;">
-                                        <span>${escapeHtml(webDev.name)} Linked via Browser</span>
-                                        <span class="pill-dot live-pulse"></span>
-                                    </div>
-                                    <div style="font-size: 0.82rem; color: var(--text-light); margin-top: 2px;">
-                                        For full PC-like folder navigation, camera photos, and background file streaming even when your screen is locked, launch the Fylo APK on your phone.
-                                    </div>
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <a href="/fylo.apk" download="fylo-v4.0.0.apk" class="btn btn-accent" style="padding: 9px 16px; font-size: 0.85rem; font-weight: 800; text-decoration: none; border-radius: 12px; display: inline-flex; align-items: center; gap: 6px;">
-                                    📥 Download Fylo APK
-                                </a>
-                            </div>
-                        `;
+
+                    // Secondary link "Show QR code" toggle
+                    const qrToggleLink = $('#web-companion-show-qr-link');
+                    if (qrToggleLink && !qrToggleLink._bound) {
+                        qrToggleLink._bound = true;
+                        qrToggleLink.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const emptyCont = $('#phone-empty-container');
+                            if (emptyCont) {
+                                const isHidden = emptyCont.classList.contains('hidden');
+                                if (isHidden) {
+                                    emptyCont.classList.remove('hidden');
+                                    qrToggleLink.textContent = 'Hide QR code';
+                                } else {
+                                    emptyCont.classList.add('hidden');
+                                    qrToggleLink.textContent = 'Show QR code';
+                                }
+                            }
+                        });
                     }
                 }
             } catch (err) {
@@ -9299,6 +9788,12 @@
             }
             try {
                 await loadMe();
+                if (isMobile || !isHost) {
+                    $('#startup-landing')?.classList.add('hidden-landing');
+                    if (isMobile) {
+                        switchView('view-pc-explorer');
+                    }
+                }
                 await loadNetworkInfo();
                 await loadFiles();
                 await loadDevices();
@@ -9310,6 +9805,9 @@
                 initSettingsClipboardSync();
                 initSettingsClientName();
                 initSidebarState();
+                if (isMobile) {
+                    switchView('view-pc-explorer');
+                }
             } catch (e) {
                 if (e.message === 'kicked') return;
                 console.error(e);

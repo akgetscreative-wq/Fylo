@@ -96,12 +96,161 @@ function parseCookies(cookieHeader) {
 
 function isLocalHostIp(ip) {
     if (!ip) return false;
-    const cleanIp = ip.replace(/^.*:/, '');
-    if (cleanIp === '127.0.0.1' || ip === '::1' || ip === 'localhost') return true;
-    const activeIp = getActiveIp();
-    const baselineIp = getLocalIp();
-    if ((activeIp && ip.includes(activeIp)) || (baselineIp && ip.includes(baselineIp))) return true;
+    const cleanIp = ip.replace(/^.*:/, '').trim();
+    if (cleanIp === '127.0.0.1' || cleanIp === 'localhost' || ip === '::1') return true;
+    const activeIp = (getActiveIp() || '').trim();
+    const baselineIp = (getLocalIp() || '').trim();
+    if (cleanIp === activeIp || cleanIp === baselineIp) return true;
+    if (ip === activeIp || ip === ('::ffff:' + activeIp)) return true;
+    if (ip === baselineIp || ip === ('::ffff:' + baselineIp)) return true;
     return false;
+}
+
+function parseDeviceDetails(userAgent = '', customName = '') {
+    if (customName && typeof customName === 'string' && customName.trim()) {
+        const trimmed = customName.trim();
+        const isIos = /iphone|ipad|ipod/i.test(userAgent);
+        const isAndroid = /android/i.test(userAgent);
+        const isMobile = isIos || isAndroid || /mobile|tablet/i.test(userAgent);
+        return {
+            name: trimmed,
+            kind: isIos ? 'ios' : (isAndroid ? 'android' : (isMobile ? 'mobile' : 'desktop')),
+            model: trimmed
+        };
+    }
+
+    const ua = userAgent || '';
+    let kind = 'desktop';
+    let baseModel = '';
+
+    const isIos = /iphone|ipad|ipod/i.test(ua);
+    const isAndroid = /android/i.test(ua);
+    const isMobile = isIos || isAndroid || /mobile|tablet/i.test(ua);
+
+    if (isIos) {
+        kind = 'ios';
+        if (/iphone/i.test(ua)) baseModel = 'iPhone';
+        else if (/ipad/i.test(ua)) baseModel = 'iPad';
+        else if (/ipod/i.test(ua)) baseModel = 'iPod';
+        else baseModel = 'Apple iOS Device';
+    } else if (isAndroid) {
+        kind = 'android';
+        
+        // Samsung SM- Model Code Lookup
+        const smMatch = ua.match(/SM-([A-Z0-9]+)/i);
+        if (smMatch) {
+            const smCode = ('SM-' + smMatch[1]).toUpperCase();
+            if (smCode.startsWith('SM-S928')) baseModel = 'Samsung Galaxy S24 Ultra';
+            else if (smCode.startsWith('SM-S926')) baseModel = 'Samsung Galaxy S24+';
+            else if (smCode.startsWith('SM-S921')) baseModel = 'Samsung Galaxy S24';
+            else if (smCode.startsWith('SM-S918')) baseModel = 'Samsung Galaxy S23 Ultra';
+            else if (smCode.startsWith('SM-S916')) baseModel = 'Samsung Galaxy S23+';
+            else if (smCode.startsWith('SM-S911')) baseModel = 'Samsung Galaxy S23';
+            else if (smCode.startsWith('SM-S908')) baseModel = 'Samsung Galaxy S22 Ultra';
+            else if (smCode.startsWith('SM-S906')) baseModel = 'Samsung Galaxy S22+';
+            else if (smCode.startsWith('SM-S901')) baseModel = 'Samsung Galaxy S22';
+            else if (smCode.startsWith('SM-G998')) baseModel = 'Samsung Galaxy S21 Ultra';
+            else if (smCode.startsWith('SM-G996')) baseModel = 'Samsung Galaxy S21+';
+            else if (smCode.startsWith('SM-G991')) baseModel = 'Samsung Galaxy S21';
+            else if (smCode.startsWith('SM-G990')) baseModel = 'Samsung Galaxy S21 FE';
+            else if (smCode.startsWith('SM-G988')) baseModel = 'Samsung Galaxy S20 Ultra';
+            else if (smCode.startsWith('SM-G986')) baseModel = 'Samsung Galaxy S20+';
+            else if (smCode.startsWith('SM-G980') || smCode.startsWith('SM-G981')) baseModel = 'Samsung Galaxy S20';
+            else if (smCode.startsWith('SM-G975')) baseModel = 'Samsung Galaxy S10+';
+            else if (smCode.startsWith('SM-G973')) baseModel = 'Samsung Galaxy S10';
+            else if (smCode.startsWith('SM-G970')) baseModel = 'Samsung Galaxy S10e';
+            else if (smCode.startsWith('SM-F946')) baseModel = 'Samsung Galaxy Z Fold 5';
+            else if (smCode.startsWith('SM-F936')) baseModel = 'Samsung Galaxy Z Fold 4';
+            else if (smCode.startsWith('SM-F926')) baseModel = 'Samsung Galaxy Z Fold 3';
+            else if (smCode.startsWith('SM-F731')) baseModel = 'Samsung Galaxy Z Flip 5';
+            else if (smCode.startsWith('SM-F721')) baseModel = 'Samsung Galaxy Z Flip 4';
+            else if (smCode.startsWith('SM-F711')) baseModel = 'Samsung Galaxy Z Flip 3';
+            else if (smCode.startsWith('SM-N986')) baseModel = 'Samsung Galaxy Note 20 Ultra';
+            else if (smCode.startsWith('SM-N98')) baseModel = 'Samsung Galaxy Note 20';
+            else if (smCode.startsWith('SM-N97')) baseModel = 'Samsung Galaxy Note 10';
+            else if (smCode.startsWith('SM-A546')) baseModel = 'Samsung Galaxy A54';
+            else if (smCode.startsWith('SM-A536')) baseModel = 'Samsung Galaxy A53';
+            else if (smCode.startsWith('SM-A52')) baseModel = 'Samsung Galaxy A52';
+            else if (smCode.startsWith('SM-A51')) baseModel = 'Samsung Galaxy A51';
+            else if (smCode.startsWith('SM-A34')) baseModel = 'Samsung Galaxy A34';
+            else if (smCode.startsWith('SM-A33')) baseModel = 'Samsung Galaxy A33';
+            else if (smCode.startsWith('SM-S')) baseModel = 'Samsung Galaxy S-Series';
+            else if (smCode.startsWith('SM-A')) baseModel = 'Samsung Galaxy A-Series';
+            else if (smCode.startsWith('SM-M')) baseModel = 'Samsung Galaxy M-Series';
+            else if (smCode.startsWith('SM-F')) baseModel = 'Samsung Galaxy Z Series';
+            else if (smCode.startsWith('SM-T')) baseModel = 'Samsung Galaxy Tab';
+            else baseModel = `Samsung ${smCode}`;
+        }
+
+        // Google Pixel
+        if (!baseModel) {
+            const pixelMatch = ua.match(/Pixel\s*([0-9a-zA-Z\s]+?)(?=\sBuild|\s*;\s*|\)|\/|$)/i);
+            if (pixelMatch) baseModel = `Google Pixel ${pixelMatch[1].trim()}`;
+        }
+
+        // OnePlus
+        if (!baseModel) {
+            const opMatch = ua.match(/(?:OnePlus|ONEPLUS)\s*([0-9a-zA-Z\s+]+?)(?=\sBuild|\s*;\s*|\)|\/|$)/i);
+            if (opMatch) baseModel = `OnePlus ${opMatch[1].trim()}`;
+            else if (/OnePlus/i.test(ua)) baseModel = 'OnePlus Phone';
+        }
+
+        // Xiaomi / Redmi / POCO
+        if (!baseModel) {
+            const redmiMatch = ua.match(/Redmi\s*([0-9a-zA-Z\s]+?)(?=\sBuild|\s*;\s*|\)|\/|$)/i);
+            if (redmiMatch) baseModel = `Redmi ${redmiMatch[1].trim()}`;
+            else {
+                const pocoMatch = ua.match(/POCO\s*([0-9a-zA-Z\s]+?)(?=\sBuild|\s*;\s*|\)|\/|$)/i);
+                if (pocoMatch) baseModel = `POCO ${pocoMatch[1].trim()}`;
+                else {
+                    const miMatch = ua.match(/(?:Xiaomi|Mi)\s*([0-9a-zA-Z\s]+?)(?=\sBuild|\s*;\s*|\)|\/|$)/i);
+                    if (miMatch) baseModel = `Xiaomi ${miMatch[1].trim()}`;
+                }
+            }
+        }
+
+        // Motorola
+        if (!baseModel) {
+            const motoMatch = ua.match(/moto\s*([0-9a-zA-Z\s]+?)(?=\sBuild|\s*;\s*|\)|\/|$)/i);
+            if (motoMatch) baseModel = `Motorola ${motoMatch[1].trim()}`;
+        }
+
+        // OPPO / Vivo / Realme
+        if (!baseModel) {
+            const realmeMatch = ua.match(/Realme\s*([0-9a-zA-Z\s]+?)(?=\sBuild|\s*;\s*|\)|\/|$)/i);
+            if (realmeMatch) baseModel = `Realme ${realmeMatch[1].trim()}`;
+            else {
+                const oppoMatch = ua.match(/OPPO\s*([0-9a-zA-Z\s]+?)(?=\sBuild|\s*;\s*|\)|\/|$)/i);
+                if (oppoMatch) baseModel = `OPPO ${oppoMatch[1].trim()}`;
+                else {
+                    const vivoMatch = ua.match(/vivo\s*([0-9a-zA-Z\s]+?)(?=\sBuild|\s*;\s*|\)|\/|$)/i);
+                    if (vivoMatch) baseModel = `Vivo ${vivoMatch[1].trim()}`;
+                }
+            }
+        }
+
+        // Fallback Android model extraction
+        if (!baseModel) {
+            const uaMatch = ua.match(/Android[^;]+;\s*([^;\)]+)/i);
+            if (uaMatch && uaMatch[1]) {
+                const rawModel = uaMatch[1].replace(/Build\/.*$/i, '').trim();
+                if (rawModel && rawModel.length < 35 && !rawModel.toLowerCase().startsWith('wv') && rawModel !== 'K') {
+                    baseModel = rawModel;
+                }
+            }
+        }
+
+        if (!baseModel) baseModel = 'Android Phone';
+    } else if (isMobile) {
+        kind = 'mobile';
+        baseModel = 'Mobile Device';
+    } else {
+        kind = 'desktop';
+        baseModel = 'PC Browser';
+    }
+
+    const detectedModelName = `${baseModel} (Web Companion)`;
+    return { name: detectedModelName, kind, model: baseModel };
 }
 
 app.use((req, res, next) => {
@@ -117,9 +266,66 @@ app.use((req, res, next) => {
         return res.sendStatus(204);
     }
 
+    const cookies = parseCookies(req.headers.cookie);
+    let sessionId = req.headers['x-session-id'] ||
+                    req.headers['session-id'] ||
+                    (req.query && (req.query['x-session-id'] || req.query.sessionId || req.query.session || req.query.deviceId)) ||
+                    (cookies && (cookies['x-session-id'] || cookies['fylo_session_id'] || cookies['sessionId'] || cookies['deviceId'])) ||
+                    (req.body && (req.body.sessionId || req.body['x-session-id'] || req.body.deviceId)) ||
+                    '';
+
+    if (sessionId) {
+        sessionId = String(sessionId).trim();
+        req.sessionId = sessionId;
+    }
+
     const isHost = isLocalHostIp(req.ip);
+
+    // Device registration in middleware:
+    // When ANY request arrives from a non-host IP with x-session-id (or query or cookie),
+    // immediately record/update devices[sessionId]. Never skip this, even for public APIs!
+    if (!isHost && sessionId) {
+        if (blockedDevices[sessionId]) {
+            return res.status(403).json({ error: 'kicked' });
+        }
+
+        const existingDev = devices[sessionId];
+        const clientNameHeader = req.headers['x-client-name'];
+        let customName = '';
+        if (clientNameHeader) {
+            try { customName = decodeURIComponent(clientNameHeader).trim(); } catch (e) {}
+        } else if (existingDev && existingDev.name && !existingDev.name.includes('(Web Companion)') && existingDev.name !== 'Mobile Companion') {
+            customName = existingDev.name;
+        }
+
+        const detected = parseDeviceDetails(req.headers['user-agent'] || '', customName);
+        const detectedModelName = customName || detected.name;
+        const detectedKind = detected.kind;
+        const isNative = !!(mobileDevices[sessionId]);
+
+        devices[sessionId] = {
+            id: sessionId,
+            ip: req.ip,
+            name: isNative ? (mobileDevices[sessionId].name || detectedModelName) : (detectedModelName || 'Mobile Companion'),
+            kind: isNative ? 'android' : detectedKind,
+            isHost: false,
+            lastActive: Date.now(),
+            isWebClient: !isNative,
+            model: isNative ? (mobileDevices[sessionId].model || detected.model) : (detected.model || 'Web Companion')
+        };
+
+        if (isNative && mobileDevices[sessionId]) {
+            mobileDevices[sessionId].lastActive = Date.now();
+        }
+    }
+
     if (isHost) {
         return next();
+    }
+
+    // Admin Security Lockdown: Remote clients must NEVER be allowed to access admin management endpoints
+    if (!isHost && req.path.startsWith('/api/admin')) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
     }
 
     // Public / Handshake API endpoints that must be reachable by mobile apps and clients without prior session cookie
@@ -129,68 +335,40 @@ app.use((req, res, next) => {
                         req.path === '/api/connection-info' ||
                         req.path === '/api/network-url' ||
                         req.path === '/api/network-interfaces' ||
-                        req.path === '/api/me';
+                        req.path === '/api/heartbeat' ||
+                        req.path === '/api/me' ||
+                        req.path === '/fylo.apk' ||
+                        req.path === '/api/apk/download';
 
     if (isPublicApi) {
         return next();
     }
 
     const urlToken = req.query.auth;
-    const cookies = parseCookies(req.headers.cookie);
     const sessionToken = cookies['fylo_session'];
     const headerToken = req.headers['x-auth-token'] || req.headers['authorization'];
 
     if (urlToken === secretToken) {
-        res.setHeader('Set-Cookie', `fylo_session=${secretToken}; Path=/; HttpOnly; Max-Age=86400`);
+        const newSessionId = sessionId || (crypto.randomBytes(8).toString('hex') + Date.now().toString(36));
+        res.setHeader('Set-Cookie', [
+            `fylo_session=${secretToken}; Path=/; HttpOnly; Max-Age=86400`,
+            `fylo_session_id=${newSessionId}; Path=/; Max-Age=86400`
+        ]);
+        const detected = parseDeviceDetails(req.headers['user-agent'] || '');
+        devices[newSessionId] = {
+            id: newSessionId,
+            ip: req.ip,
+            name: detected.name || 'Mobile Companion',
+            kind: detected.kind,
+            isHost: false,
+            lastActive: Date.now(),
+            isWebClient: true,
+            model: detected.model || 'Web Companion'
+        };
         return res.redirect('/');
     }
 
     if (sessionToken === secretToken || headerToken === secretToken || (headerToken && headerToken.includes(secretToken))) {
-        let sessionId = req.headers['x-session-id'] || req.query['x-session-id'];
-        if (!sessionId) return next();
-        req.sessionId = sessionId;
-
-        if (blockedDevices[sessionId]) {
-            return res.status(403).json({ error: 'kicked' });
-        }
-
-        const userAgent = req.headers['user-agent'] || '';
-        let kind = 'desktop';
-        let name = 'PC Browser';
-
-        if (/android/i.test(userAgent)) {
-            kind = 'android';
-            name = 'Android Phone';
-            const uaMatch = userAgent.match(/Android[^;]+;\s*([^;\)]+)/i);
-            if (uaMatch && uaMatch[1]) {
-                const rawModel = uaMatch[1].trim().replace(/Build\/.*$/, '').trim();
-                if (rawModel && rawModel.length < 35 && !rawModel.startsWith('wv')) {
-                    name = rawModel;
-                }
-            }
-        } else if (/iphone|ipad|ipod/i.test(userAgent)) {
-            kind = 'ios';
-            name = 'iPhone / iPad';
-        } else if (/mobile/i.test(userAgent)) {
-            kind = 'mobile';
-            name = 'Mobile Device';
-        }
-
-        const customNameHeader = req.headers['x-client-name'];
-        if (customNameHeader) {
-            try {
-                name = decodeURIComponent(customNameHeader);
-            } catch(e) {}
-        }
-
-        devices[sessionId] = {
-            id: sessionId,
-            name: name,
-            kind: kind,
-            isHost: false,
-            lastActive: Date.now()
-        };
-
         return next();
     }
 
@@ -333,6 +511,9 @@ app.get('/api/network-interfaces', (req, res) => {
 });
 
 app.post('/api/select-interface', (req, res) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
+    }
     const { ip } = req.body;
     if (ip) {
         const interfaces = os.networkInterfaces();
@@ -356,6 +537,9 @@ app.post('/api/select-interface', (req, res) => {
 });
 
 app.post('/api/open-hotspot-settings', (req, res) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
+    }
     try {
         if (shell && typeof shell.openExternal === 'function') {
             shell.openExternal('ms-settings:network-mobilehotspot');
@@ -747,7 +931,7 @@ app.get('/api/devices', (req, res) => {
     });
 
     const deviceList = Object.values(deviceMap).map(d => {
-        const isOnline = (now - d.lastActive) < 25000;
+        const isOnline = (now - d.lastActive) < 30000;
         return {
             id: d.id,
             name: d.name,
@@ -762,7 +946,59 @@ app.get('/api/devices', (req, res) => {
     res.json({ devices: deviceList, blocked: blockedList });
 });
 
+// Universal Heartbeat Endpoint (accepts { sessionId, name, kind })
+app.post('/api/heartbeat', (req, res) => {
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionId = (req.body && (req.body.sessionId || req.body['x-session-id'])) ||
+                      req.headers['x-session-id'] ||
+                      req.headers['session-id'] ||
+                      (req.query && (req.query['x-session-id'] || req.query.sessionId)) ||
+                      (cookies && (cookies['x-session-id'] || cookies['sessionId'] || cookies['fylo_session_id'])) ||
+                      req.sessionId;
+
+    if (!sessionId) {
+        return res.status(400).json({ error: 'Missing sessionId' });
+    }
+
+    const { name, kind, model } = req.body || {};
+    const existing = devices[sessionId];
+    const clientNameHeader = req.headers['x-client-name'];
+    let customName = name || '';
+    if (!customName && clientNameHeader) {
+        try { customName = decodeURIComponent(clientNameHeader).trim(); } catch (e) {}
+    } else if (!customName && existing && existing.name && !existing.name.includes('(Web Companion)') && existing.name !== 'Mobile Companion') {
+        customName = existing.name;
+    }
+
+    const detected = parseDeviceDetails(req.headers['user-agent'] || '', customName);
+    const detectedModelName = customName || detected.name;
+    const detectedKind = kind || (existing ? existing.kind : detected.kind);
+    const isHost = isLocalHostIp(req.ip);
+    const isNative = !!(mobileDevices[sessionId]);
+
+    devices[sessionId] = {
+        id: sessionId,
+        ip: req.ip,
+        name: isNative ? (mobileDevices[sessionId].name || detectedModelName) : (detectedModelName || 'Mobile Companion'),
+        kind: isNative ? 'android' : detectedKind,
+        isHost: isHost,
+        lastActive: Date.now(),
+        isWebClient: !isNative,
+        model: isNative ? (mobileDevices[sessionId].model || detected.model) : (model || detected.model || 'Web Companion')
+    };
+
+    if (isNative && mobileDevices[sessionId]) {
+        mobileDevices[sessionId].lastActive = Date.now();
+        if (name) mobileDevices[sessionId].name = name;
+    }
+
+    res.json({ success: true, lastActive: devices[sessionId].lastActive, device: devices[sessionId] });
+});
+
 app.post('/api/devices/:id/kick', (req, res) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
+    }
     const targetId = req.params.id;
     if (targetId && targetId !== req.sessionId) {
         const targetDevice = devices[targetId];
@@ -777,6 +1013,9 @@ app.post('/api/devices/:id/kick', (req, res) => {
 });
 
 app.post('/api/devices/:id/unblock', (req, res) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
+    }
     const targetId = req.params.id;
     if (targetId) {
         delete blockedDevices[targetId];
@@ -790,6 +1029,9 @@ app.get('/api/settings', (req, res) => {
 });
 
 app.patch('/api/settings', (req, res) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
+    }
     if (typeof req.body.maxFileSizeMB === 'number') {
         maxFileSizeMB = req.body.maxFileSizeMB;
     }
@@ -865,7 +1107,7 @@ app.get('/api/mobile/devices', (req, res) => {
         id: d.id,
         name: d.name,
         model: d.model,
-        ip: d.ip,
+        ip: (d.ip || '').replace(/^.*:/, ''),
         port: d.port,
         readOnly: d.readOnly,
         storage: d.storage,
@@ -874,28 +1116,26 @@ app.get('/api/mobile/devices', (req, res) => {
         isWebClient: false
     }));
 
-    // If no native mobile app is online, check if any Android/Mobile web clients are active (e.g. scanned with camera)
-    if (list.filter(d => d.online).length === 0) {
-        Object.values(devices).forEach(d => {
-            if (!d.isHost && (d.kind === 'android' || d.kind === 'mobile' || d.kind === 'ios')) {
-                const isOnline = (now - d.lastActive) < 25000;
-                if (isOnline) {
-                    list.push({
-                        id: d.id,
-                        name: d.name || 'Mobile Phone',
-                        model: 'Web Browser Companion',
-                        ip: d.ip || '',
-                        port: PORT,
-                        readOnly: true,
-                        storage: { total: 0, free: 0 },
-                        battery: null,
-                        online: true,
-                        isWebClient: true
-                    });
-                }
+    // Include active remote web companion clients (e.g. mobile Chrome / Safari)
+    Object.values(devices).forEach(d => {
+        if (!d.isHost && (d.isWebClient || d.kind === 'android' || d.kind === 'mobile' || d.kind === 'ios') && !list.some(m => m.id === d.id)) {
+            const isOnline = (now - d.lastActive) < 30000;
+            if (isOnline) {
+                list.push({
+                    id: d.id,
+                    name: d.name || 'Mobile Phone',
+                    model: d.model || 'Web Browser Companion',
+                    ip: (d.ip || '').replace(/^.*:/, ''),
+                    port: PORT,
+                    readOnly: true,
+                    storage: { total: 0, free: 0 },
+                    battery: null,
+                    online: true,
+                    isWebClient: true
+                });
             }
-        });
-    }
+        }
+    });
 
     res.json(list);
 });
@@ -911,6 +1151,10 @@ app.post('/api/mobile/heartbeat', (req, res) => {
         if (devices[deviceId]) {
             devices[deviceId].lastActive = Date.now();
         }
+        return res.json({ success: true });
+    }
+    if (deviceId && devices[deviceId]) {
+        devices[deviceId].lastActive = Date.now();
         return res.json({ success: true });
     }
     res.status(404).json({ error: 'Device not found', needReconnect: true });
@@ -1414,8 +1658,19 @@ app.post('/api/mobile/fs/download-batch', async (req, res) => {
     archive.finalize();
 });
 
+// Admin Security Lockdown: Host-only access for all /api/admin/* management endpoints
+app.use('/api/admin', (req, res, next) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
+    }
+    next();
+});
+
 // Admin Password Verification
 app.post('/api/admin/verify', (req, res) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
+    }
     const { password } = req.body;
     if (password && password === adminPassword) {
         return res.json({ valid: true });
@@ -1425,6 +1680,9 @@ app.post('/api/admin/verify', (req, res) => {
 
 // Change Admin Password
 app.post('/api/admin/change-password', (req, res) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
+    }
     const { currentPassword, newPassword } = req.body;
     if (currentPassword !== adminPassword) {
         return res.status(401).json({ error: 'Current admin password is incorrect' });
@@ -1504,7 +1762,7 @@ app.post('/api/mobile/fs/trash-file', (req, res) => {
 setInterval(() => {
     const now = Date.now();
     for (const id in devices) {
-        if (now - devices[id].lastActive > 25000) {
+        if (now - devices[id].lastActive > 35000) {
             delete devices[id];
         }
     }

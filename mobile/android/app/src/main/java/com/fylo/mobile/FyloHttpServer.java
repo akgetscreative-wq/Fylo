@@ -405,6 +405,11 @@ public class FyloHttpServer {
             return;
         }
 
+        if (!isPathSafe(folder)) {
+            sendJsonResponse(out, 403, "{\"error\":\"Access denied to requested path\"}");
+            return;
+        }
+
         File[] files = null;
         try {
             files = folder.listFiles();
@@ -486,6 +491,11 @@ public class FyloHttpServer {
             return;
         }
 
+        if (!isPathSafe(file)) {
+            sendJsonResponse(out, 403, "{\"error\":\"Access denied to requested path\"}");
+            return;
+        }
+
         long fileLength = file.length();
         String contentType = getMimeType(file.getName());
 
@@ -503,6 +513,9 @@ public class FyloHttpServer {
 
         if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
             String rangeValue = rangeHeader.substring(6).trim();
+            if (rangeValue.contains(",")) {
+                rangeValue = rangeValue.substring(0, rangeValue.indexOf(',')).trim();
+            }
             int dashIdx = rangeValue.indexOf('-');
             if (dashIdx != -1) {
                 try {
@@ -510,10 +523,14 @@ public class FyloHttpServer {
                     String endStr = rangeValue.substring(dashIdx + 1).trim();
                     if (startStr.isEmpty()) {
                         // Suffix byte range: bytes=-500 -> last 500 bytes
-                        long suffixLen = Long.parseLong(endStr);
-                        start = Math.max(0, fileLength - suffixLen);
-                        end = fileLength - 1;
-                        isPartial = true;
+                        if (!endStr.isEmpty()) {
+                            long suffixLen = Long.parseLong(endStr);
+                            if (suffixLen > 0) {
+                                start = Math.max(0, fileLength - suffixLen);
+                                end = fileLength - 1;
+                                isPartial = true;
+                            }
+                        }
                     } else {
                         start = Long.parseLong(startStr);
                         if (!endStr.isEmpty()) {
@@ -521,9 +538,15 @@ public class FyloHttpServer {
                         } else {
                             end = fileLength - 1;
                         }
-                        isPartial = true;
+                        if (start >= 0 && end >= start) {
+                            isPartial = true;
+                        }
                     }
-                } catch (Exception ignored) {}
+                } catch (Throwable ignored) {
+                    isPartial = false;
+                    start = 0;
+                    end = fileLength - 1;
+                }
             }
         }
 
@@ -589,6 +612,11 @@ public class FyloHttpServer {
             return;
         }
 
+        if (!isPathSafe(file)) {
+            sendJsonResponse(out, 403, "{\"error\":\"Access denied to requested path\"}");
+            return;
+        }
+
         Bitmap bitmap = null;
         try {
             String name = file.getName().toLowerCase();
@@ -609,12 +637,17 @@ public class FyloHttpServer {
                     } catch (Throwable ignored) {}
                 }
                 if (bitmap == null) {
+                    MediaMetadataRetriever mmr = null;
                     try {
-                        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                        mmr = new MediaMetadataRetriever();
                         mmr.setDataSource(file.getAbsolutePath());
                         bitmap = mmr.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
-                        mmr.release();
-                    } catch (Throwable ignored) {}
+                    } catch (Throwable ignored) {
+                    } finally {
+                        if (mmr != null) {
+                            try { mmr.release(); } catch (Throwable ignored) {}
+                        }
+                    }
                 }
                 if (bitmap == null) {
                     try {
@@ -701,14 +734,32 @@ public class FyloHttpServer {
             return;
         }
 
+        if (!isPathSafe(file)) {
+            sendJsonResponse(out, 403, "{\"error\":\"Access denied to requested path\"}");
+            return;
+        }
+
         File extStorage = Environment.getExternalStorageDirectory();
-        File trashDir = new File(extStorage != null ? extStorage : file.getParentFile(), ".trash");
+        File parentDir = file.getParentFile();
+        File baseDir = extStorage != null ? extStorage : (parentDir != null ? parentDir : context.getFilesDir());
+        File trashDir = new File(baseDir, ".trash");
         if (!trashDir.exists()) {
             trashDir.mkdirs();
         }
 
         File destination = new File(trashDir, System.currentTimeMillis() + "_" + file.getName());
         boolean success = file.renameTo(destination);
+        if (!success) {
+            try (FileInputStream in = new FileInputStream(file);
+                 java.io.FileOutputStream fos = new java.io.FileOutputStream(destination)) {
+                byte[] b = new byte[65536];
+                int n;
+                while ((n = in.read(b)) > 0) {
+                    fos.write(b, 0, n);
+                }
+                success = file.delete();
+            } catch (Throwable ignored) {}
+        }
 
         JSONObject resp = new JSONObject();
         resp.put("success", success);
@@ -759,6 +810,30 @@ public class FyloHttpServer {
         if (lower.endsWith(".txt")) return "text/plain; charset=utf-8";
         if (lower.endsWith(".zip")) return "application/zip";
         return "application/octet-stream";
+    }
+
+    private boolean isPathSafe(File file) {
+        if (file == null) return false;
+        try {
+            String path = file.getPath();
+            if (path == null || path.contains("\0")) return false;
+            String canonical = file.getCanonicalPath();
+            if (canonical.contains("\0")) return false;
+
+            // Disallow access to app private internal data directories
+            if (context != null && context.getApplicationInfo() != null) {
+                String privateDataDir = context.getApplicationInfo().dataDir;
+                if (privateDataDir != null) {
+                    String privateCanonical = new File(privateDataDir).getCanonicalPath();
+                    if (canonical.equals(privateCanonical) || canonical.startsWith(privateCanonical + File.separator)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 }
 

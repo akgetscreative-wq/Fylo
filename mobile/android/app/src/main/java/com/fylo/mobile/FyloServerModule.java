@@ -28,16 +28,52 @@ import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FyloServerModule extends ReactContextBaseJavaModule {
     private static final String TAG = "FyloServerModule";
     private final ReactApplicationContext reactContext;
+
+    /**
+     * Safe wrapper around React Native Promise to guarantee resolve() or reject()
+     * is called at most once, preventing bridge crashes.
+     */
+    private static class SafePromise {
+        private final Promise promise;
+        private final AtomicBoolean resolved = new AtomicBoolean(false);
+
+        public SafePromise(Promise promise) {
+            this.promise = promise;
+        }
+
+        public void resolve(Object value) {
+            if (promise != null && resolved.compareAndSet(false, true)) {
+                try {
+                    promise.resolve(value);
+                } catch (Throwable t) {
+                    Log.w(TAG, "SafePromise resolve error: " + t.getMessage());
+                }
+            }
+        }
+
+        public void reject(String code, String message) {
+            if (promise != null && resolved.compareAndSet(false, true)) {
+                try {
+                    promise.reject(code, message != null ? message : "Unknown error");
+                } catch (Throwable t) {
+                    Log.w(TAG, "SafePromise reject error: " + t.getMessage());
+                }
+            }
+        }
+    }
 
     public FyloServerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -52,6 +88,7 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void startServer(int port, boolean readOnly, String authToken, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
         try {
             Intent intent = new Intent(reactContext, FyloForegroundService.class);
             intent.putExtra("port", port > 0 ? port : 8080);
@@ -65,92 +102,81 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
             } else {
                 reactContext.startService(intent);
             }
-            if (promise != null) {
-                promise.resolve(true);
-            }
+            safePromise.resolve(true);
         } catch (Throwable e) {
             Log.e(TAG, "startServer error: " + e.getMessage(), e);
-            if (promise != null) {
-                promise.reject("START_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
-            }
+            safePromise.reject("START_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
     @ReactMethod
     public void setAuthToken(String authToken, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
         try {
             FyloHttpServer server = FyloForegroundService.getHttpServer();
             if (server != null) {
                 server.setAuthToken(authToken != null ? authToken.trim() : null);
             }
-            if (promise != null) {
-                promise.resolve(true);
-            }
+            safePromise.resolve(true);
         } catch (Throwable e) {
             Log.e(TAG, "setAuthToken error: " + e.getMessage(), e);
-            if (promise != null) {
-                promise.reject("CONFIG_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
-            }
+            safePromise.reject("CONFIG_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
     @ReactMethod
     public void stopServer(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
         try {
             Intent intent = new Intent(reactContext, FyloForegroundService.class);
             reactContext.stopService(intent);
-            if (promise != null) {
-                promise.resolve(true);
-            }
+            safePromise.resolve(true);
         } catch (Throwable e) {
             Log.e(TAG, "stopServer error: " + e.getMessage(), e);
-            if (promise != null) {
-                promise.reject("STOP_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
-            }
+            safePromise.reject("STOP_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
     @ReactMethod
     public void setReadOnly(boolean readOnly, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
         try {
             FyloHttpServer server = FyloForegroundService.getHttpServer();
             if (server != null) {
                 server.setReadOnly(readOnly);
             }
-            if (promise != null) {
-                promise.resolve(true);
-            }
+            safePromise.resolve(true);
         } catch (Throwable e) {
             Log.e(TAG, "setReadOnly error: " + e.getMessage(), e);
-            if (promise != null) {
-                promise.reject("CONFIG_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
-            }
+            safePromise.reject("CONFIG_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
     @ReactMethod
     public void getClipboardText(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
         try {
             reactContext.runOnUiQueueThread(() -> {
                 try {
                     ClipboardManager cm = (ClipboardManager) reactContext.getSystemService(Context.CLIPBOARD_SERVICE);
                     if (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount() > 0) {
                         CharSequence text = cm.getPrimaryClip().getItemAt(0).getText();
-                        if (promise != null) promise.resolve(text != null ? text.toString() : "");
+                        safePromise.resolve(text != null ? text.toString() : "");
                     } else {
-                        if (promise != null) promise.resolve("");
+                        safePromise.resolve("");
                     }
                 } catch (Throwable e) {
-                    if (promise != null) promise.resolve("");
+                    safePromise.resolve("");
                 }
             });
         } catch (Throwable e) {
-            if (promise != null) promise.resolve("");
+            safePromise.resolve("");
         }
     }
 
     @ReactMethod
     public void setClipboardText(String text, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
         try {
             reactContext.runOnUiQueueThread(() -> {
                 try {
@@ -159,18 +185,19 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
                         ClipData clip = ClipData.newPlainText("fylo", text != null ? text : "");
                         cm.setPrimaryClip(clip);
                     }
-                    if (promise != null) promise.resolve(true);
+                    safePromise.resolve(true);
                 } catch (Throwable e) {
-                    if (promise != null) promise.reject("CLIP_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+                    safePromise.reject("CLIP_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
                 }
             });
         } catch (Throwable e) {
-            if (promise != null) promise.reject("CLIP_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+            safePromise.reject("CLIP_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
     @ReactMethod
     public void getServerInfo(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
         try {
             WritableMap map = Arguments.createMap();
             FyloHttpServer server = FyloForegroundService.getHttpServer();
@@ -226,19 +253,16 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
             storageMap.putDouble("freeBytes", (double) freeBytes);
             map.putMap("storage", storageMap);
 
-            if (promise != null) {
-                promise.resolve(map);
-            }
+            safePromise.resolve(map);
         } catch (Throwable e) {
             Log.e(TAG, "getServerInfo error: " + e.getMessage(), e);
-            if (promise != null) {
-                promise.reject("INFO_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
-            }
+            safePromise.reject("INFO_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
     @ReactMethod
     public void listDirectory(String targetPath, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
         try {
             if (targetPath == null || targetPath.trim().isEmpty() ||
                 "undefined".equalsIgnoreCase(targetPath.trim()) || "null".equalsIgnoreCase(targetPath.trim())) {
@@ -248,9 +272,22 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
 
             File folder = new File(targetPath);
             if (!folder.exists() || !folder.isDirectory()) {
-                if (promise != null) {
-                    promise.reject("NOT_FOUND", "Folder not found or is not a directory");
+                // Intelligent fallback for common Android folder variations across OEMs
+                if (targetPath.endsWith("/DCIM/Camera") && new File("/storage/emulated/0/DCIM").isDirectory()) {
+                    folder = new File("/storage/emulated/0/DCIM");
+                } else if (targetPath.endsWith("/Download") && new File("/storage/emulated/0/Downloads").isDirectory()) {
+                    folder = new File("/storage/emulated/0/Downloads");
+                } else if (targetPath.endsWith("/Downloads") && new File("/storage/emulated/0/Download").isDirectory()) {
+                    folder = new File("/storage/emulated/0/Download");
+                } else if (targetPath.endsWith("/Movies") && new File("/storage/emulated/0/Video").isDirectory()) {
+                    folder = new File("/storage/emulated/0/Video");
+                } else if (targetPath.endsWith("/Documents") && new File("/storage/emulated/0/Document").isDirectory()) {
+                    folder = new File("/storage/emulated/0/Document");
                 }
+            }
+
+            if (!folder.exists() || !folder.isDirectory()) {
+                safePromise.reject("NOT_FOUND", "Folder not found or is not a directory");
                 return;
             }
 
@@ -258,9 +295,7 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
             try {
                 files = folder.listFiles();
             } catch (SecurityException se) {
-                if (promise != null) {
-                    promise.reject("PERMISSION_DENIED", "Access to folder denied by security policy");
-                }
+                safePromise.reject("PERMISSION_DENIED", "Access to folder denied by security policy");
                 return;
             }
 
@@ -313,14 +348,62 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
             result.putString("parent", parent != null ? parent.getAbsolutePath() : "");
             result.putArray("items", items);
 
-            if (promise != null) {
-                promise.resolve(result);
-            }
+            safePromise.resolve(result);
         } catch (Throwable e) {
             Log.e(TAG, "listDirectory error: " + e.getMessage(), e);
-            if (promise != null) {
-                promise.reject("LIST_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+            safePromise.reject("LIST_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void trashFile(String filePath, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            if (filePath == null || filePath.trim().isEmpty() ||
+                "undefined".equalsIgnoreCase(filePath.trim()) || "null".equalsIgnoreCase(filePath.trim())) {
+                safePromise.reject("INVALID_PATH", "Path cannot be empty");
+                return;
             }
+
+            File file = new File(filePath);
+            if (!file.exists()) {
+                safePromise.reject("NOT_FOUND", "File not found: " + filePath);
+                return;
+            }
+
+            File extStorage = Environment.getExternalStorageDirectory();
+            File parentDir = file.getParentFile();
+            File baseDir = extStorage != null ? extStorage : (parentDir != null ? parentDir : reactContext.getFilesDir());
+            File trashDir = new File(baseDir, ".trash");
+            if (!trashDir.exists()) {
+                trashDir.mkdirs();
+            }
+
+            File destination = new File(trashDir, System.currentTimeMillis() + "_" + file.getName());
+            boolean success = file.renameTo(destination);
+            if (!success) {
+                // Cross-volume or permissions fallback: copy and delete
+                try (FileInputStream in = new FileInputStream(file);
+                     FileOutputStream out = new FileOutputStream(destination)) {
+                    byte[] buf = new byte[65536];
+                    int len;
+                    while ((len = in.read(buf)) > 0) {
+                        out.write(buf, 0, len);
+                    }
+                    success = file.delete();
+                } catch (Throwable t) {
+                    Log.w(TAG, "Fallback trash copy error: " + t.getMessage());
+                }
+            }
+
+            if (success) {
+                safePromise.resolve(destination.getAbsolutePath());
+            } else {
+                safePromise.reject("TRASH_FAILED", "Could not move file to .trash directory");
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, "trashFile error: " + e.getMessage(), e);
+            safePromise.reject("TRASH_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
@@ -333,7 +416,7 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
                     intent.setData(Uri.parse("package:" + reactContext.getPackageName()));
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     reactContext.startActivity(intent);
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     reactContext.startActivity(intent);
@@ -365,11 +448,13 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 return Environment.isExternalStorageManager();
-            } else {
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 int readPerm = ContextCompat.checkSelfPermission(
                     reactContext, android.Manifest.permission.READ_EXTERNAL_STORAGE
                 );
                 return readPerm == PackageManager.PERMISSION_GRANTED;
+            } else {
+                return true;
             }
         } catch (Throwable e) {
             Log.w(TAG, "checkStoragePermission error: " + e.getMessage());
@@ -396,4 +481,3 @@ public class FyloServerModule extends ReactContextBaseJavaModule {
         return "127.0.0.1";
     }
 }
-
