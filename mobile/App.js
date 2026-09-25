@@ -112,12 +112,24 @@ const sortExplorerItems = (items, sortBy = 'latest') => {
       const bTime = typeof b.modified === 'number' ? b.modified : 0;
       if (bTime !== aTime) return bTime - aTime; // descending: newest first
       return (a.name || '').localeCompare(b.name || '');
-    } else if (sortBy === 'name') {
+    } else if (sortBy === 'oldest') {
+      const aTime = typeof a.modified === 'number' ? a.modified : 0;
+      const bTime = typeof b.modified === 'number' ? b.modified : 0;
+      if (bTime !== aTime) return aTime - bTime; // ascending: oldest first
+      return (a.name || '').localeCompare(b.name || '');
+    } else if (sortBy === 'name' || sortBy === 'name-asc') {
       return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
-    } else if (sortBy === 'size') {
+    } else if (sortBy === 'name-desc') {
+      return (b.name || '').localeCompare(a.name || '', undefined, { sensitivity: 'base', numeric: true });
+    } else if (sortBy === 'size' || sortBy === 'size-desc') {
       const aSize = typeof a.size === 'number' ? a.size : 0;
       const bSize = typeof b.size === 'number' ? b.size : 0;
       if (bSize !== aSize) return bSize - aSize; // descending: largest first
+      return (a.name || '').localeCompare(b.name || '');
+    } else if (sortBy === 'size-asc') {
+      const aSize = typeof a.size === 'number' ? a.size : 0;
+      const bSize = typeof b.size === 'number' ? b.size : 0;
+      if (bSize !== aSize) return aSize - bSize; // ascending: smallest first
       return (a.name || '').localeCompare(b.name || '');
     }
     return 0;
@@ -187,12 +199,24 @@ export default function App() {
   const [pcSelectedPaths, setPcSelectedPaths] = useState(new Set());
   const [pcMultiSelect, setPcMultiSelect] = useState(false);
 
-  // Quick Share / Beam to PC Modal State
-  const [quickShareVisible, setQuickShareVisible] = useState(false);
-  const [quickShareItems, setQuickShareItems] = useState([]);
-  const [quickShareLoading, setQuickShareLoading] = useState(false);
-  const [quickShareSelected, setQuickShareSelected] = useState(new Set());
-  const [isBeaming, setIsBeaming] = useState(false);
+  // Theme State: Dark / Light Mode (Toggle in Sidebar)
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Collapsible Navigation Sidebar Drawer State
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarOpenRef = useRef(sidebarOpen);
+  sidebarOpenRef.current = sidebarOpen;
+
+  // Dedicated Sort Selection Modal ('phone' | 'pc' | null)
+  const [sortModalTarget, setSortModalTarget] = useState(null);
+  const sortModalTargetRef = useRef(sortModalTarget);
+  sortModalTargetRef.current = sortModalTarget;
+
+  // Active Shared Files Hub (Visible in Mobile Dashboard)
+  const [sharedHubFiles, setSharedHubFiles] = useState([]);
+
+  // Send to PC State (Replaces Sending)
+  const [isSending, setIsSending] = useState(false);
 
   // Universal Media Lightbox State with Pinch-to-Zoom & Pan
   const [lightboxItem, setLightboxItem] = useState(null); // { item, source: 'phone' | 'pc' }
@@ -219,8 +243,6 @@ export default function App() {
   currentTabRef.current = currentTab;
   const lightboxItemRef = useRef(lightboxItem);
   lightboxItemRef.current = lightboxItem;
-  const quickShareVisibleRef = useRef(quickShareVisible);
-  quickShareVisibleRef.current = quickShareVisible;
   const showPairModalRef = useRef(showPairModal);
   showPairModalRef.current = showPairModal;
   const adminModalVisibleRef = useRef(adminModalVisible);
@@ -254,6 +276,23 @@ export default function App() {
     setTimeout(() => setClipboardToast(''), 3200);
   };
 
+  // Native Image Container Ref for 120Hz Hardware-Accelerated Pan & Zoom
+  const imageContainerRef = useRef(null);
+
+  const updateNativeTransform = (scale, x, y) => {
+    if (imageContainerRef.current && imageContainerRef.current.setNativeProps) {
+      imageContainerRef.current.setNativeProps({
+        style: {
+          transform: [
+            { scale: scale },
+            { translateX: x },
+            { translateY: y },
+          ],
+        },
+      });
+    }
+  };
+
   // Reset zoom & pan helper
   const resetZoom = () => {
     zoomScaleRef.current = 1;
@@ -261,6 +300,7 @@ export default function App() {
     setZoomScale(1);
     setPanOffset({ x: 0, y: 0 });
     lastTouchDistanceRef.current = null;
+    updateNativeTransform(1, 0, 0);
   };
 
   useEffect(() => {
@@ -279,12 +319,13 @@ export default function App() {
           const [t1, t2] = evt.nativeEvent.touches;
           lastTouchDistanceRef.current = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
         } else if (evt.nativeEvent.touches.length === 1) {
-          // Double tap to toggle zoom
+          // Double tap to smoothly toggle zoom in/out with native hardware acceleration
           const now = Date.now();
           if (now - lastTapTimeRef.current < 320) {
             const nextScale = zoomScaleRef.current > 1.2 ? 1 : 2.5;
             zoomScaleRef.current = nextScale;
             panOffsetRef.current = { x: 0, y: 0 };
+            updateNativeTransform(nextScale, 0, 0);
             setZoomScale(nextScale);
             setPanOffset({ x: 0, y: 0 });
             lastTapTimeRef.current = 0;
@@ -301,28 +342,36 @@ export default function App() {
           if (lastTouchDistanceRef.current && lastTouchDistanceRef.current > 0) {
             const delta = currentDistance / lastTouchDistanceRef.current;
             let nextScale = zoomScaleRef.current * delta;
-            if (nextScale < 1) nextScale = 1;
-            if (nextScale > 4) nextScale = 4;
+            if (nextScale < 0.8) nextScale = 0.8;
+            if (nextScale > 5) nextScale = 5;
             zoomScaleRef.current = nextScale;
-            setZoomScale(nextScale);
+            // Native direct update without React re-render: 120Hz butter-smooth!
+            updateNativeTransform(nextScale, panOffsetRef.current.x, panOffsetRef.current.y);
           }
           lastTouchDistanceRef.current = currentDistance;
-        } else if (touches.length === 1 && zoomScaleRef.current > 1) {
+        } else if (touches.length === 1 && zoomScaleRef.current > 1.05) {
           const maxPanX = (SCREEN_WIDTH * (zoomScaleRef.current - 1)) / 1.8;
           const maxPanY = (SCREEN_HEIGHT * (zoomScaleRef.current - 1)) / 1.8;
-          let nextX = panOffsetRef.current.x + gestureState.dx * 0.18;
-          let nextY = panOffsetRef.current.y + gestureState.dy * 0.18;
+          let nextX = panOffsetRef.current.x + gestureState.dx * 0.25;
+          let nextY = panOffsetRef.current.y + gestureState.dy * 0.25;
           nextX = Math.max(-maxPanX, Math.min(maxPanX, nextX));
           nextY = Math.max(-maxPanY, Math.min(maxPanY, nextY));
           panOffsetRef.current = { x: nextX, y: nextY };
-          setPanOffset({ x: nextX, y: nextY });
+          // Native direct update without React re-render!
+          updateNativeTransform(zoomScaleRef.current, nextX, nextY);
         }
       },
       onPanResponderRelease: () => {
         lastTouchDistanceRef.current = null;
-        if (zoomScaleRef.current <= 1) {
+        if (zoomScaleRef.current <= 1.05) {
+          zoomScaleRef.current = 1;
           panOffsetRef.current = { x: 0, y: 0 };
+          updateNativeTransform(1, 0, 0);
+          setZoomScale(1);
           setPanOffset({ x: 0, y: 0 });
+        } else {
+          setZoomScale(zoomScaleRef.current);
+          setPanOffset({ ...panOffsetRef.current });
         }
       },
     })
@@ -344,8 +393,24 @@ export default function App() {
     setZoomScale(next);
   };
 
-  // Periodic device & server status check
+  // Periodic device & server status check and persistent pairing restore
   useEffect(() => {
+    // Restore pairing from Android SharedPreferences across app restarts
+    if (FyloModule && FyloModule.getSavedPairedDevice) {
+      FyloModule.getSavedPairedDevice()
+        .then((saved) => {
+          if (saved && saved.paired_pc && saved.paired_pc.trim() !== '') {
+            const savedHost = saved.paired_pc.trim();
+            const savedName = (saved.pc_hostname || 'Windows Host').trim();
+            const savedToken = (saved.pc_token || '').trim();
+            setPairedPc(savedHost);
+            setPcHostName(savedName);
+            if (savedToken) setPcAuthToken(savedToken);
+            addLog(`Restored persistent pairing to ${savedHost} (${savedName})`);
+          }
+        })
+        .catch((e) => console.warn('getSavedPairedDevice error:', e));
+    }
     checkStatus();
     const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
@@ -415,14 +480,14 @@ export default function App() {
     return () => clearInterval(heartbeatTimer);
   }, [pairedPc, pcAuthToken, storageInfo, readOnlyMode, batteryLevel]);
 
-  // Periodic clipboard sync when paired with PC
+  // Periodic clipboard sync when paired with PC (OFF BY DEFAULT unless user toggles on)
   useEffect(() => {
-    if (!pairedPc) return;
+    if (!pairedPc || !clipboardAutoSync) return;
 
     fetchPcClipboard();
     const clipTimer = setInterval(fetchPcClipboard, 4000);
     return () => clearInterval(clipTimer);
-  }, [pairedPc, pcAuthToken]);
+  }, [pairedPc, pcAuthToken, clipboardAutoSync]);
 
   // Load PC Explorer shortcuts when switching to PC Explorer tab or pairing
   useEffect(() => {
@@ -476,9 +541,27 @@ export default function App() {
         resetZoom();
         return true;
       }
-      // 2. Close Quick Share modal if open
-      if (quickShareVisibleRef.current) {
-        setQuickShareVisible(false);
+      // 2. Close sidebar drawer if open
+      if (sidebarOpenRef.current) {
+        setSidebarOpen(false);
+        return true;
+      }
+
+      // 2b. Close sort modal if open
+      if (sortModalTargetRef.current) {
+        setSortModalTarget(null);
+        return true;
+      }
+
+      // 2c. Close direct share device picker modal if open
+      if (directShareModalVisibleRef.current) {
+        setDirectShareModalVisible(false);
+        return true;
+      }
+
+      // 2c. Close direct share device picker modal if open
+      if (directShareModalVisibleRef.current) {
+        setDirectShareModalVisible(false);
         return true;
       }
       // 3. Close other modals if open
@@ -641,6 +724,9 @@ export default function App() {
       }, 3000);
     } catch (e) {}
     addLog(`Unpaired from ${pairedPc}`);
+    if (FyloModule && FyloModule.clearSavedPairedDevice) {
+      FyloModule.clearSavedPairedDevice().catch(() => {});
+    }
     setPairedPc(null);
     setPingLatency(null);
     showToast('Unpaired from PC');
@@ -712,6 +798,9 @@ export default function App() {
           if (FyloModule && FyloModule.setAuthToken) {
             await FyloModule.setAuthToken(data.authToken);
           }
+        }
+        if (FyloModule && FyloModule.savePairedDevice) {
+          FyloModule.savePairedDevice(`${host}:${port}`, data.hostName || 'Windows Host', data.authToken || '').catch(() => {});
         }
         setShowPairModal(false);
         addLog(`Successfully paired with PC (${host}:${port})!`);
@@ -892,23 +981,116 @@ export default function App() {
   };
 
   // ==========================================
-  // REQUIREMENT 5: FAST SHARE / BEAM TO PC
+  // FAST SHARE & NATIVE FILE PICKER TO PC
   // ==========================================
-  const handleBeamFilesToPc = async (pathsToBeam) => {
+  const handlePickAndSendToPc = async () => {
     if (!pairedPc) {
       setShowPairModal(true);
-      showToast('⚡ Pair with PC to beam files!');
-      return;
-    }
-    const pathArray = Array.from(pathsToBeam);
-    if (pathArray.length === 0) {
-      showToast('⚠️ No files selected to beam');
+      showToast('⚡ Pair with PC to send files!');
       return;
     }
 
-    setIsBeaming(true);
-    showToast(`🚀 Beaming ${pathArray.length} file(s) to PC Downloads...`);
+    try {
+      if (!FyloModule || !FyloModule.openNativeFilePicker) {
+        showToast('⚠️ Native file picker is not available');
+        return;
+      }
+
+      // DIRECT NATIVE ANDROID FILE PICKER
+      const files = await FyloModule.openNativeFilePicker(true);
+      if (!files || !Array.isArray(files) || files.length === 0) {
+        return;
+      }
+
+      setIsSending(true);
+      showToast(`🚀 Sending ${files.length} file(s) to ${pcHostName || 'PC'}...`);
+
+      let successCount = 0;
+      const sentFiles = [];
+
+      for (const file of files) {
+        try {
+          const res = await apiFetch(`http://${pairedPc}/api/mobile/fs/download-direct`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Token': pcAuthToken || '',
+            },
+            body: JSON.stringify({
+              deviceId: deviceIdRef.current,
+              path: file.path,
+            }),
+          }, 15000);
+          const data = await safeJson(res);
+          if (data && data.success) {
+            successCount++;
+            sentFiles.push({
+              name: file.name,
+              path: file.path,
+              size: file.size,
+              mimeType: file.mimeType,
+              savedPath: data.savedPath,
+              source: 'phone',
+              direction: 'sent',
+              time: Date.now(),
+            });
+          }
+        } catch (err) {
+          console.warn('Direct send error:', err);
+        }
+      }
+
+      // Notify PC Share Hub so they immediately appear in the PC Share Hub!
+      if (sentFiles.length > 0) {
+        try {
+          await apiFetch(`http://${pairedPc}/api/files/share-event`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Token': pcAuthToken || '',
+            },
+            body: JSON.stringify({
+              files: sentFiles,
+              deviceName: phoneModelName,
+            }),
+          }, 6000);
+        } catch (e) {
+          console.warn('Share event notify error:', e);
+        }
+
+        // Add to local Mobile Share Hub list
+        setSharedHubFiles((prev) => [...sentFiles, ...prev].slice(0, 50));
+      }
+
+      setIsSending(false);
+      if (successCount > 0) {
+        showToast(`✅ Sent ${successCount} file(s) to PC! 🎉`);
+      } else {
+        showToast('⚠️ Send failed. Check PC connection.');
+      }
+    } catch (err) {
+      console.warn('openNativeFilePicker error:', err);
+      setIsSending(false);
+      showToast('⚠️ Could not open file picker');
+    }
+  };
+
+  const handleSendFilesToPc = async (pathsToSend) => {
+    if (!pairedPc) {
+      setShowPairModal(true);
+      showToast('⚡ Pair with PC to send files!');
+      return;
+    }
+    const pathArray = Array.from(pathsToSend);
+    if (pathArray.length === 0) {
+      showToast('⚠️ No files selected to send');
+      return;
+    }
+
+    setIsSending(true);
+    showToast(`🚀 Sending ${pathArray.length} file(s) to PC Downloads...`);
     let successCount = 0;
+    const sentFiles = [];
 
     for (const fPath of pathArray) {
       try {
@@ -922,41 +1104,59 @@ export default function App() {
             deviceId: deviceIdRef.current,
             path: fPath,
           }),
-        }, 12000);
+        }, 15000);
         const data = await safeJson(res);
         if (data && data.success) {
           successCount++;
+          const fileName = fPath.split(/[/\\]/).pop();
+          sentFiles.push({
+            name: fileName,
+            path: fPath,
+            savedPath: data.savedPath,
+            direction: 'sent',
+            time: Date.now(),
+          });
         }
       } catch (e) {
-        console.warn('Beam error:', e);
+        console.warn('Send error:', e);
       }
     }
 
-    setIsBeaming(false);
+    if (sentFiles.length > 0) {
+      try {
+        await apiFetch(`http://${pairedPc}/api/files/share-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Auth-Token': pcAuthToken || '',
+          },
+          body: JSON.stringify({
+            files: sentFiles,
+            deviceName: phoneModelName,
+          }),
+        }, 6000);
+      } catch (ignored) {}
+      setSharedHubFiles((prev) => [...sentFiles, ...prev].slice(0, 50));
+    }
+
+    setIsSending(false);
     if (successCount > 0) {
-      showToast(`✅ Beamed ${successCount} file(s) to PC Downloads! 🎉`);
+      showToast(`✅ Sent ${successCount} file(s) to PC! 🎉`);
       setPhoneSelectedPaths(new Set());
-      setQuickShareSelected(new Set());
-      setQuickShareVisible(false);
     } else {
-      showToast('⚠️ Beam failed. Check PC connection.');
+      showToast('⚠️ Send failed. Check PC connection.');
     }
   };
 
-  // Handle Android System Direct Share (when user shares photos/files from any other app to Fylo)
+  // Handle Android System Direct Share (Opens Device Picker interface)
   useEffect(() => {
-    const handleIncomingFiles = async (files) => {
+    const handleIncomingFiles = (files) => {
       if (!files || !Array.isArray(files) || files.length === 0) return;
       const validPaths = files.map((f) => (typeof f === 'string' ? f : f.path)).filter(Boolean);
       if (validPaths.length === 0) return;
 
-      if (pairedPc) {
-        showToast(`📲 Direct Share: Beaming ${validPaths.length} file(s) to PC...`);
-        await handleBeamFilesToPc(validPaths);
-      } else {
-        showToast(`📲 ${validPaths.length} file(s) ready to share! Pair with PC to beam.`);
-        setShowPairModal(true);
-      }
+      setDirectSharePendingFiles(files);
+      setDirectShareModalVisible(true);
       if (FyloModule && FyloModule.clearPendingSharedFiles) {
         FyloModule.clearPendingSharedFiles();
       }
@@ -985,42 +1185,6 @@ export default function App() {
       sub.remove();
     };
   }, [pairedPc, pcAuthToken]);
-
-  const openQuickShareModal = async (initialFolder = '/storage/emulated/0/DCIM/Camera') => {
-    if (!pairedPc) {
-      setShowPairModal(true);
-      showToast('⚡ Pair with PC to start beaming files!');
-      return;
-    }
-
-    setQuickShareVisible(true);
-    setQuickShareLoading(true);
-    setQuickShareSelected(new Set());
-
-    try {
-      let items = [];
-      if (FyloModule && FyloModule.listDirectory) {
-        // Try camera folder first, fallback to Download or base
-        let result = await FyloModule.listDirectory(initialFolder);
-        if (!result || !result.items || result.items.length === 0) {
-          result = await FyloModule.listDirectory('/storage/emulated/0/Download');
-        }
-        if (!result || !result.items || result.items.length === 0) {
-          result = await FyloModule.listDirectory('/storage/emulated/0');
-        }
-        if (result && Array.isArray(result.items)) {
-          // Filter to files only, sorted latest first!
-          const filesOnly = result.items.filter((f) => !f.isDir);
-          items = sortExplorerItems(filesOnly, 'latest');
-        }
-      }
-      setQuickShareItems(items);
-    } catch (e) {
-      console.warn('Quick share load error:', e);
-    } finally {
-      setQuickShareLoading(false);
-    }
-  };
 
   // Directory Breadcrumb navigation helper
   const renderBreadcrumbs = (currentPath, onSelectPath, isPc = false) => {
@@ -1146,9 +1310,28 @@ export default function App() {
     return '📄';
   };
 
-  const isMediaFile = (ext) => {
+  const isImageFile = (ext) => {
     const e = (ext || '').toLowerCase();
-    return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'mp4', 'mkv', 'mov', 'webm'].includes(e);
+    return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'].includes(e);
+  };
+
+  const isVideoFile = (ext) => {
+    const e = (ext || '').toLowerCase();
+    return ['mp4', 'mkv', 'mov', 'webm', 'avi', 'flv', '3gp', 'wmv'].includes(e);
+  };
+
+  const isMediaFile = (ext) => isImageFile(ext) || isVideoFile(ext);
+
+  const getSortLabel = (mode) => {
+    switch (mode) {
+      case 'latest': return '⏱️ Latest';
+      case 'oldest': return '⏱️ Oldest';
+      case 'name': return '🔤 Name (A→Z)';
+      case 'name-desc': return '🔤 Name (Z→A)';
+      case 'size': return '📊 Size (Max)';
+      case 'size-asc': return '📊 Size (Min)';
+      default: return '⏱️ Latest';
+    }
   };
 
   // =========================================================
@@ -1310,28 +1493,43 @@ export default function App() {
   const GRID_TILE_WIDTH = (SCREEN_WIDTH - 32 - 16) / 3;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={isDarkMode ? "#080c14" : "#ffffff"} />
       <StatusBar barStyle="light-content" backgroundColor="#080c14" />
 
       {/* ========================================================= */}
       {/* REQUIREMENT 1: HEADER & NAVIGATION REDESIGN                */}
       {/* Sleek, compact top bar with vibrant pink/neon accents     */}
       {/* ========================================================= */}
-      <View style={styles.topHeader}>
-        {/* Brand Row */}
+      <View style={[styles.topHeader, !isDarkMode && styles.topHeaderLight]}>
         <View style={styles.brandRow}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.brandLeft}
-            onPress={() => setCurrentTab('home')}>
-            <View style={styles.brandCircle}>
-              <Text style={styles.brandCircleText}>F</Text>
-            </View>
-            <View>
-              <Text style={styles.brandTitle}>fylo</Text>
-              <Text style={styles.brandSub}>Mobile Companion</Text>
-            </View>
-          </TouchableOpacity>
+          <View style={styles.brandLeftGroup}>
+            {/* Sleek Hamburger Menu Button */}
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={[styles.hamburgerBtn, !isDarkMode && styles.hamburgerBtnLight]}
+              onPress={() => setSidebarOpen(true)}>
+              <Text style={[styles.hamburgerIcon, !isDarkMode && styles.hamburgerIconLight]}>☰</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.brandLeft}
+              onPress={() => setCurrentTab('home')}>
+              <View style={styles.brandCircle}>
+                <Text style={styles.brandCircleText}>F</Text>
+              </View>
+              <View>
+                <Text style={[styles.brandTitle, !isDarkMode && styles.brandTitleLight]}>fylo</Text>
+                <Text style={styles.brandSub}>
+                  {currentTab === 'home' ? 'Dashboard' :
+                   currentTab === 'phone-explorer' ? 'Phone Files' :
+                   currentTab === 'pc-explorer' ? 'PC Drives' :
+                   currentTab === 'clipboard' ? 'Shared Clip' : 'Speed Hub'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
 
           {/* Connection Status Pill */}
           <TouchableOpacity
@@ -1345,63 +1543,12 @@ export default function App() {
                 setShowPairModal(true);
               }
             }}>
-            <View style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#f43f5e' }]} />
+            <View style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#64748b' }]} />
             <Text style={styles.topStatusPillText} numberOfLines={1}>
               {pairedPc ? (pingLatency !== null ? `${pingLatency} ms` : 'Linked') : '⚡ Pair PC'}
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* Clean Segmented Horizontal Tabs (Non-clipping, vibrant neon accents) */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.pillTabsContainer}>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            style={[styles.pillTab, currentTab === 'home' && styles.pillTabActive]}
-            onPress={() => setCurrentTab('home')}>
-            <Text style={[styles.pillTabText, currentTab === 'home' && styles.pillTabTextActive]}>
-              🏠 Home
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.75}
-            style={[styles.pillTab, currentTab === 'phone-explorer' && styles.pillTabActive]}
-            onPress={() => setCurrentTab('phone-explorer')}>
-            <Text style={[styles.pillTabText, currentTab === 'phone-explorer' && styles.pillTabTextActive]}>
-              📱 Phone
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.75}
-            style={[styles.pillTab, currentTab === 'pc-explorer' && styles.pillTabActive]}
-            onPress={() => setCurrentTab('pc-explorer')}>
-            <Text style={[styles.pillTabText, currentTab === 'pc-explorer' && styles.pillTabTextActive]}>
-              💻 PC Drives
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.75}
-            style={[styles.pillTab, currentTab === 'clipboard' && styles.pillTabActive]}
-            onPress={() => setCurrentTab('clipboard')}>
-            <Text style={[styles.pillTabText, currentTab === 'clipboard' && styles.pillTabTextActive]}>
-              📋 Clip
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.75}
-            style={[styles.pillTab, currentTab === 'transfer' && styles.pillTabActive]}
-            onPress={() => setCurrentTab('transfer')}>
-            <Text style={[styles.pillTabText, currentTab === 'transfer' && styles.pillTabTextActive]}>
-              ⚡ Speed
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
       </View>
 
       {/* Floating Toast Notification (Vibrant pink pill) */}
@@ -1486,7 +1633,7 @@ export default function App() {
                 <View style={styles.beaconHeaderRow}>
                   <View style={styles.beaconRowLeft}>
                     <View style={styles.beaconGlowIdle}>
-                      <View style={[styles.beaconDot, { backgroundColor: '#f43f5e' }]} />
+                      <View style={[styles.beaconDot, { backgroundColor: '#3b82f6' }]} />
                     </View>
                     <View>
                       <Text style={styles.beaconStatusLabelIdle}>READY TO PAIR</Text>
@@ -1526,63 +1673,94 @@ export default function App() {
           </View>
 
           {/* ========================================================= */}
-          {/* REQUIREMENT 5: ALWAYS-PRESENT DROP & SHARE CARD ON HOMEPAGE */}
+          {/* FAST SHARE & DIRECT NATIVE ANDROID FILE PICKER            */}
           {/* ========================================================= */}
-          <View style={styles.quickShareCard}>
+          <View style={[styles.quickShareCard, !isDarkMode && styles.bentoCardLight]}>
             <View style={styles.quickShareHeaderRow}>
               <View style={styles.quickShareHeaderLeft}>
                 <View style={styles.quickShareIconWrap}>
                   <Text style={styles.quickShareIconEmoji}>📤</Text>
                 </View>
                 <View>
-                  <Text style={styles.quickShareCardTitle}>Fast Share to PC</Text>
+                  <Text style={[styles.quickShareCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Send Files to PC</Text>
                   <Text style={styles.quickShareCardSub}>
                     {pairedPc
-                      ? `Beam directly to ${pcHostName || 'PC'} Downloads folder`
-                      : 'Connect to PC to beam photos & files wirelessly'}
+                      ? `Send directly into ${pcHostName || 'PC'} Downloads`
+                      : 'Connect to PC to transfer photos & files wirelessly'}
                   </Text>
                 </View>
               </View>
               <View style={styles.quickSharePillBadge}>
-                <Text style={styles.quickSharePillBadgeText}>Instant</Text>
+                <Text style={styles.quickSharePillBadgeText}>Direct</Text>
               </View>
             </View>
 
-            {/* Prominent Action Button */}
+            {/* Native Android File Picker Button */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={styles.quickShareBeamBtn}
-              onPress={() => openQuickShareModal('/storage/emulated/0/DCIM/Camera')}>
-              <Text style={styles.quickShareBeamBtnText}>
-                📤 Pick & Beam Files to PC
+              disabled={isSending}
+              style={[styles.quickShareSendBtn, isSending && { opacity: 0.6 }]}
+              onPress={handlePickAndSendToPc}>
+              <Text style={styles.quickShareSendBtnText}>
+                {isSending ? 'Sending to PC...' : '📤 Send Files to PC'}
               </Text>
             </TouchableOpacity>
+          </View>
 
-            {/* Fast Category Jump Beams */}
-            <View style={styles.quickShareCategoryRow}>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.quickShareCatPill}
-                onPress={() => openQuickShareModal('/storage/emulated/0/DCIM')}>
-                <Text style={styles.quickShareCatPillText}>📸 Photos</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.quickShareCatPill}
-                onPress={() => openQuickShareModal('/storage/emulated/0/Download')}>
-                <Text style={styles.quickShareCatPillText}>📥 Downloads</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.quickShareCatPill}
-                onPress={() => {
-                  setCurrentTab('phone-explorer');
-                  setPhoneMultiSelect(true);
-                  showToast('Select files to beam to PC 📤');
-                }}>
-                <Text style={styles.quickShareCatPillText}>📁 Phone Files</Text>
-              </TouchableOpacity>
+          {/* ========================================================= */}
+          {/* ⚡ SHARE HUB: ACTIVE SHARED FILES ON MOBILE HOMEPAGE     */}
+          {/* ========================================================= */}
+          <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
+            <View style={styles.bentoCardHeaderRow}>
+              <View>
+                <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>⚡ Share Hub</Text>
+                <Text style={styles.bentoCardSubtitle}>Active shared files & transfers</Text>
+              </View>
+              <View style={styles.shareHubCountBadge}>
+                <Text style={styles.shareHubCountText}>
+                  {sharedHubFiles.length} {sharedHubFiles.length === 1 ? 'file' : 'files'}
+                </Text>
+              </View>
             </View>
+
+            {sharedHubFiles.length === 0 ? (
+              <View style={styles.shareHubEmpty}>
+                <Text style={{ fontSize: 28, opacity: 0.7 }}>📦</Text>
+                <Text style={[styles.shareHubEmptyTitle, !isDarkMode && styles.shareHubEmptyTitleLight]}>
+                  No files shared yet
+                </Text>
+                <Text style={styles.shareHubEmptySub}>
+                  Tap 'Send Files to PC' above to transfer files instantly across your LAN
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.shareHubList}>
+                {sharedHubFiles.slice(0, 8).map((f, i) => (
+                  <View key={f.path || i} style={[styles.shareHubRow, !isDarkMode && styles.shareHubRowLight]}>
+                    <Text style={{ fontSize: 20 }}>{getFileIcon((f.name || '').split('.').pop(), false)}</Text>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={[styles.shareHubFileName, !isDarkMode && styles.shareHubFileNameLight]} numberOfLines={1}>
+                        {f.name}
+                      </Text>
+                      <Text style={styles.shareHubFileMeta}>
+                        {f.size ? formatFileSize(f.size) : 'Ready'} • {f.direction === 'received' ? '📥 From PC' : '📤 Sent to PC'}
+                      </Text>
+                    </View>
+                    <View style={styles.shareHubStatusChip}>
+                      <Text style={styles.shareHubStatusText}>Done</Text>
+                    </View>
+                  </View>
+                ))}
+                {sharedHubFiles.length > 0 && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={styles.shareHubClearBtn}
+                    onPress={() => setSharedHubFiles([])}>
+                    <Text style={styles.shareHubClearBtnText}>Clear Hub History</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
 
           {/* 2. DEVICE STORAGE BENTO TILE (Real Internal Storage Meter) */}
@@ -1766,7 +1944,7 @@ export default function App() {
                 <Switch
                   value={readOnlyMode}
                   onValueChange={handleToggleReadOnly}
-                  trackColor={{ false: '#475569', true: '#ec4899' }}
+                  trackColor={{ false: '#475569', true: '#2563eb' }}
                   thumbColor="#ffffff"
                 />
               </View>
@@ -1838,9 +2016,9 @@ export default function App() {
             <TouchableOpacity
               activeOpacity={0.75}
               style={styles.sortToggleBtn}
-              onPress={() => cycleSortMode('phone')}>
+              onPress={() => setSortModalTarget('phone')}>
               <Text style={styles.sortToggleBtnText}>
-                {phoneSortBy === 'latest' ? '⏱️ Latest' : phoneSortBy === 'name' ? '🔤 Name' : '📊 Size'}
+                {getSortLabel(phoneSortBy)} ▾
               </Text>
             </TouchableOpacity>
 
@@ -1886,7 +2064,7 @@ export default function App() {
           {/* Explorer Items View */}
           {phoneLoading ? (
             <View style={styles.centerLoading}>
-              <ActivityIndicator size="large" color="#ec4899" />
+              <ActivityIndicator size="large" color="#2563eb" />
               <Text style={styles.loadingText}>Loading folder contents...</Text>
             </View>
           ) : filteredPhoneItems.length === 0 ? (
@@ -1942,13 +2120,20 @@ export default function App() {
                       {/* Tile Thumbnail or Icon */}
                       {item.isDir ? (
                         <Win11FolderIcon size={38} />
-                      ) : isPhoto ? (
+                      ) : isImageFile(item?.ext) ? (
                         <SafeImage
                           source={{ uri: 'file://' + (item?.path || '') }}
                           style={styles.gridThumbnailImage}
                           resizeMode="cover"
                           fallbackEmoji={getFileIcon(item?.ext, false)}
                         />
+                      ) : isVideoFile(item?.ext) ? (
+                        <View style={styles.gridVideoThumbWrap}>
+                          <Text style={{ fontSize: 28 }}>🎬</Text>
+                          <View style={styles.gridVideoPlayBadge}>
+                            <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
+                          </View>
+                        </View>
                       ) : (
                         <Text style={styles.gridFileIconEmoji}>{getFileIcon(item?.ext, false)}</Text>
                       )}
@@ -2009,7 +2194,7 @@ export default function App() {
             </ScrollView>
           )}
 
-          {/* Floating Multi-Select Bar with BEAM TO PC Action */}
+          {/* Floating Multi-Select Bar with SEND TO PC Action */}
           {phoneMultiSelect && phoneSelectedPaths.size > 0 && (
             <View style={styles.floatingMultiSelectBar}>
               <View>
@@ -2020,9 +2205,9 @@ export default function App() {
                 {pairedPc && (
                   <TouchableOpacity
                     activeOpacity={0.75}
-                    style={styles.floatingBeamBtn}
-                    onPress={() => handleBeamFilesToPc(phoneSelectedPaths)}>
-                    <Text style={styles.floatingBeamBtnText}>📤 Beam to PC</Text>
+                    style={styles.floatingSendBtn}
+                    onPress={() => handleSendFilesToPc(phoneSelectedPaths)}>
+                    <Text style={styles.floatingSendBtnText}>📤 Send to PC</Text>
                   </TouchableOpacity>
                 )}
 
@@ -2220,9 +2405,9 @@ export default function App() {
                 <TouchableOpacity
                   activeOpacity={0.75}
                   style={styles.sortToggleBtn}
-                  onPress={() => cycleSortMode('pc')}>
+                  onPress={() => setSortModalTarget('pc')}>
                   <Text style={styles.sortToggleBtnText}>
-                    {pcSortBy === 'latest' ? '⏱️ Latest' : pcSortBy === 'name' ? '🔤 Name' : '📊 Size'}
+                    {getSortLabel(pcSortBy)} ▾
                   </Text>
                 </TouchableOpacity>
 
@@ -2268,7 +2453,7 @@ export default function App() {
               {/* Files Display */}
               {pcLoading ? (
                 <View style={styles.centerLoading}>
-                  <ActivityIndicator size="large" color="#ec4899" />
+                  <ActivityIndicator size="large" color="#2563eb" />
                   <Text style={styles.loadingText}>Fetching files from PC...</Text>
                 </View>
               ) : filteredPcItems.length === 0 ? (
@@ -2305,6 +2490,22 @@ export default function App() {
                           }}>
                           {item.isDir ? (
                             <Win11FolderIcon size={38} />
+                          ) : isImageFile(item?.ext) && pairedPc ? (
+                            <SafeImage
+                              source={{
+                                uri: `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(item.path || '')}&auth=${pcAuthToken || ''}`,
+                              }}
+                              style={styles.gridThumbnailImage}
+                              resizeMode="cover"
+                              fallbackEmoji={getFileIcon(item?.ext, false)}
+                            />
+                          ) : isVideoFile(item?.ext) ? (
+                            <View style={styles.gridVideoThumbWrap}>
+                              <Text style={{ fontSize: 28 }}>🎬</Text>
+                              <View style={styles.gridVideoPlayBadge}>
+                                <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
+                              </View>
+                            </View>
                           ) : (
                             <Text style={styles.gridFileIconEmoji}>{getFileIcon(item.ext, false)}</Text>
                           )}
@@ -2416,7 +2617,7 @@ export default function App() {
               <View style={styles.beaconRowLeft}>
                 <View style={pairedPc ? styles.beaconGlowConnected : styles.beaconGlowIdle}>
                   <View
-                    style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#f43f5e' }]}
+                    style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#3b82f6' }]}
                   />
                 </View>
                 <View>
@@ -2647,46 +2848,85 @@ export default function App() {
             </View>
 
             {/* Pinchable & Zoomable Media Body */}
-            <View style={styles.lightboxBody} {...zoomPanResponder.panHandlers}>
-              <ScrollView
-                style={{ flex: 1, width: '100%' }}
-                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
-                maximumZoomScale={4}
-                minimumZoomScale={1}
-                showsHorizontalScrollIndicator={false}
-                showsVerticalScrollIndicator={false}>
-                {isMediaFile(lightboxItem?.item?.ext) && lightboxItem?.source === 'pc' && pairedPc ? (
-                  <View style={{ transform: [{ scale: zoomScale }, { translateX: panOffset.x }, { translateY: panOffset.y }] }}>
-                    <SafeImage
-                      source={{
-                        uri: `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}`,
-                        headers: { 'X-Auth-Token': pcAuthToken || '' },
-                      }}
-                      style={styles.lightboxImage}
-                      resizeMode="contain"
-                      fallbackEmoji="🎬"
-                    />
+            <View style={styles.lightboxBody} {...(isImageFile(lightboxItem?.item?.ext) ? zoomPanResponder.panHandlers : {})}>
+              {isVideoFile(lightboxItem?.item?.ext) ? (
+                /* Enhanced Video Player Hub Card */
+                <View style={styles.lightboxVideoHub}>
+                  <View style={styles.lightboxVideoPreviewCard}>
+                    <View style={styles.lightboxVideoGlowCircle}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={styles.lightboxVideoBigPlayBtn}
+                        onPress={() => {
+                          const pathOrUrl = lightboxItem?.source === 'pc'
+                            ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`
+                            : lightboxItem?.item?.path;
+                          if (FyloModule && FyloModule.openVideoPlayer) {
+                            FyloModule.openVideoPlayer(pathOrUrl, 'video/*')
+                              .catch((e) => showToast('⚠️ Video error: ' + (e?.message || e)));
+                          } else {
+                            showToast('⚠️ Video player module unavailable');
+                          }
+                        }}>
+                        <Text style={styles.lightboxVideoPlayIcon}>▶</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.lightboxVideoName} numberOfLines={2}>
+                      {lightboxItem?.item?.name}
+                    </Text>
+                    <Text style={styles.lightboxVideoSub}>
+                      {formatFileSize(lightboxItem?.item?.size)} • {lightboxItem?.source === 'pc' ? 'Remote PC Stream' : 'Local Video'}
+                    </Text>
                   </View>
-                ) : isMediaFile(lightboxItem?.item?.ext) && lightboxItem?.source === 'phone' ? (
-                  <View style={{ transform: [{ scale: zoomScale }, { translateX: panOffset.x }, { translateY: panOffset.y }] }}>
-                    <SafeImage
-                      source={{ uri: `file://${lightboxItem?.item?.path || ''}` }}
-                      style={styles.lightboxImage}
-                      resizeMode="contain"
-                      fallbackEmoji="🎬"
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.lightboxNonImgContainer}>
-                    <Text style={{ fontSize: 64 }}>{getFileIcon(lightboxItem?.item?.ext, false)}</Text>
-                    <Text style={styles.lightboxNonImgTitle}>{lightboxItem?.item?.name || 'File'}</Text>
-                    <Text style={styles.lightboxNonImgMeta}>{formatFileSize(lightboxItem?.item?.size)}</Text>
-                  </View>
-                )}
-              </ScrollView>
 
-              {/* On-screen quick zoom controls for effortless accessibility */}
-              {isMediaFile(lightboxItem?.item?.ext) && (
+                  <View style={styles.lightboxVideoActionGroup}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.lightboxVideoPrimaryPlayBtn}
+                      onPress={() => {
+                        const pathOrUrl = lightboxItem?.source === 'pc'
+                          ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`
+                          : lightboxItem?.item?.path;
+                        if (FyloModule && FyloModule.openVideoPlayer) {
+                          FyloModule.openVideoPlayer(pathOrUrl, 'video/*')
+                            .catch((e) => showToast('⚠️ Video error: ' + (e?.message || e)));
+                        } else {
+                          showToast('⚠️ Video player module unavailable');
+                        }
+                      }}>
+                      <Text style={styles.lightboxVideoPrimaryPlayBtnText}>
+                        ▶ Play in System Video Player
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : isImageFile(lightboxItem?.item?.ext) ? (
+                /* Hardware-Accelerated 120Hz Fluid Pinch & Zoom Image Container */
+                <View
+                  ref={imageContainerRef}
+                  style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <SafeImage
+                    source={{
+                      uri: lightboxItem?.source === 'pc'
+                        ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`
+                        : `file://${lightboxItem?.item?.path || ''}`,
+                      headers: lightboxItem?.source === 'pc' ? { 'X-Auth-Token': pcAuthToken || '' } : undefined,
+                    }}
+                    style={styles.lightboxImage}
+                    resizeMode="contain"
+                    fallbackEmoji="🖼️"
+                  />
+                </View>
+              ) : (
+                <View style={styles.lightboxNonImgContainer}>
+                  <Text style={{ fontSize: 64 }}>{getFileIcon(lightboxItem?.item?.ext, false)}</Text>
+                  <Text style={styles.lightboxNonImgTitle}>{lightboxItem?.item?.name || 'File'}</Text>
+                  <Text style={styles.lightboxNonImgMeta}>{formatFileSize(lightboxItem?.item?.size)}</Text>
+                </View>
+              )}
+
+              {/* Quick zoom controls for image files */}
+              {isImageFile(lightboxItem?.item?.ext) && (
                 <View style={styles.lightboxZoomControls}>
                   <TouchableOpacity activeOpacity={0.75} style={styles.zoomCtrlBtn} onPress={handleZoomOut}>
                     <Text style={styles.zoomCtrlBtnText}>−</Text>
@@ -2716,9 +2956,9 @@ export default function App() {
               {lightboxItem?.source === 'phone' && pairedPc && (
                 <TouchableOpacity
                   activeOpacity={0.75}
-                  style={styles.lightboxBeamBtn}
-                  onPress={() => handleBeamFilesToPc([lightboxItem?.item?.path])}>
-                  <Text style={styles.lightboxBeamBtnText}>📤 Beam to PC</Text>
+                  style={styles.lightboxSendBtn}
+                  onPress={() => handleSendFilesToPc([lightboxItem?.item?.path])}>
+                  <Text style={styles.lightboxSendBtnText}>📤 Send to PC</Text>
                 </TouchableOpacity>
               )}
 
@@ -2763,93 +3003,461 @@ export default function App() {
       )}
 
       {/* ========================================================= */}
-      {/* REQUIREMENT 5: QUICK SHARE PICKER MODAL                   */}
+      {/* COLLAPSIBLE NAVIGATION SIDEBAR DRAWER                     */}
       {/* ========================================================= */}
-      <Modal visible={quickShareVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '85%' }]}>
-            <View style={styles.modalHeaderRow}>
-              <View>
-                <Text style={styles.modalTitle}>📤 Quick Share to PC</Text>
-                <Text style={styles.modalSubtitle}>Select items to beam directly into PC Downloads</Text>
+      <Modal visible={sidebarOpen} transparent animationType="fade">
+        <View style={styles.drawerBackdrop}>
+          <TouchableOpacity
+            style={styles.drawerDismissArea}
+            activeOpacity={1}
+            onPress={() => setSidebarOpen(false)}
+          />
+          <View style={[styles.drawerPanel, !isDarkMode && styles.drawerPanelLight]}>
+            {/* Drawer Brand Header */}
+            <View style={[styles.drawerHeader, !isDarkMode && styles.drawerHeaderLight]}>
+              <View style={styles.drawerHeaderBrand}>
+                <View style={styles.brandCircle}>
+                  <Text style={styles.brandCircleText}>F</Text>
+                </View>
+                <View>
+                  <Text style={[styles.drawerTitle, !isDarkMode && styles.drawerTitleLight]}>fylo</Text>
+                  <Text style={styles.drawerSub}>Mobile Companion</Text>
+                </View>
               </View>
-              <TouchableOpacity activeOpacity={0.75} onPress={() => setQuickShareVisible(false)}>
+              <TouchableOpacity
+                style={styles.drawerCloseBtn}
+                activeOpacity={0.75}
+                onPress={() => setSidebarOpen(false)}>
+                <Text style={styles.drawerCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Connection Status Card in Drawer */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.drawerConnCard, pairedPc && styles.drawerConnCardActive]}
+              onPress={() => {
+                setSidebarOpen(false);
+                if (pairedPc) {
+                  setDiagVisible(true);
+                  runNetworkDiagnostic();
+                } else {
+                  setShowPairModal(true);
+                }
+              }}>
+              <View style={[styles.beaconDot, { backgroundColor: pairedPc ? '#10b981' : '#64748b' }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.drawerConnTitle}>
+                  {pairedPc ? `Linked to ${pcHostName || 'PC'}` : 'Not Paired to PC'}
+                </Text>
+                <Text style={styles.drawerConnSub}>
+                  {pairedPc ? `${pairedPc} • ${pingLatency !== null ? `${pingLatency} ms latency` : 'Connected'}` : 'Tap to scan QR or connect via IP'}
+                </Text>
+              </View>
+              <Text style={{ color: '#60a5fa', fontSize: 16 }}>{pairedPc ? '⚙️' : '⚡'}</Text>
+            </TouchableOpacity>
+
+            {/* Navigation Section Items */}
+            <ScrollView style={styles.drawerNavList} showsVerticalScrollIndicator={false}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[styles.drawerNavItem, currentTab === 'home' && styles.drawerNavItemActive]}
+                onPress={() => {
+                  setCurrentTab('home');
+                  setSidebarOpen(false);
+                }}>
+                <Text style={styles.drawerNavIcon}>🏠</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.drawerNavLabel, currentTab === 'home' && styles.drawerNavLabelActive]}>
+                    Dashboard & Fast Share
+                  </Text>
+                  <Text style={styles.drawerNavSub}>Instant transfer & device storage</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[styles.drawerNavItem, currentTab === 'pc-explorer' && styles.drawerNavItemActive]}
+                onPress={() => {
+                  setCurrentTab('pc-explorer');
+                  setSidebarOpen(false);
+                }}>
+                <Text style={styles.drawerNavIcon}>💻</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.drawerNavLabel, currentTab === 'pc-explorer' && styles.drawerNavLabelActive]}>
+                    PC Drives Explorer
+                  </Text>
+                  <Text style={styles.drawerNavSub}>Browse Windows C:\, D:\, Downloads</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[styles.drawerNavItem, currentTab === 'phone-explorer' && styles.drawerNavItemActive]}
+                onPress={() => {
+                  setCurrentTab('phone-explorer');
+                  setSidebarOpen(false);
+                }}>
+                <Text style={styles.drawerNavIcon}>📱</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.drawerNavLabel, currentTab === 'phone-explorer' && styles.drawerNavLabelActive]}>
+                    Phone Storage & Gallery
+                  </Text>
+                  <Text style={styles.drawerNavSub}>Internal files, DCIM, Photos & Media</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[styles.drawerNavItem, currentTab === 'clipboard' && styles.drawerNavItemActive]}
+                onPress={() => {
+                  setCurrentTab('clipboard');
+                  setSidebarOpen(false);
+                }}>
+                <Text style={styles.drawerNavIcon}>📋</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.drawerNavLabel, currentTab === 'clipboard' && styles.drawerNavLabelActive]}>
+                    LAN Shared Clipboard
+                  </Text>
+                  <Text style={styles.drawerNavSub}>Live bidirectional text sync</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[styles.drawerNavItem, currentTab === 'transfer' && styles.drawerNavItemActive]}
+                onPress={() => {
+                  setCurrentTab('transfer');
+                  setSidebarOpen(false);
+                }}>
+                <Text style={styles.drawerNavIcon}>⚡</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.drawerNavLabel, currentTab === 'transfer' && styles.drawerNavLabelActive]}>
+                    Speed & Diagnostics
+                  </Text>
+                  <Text style={styles.drawerNavSub}>Ping latency, server status & logs</Text>
+                </View>
+              </TouchableOpacity>
+            </ScrollView>
+
+            {/* Live Clipboard Sync Toggle in Sidebar (OFF by Default) */}
+            <View style={[styles.drawerThemeRow, !isDarkMode && styles.drawerThemeRowLight]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 20 }}>📋</Text>
+                <Text style={[styles.drawerThemeText, !isDarkMode && styles.drawerThemeTextLight]}>
+                  Live Clipboard Sync
+                </Text>
+              </View>
+              <Switch
+                value={clipboardAutoSync}
+                onValueChange={(val) => {
+                  setClipboardAutoSync(val);
+                  showToast(val ? '🔄 Live Clipboard Sync Enabled' : '⏸️ Live Clipboard Sync Disabled');
+                }}
+                trackColor={{ false: '#94a3b8', true: '#2563eb' }}
+                thumbColor={clipboardAutoSync ? '#60a5fa' : '#ffffff'}
+              />
+            </View>
+
+            {/* Live Clipboard Sync Toggle in Sidebar (OFF by Default) */}
+            <View style={[styles.drawerThemeRow, !isDarkMode && styles.drawerThemeRowLight]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 20 }}>📋</Text>
+                <Text style={[styles.drawerThemeText, !isDarkMode && styles.drawerThemeTextLight]}>
+                  Live Clipboard Sync
+                </Text>
+              </View>
+              <Switch
+                value={clipboardAutoSync}
+                onValueChange={(val) => {
+                  setClipboardAutoSync(val);
+                  showToast(val ? '🔄 Live Clipboard Sync Enabled' : '⏸️ Live Clipboard Sync Disabled');
+                }}
+                trackColor={{ false: '#94a3b8', true: '#2563eb' }}
+                thumbColor={clipboardAutoSync ? '#60a5fa' : '#ffffff'}
+              />
+            </View>
+
+            {/* Light / Dark Mode Toggle in Sidebar */}
+            <View style={[styles.drawerThemeRow, !isDarkMode && styles.drawerThemeRowLight]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 20 }}>{isDarkMode ? '🌙' : '☀️'}</Text>
+                <Text style={[styles.drawerThemeText, !isDarkMode && styles.drawerThemeTextLight]}>
+                  {isDarkMode ? 'Dark Mode' : 'Light Mode'}
+                </Text>
+              </View>
+              <Switch
+                value={isDarkMode}
+                onValueChange={(val) => setIsDarkMode(val)}
+                trackColor={{ false: '#94a3b8', true: '#2563eb' }}
+                thumbColor={isDarkMode ? '#60a5fa' : '#ffffff'}
+              />
+            </View>
+
+            {/* Drawer Footer */}
+            <View style={[styles.drawerFooter, !isDarkMode && styles.drawerFooterLight]}>
+              <Text style={styles.drawerFooterText}>
+                {phoneModelName} • {storageInfo.freeGB} Free
+              </Text>
+              {pairedPc && (
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={styles.drawerUnpairBtn}
+                  onPress={() => {
+                    setSidebarOpen(false);
+                    handleUnpair();
+                  }}>
+                  <Text style={styles.drawerUnpairBtnText}>Disconnect</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========================================================= */}
+      {/* DIRECT SHARE DEVICE PICKER MODAL (INSTANT ICONS & NAMES) */}
+      {/* ========================================================= */}
+      <Modal visible={directShareModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalDismissArea}
+            activeOpacity={1}
+            onPress={() => setDirectShareModalVisible(false)}
+          />
+          <View style={[styles.directShareCard, !isDarkMode && styles.directShareCardLight]}>
+            <View style={styles.directShareHeader}>
+              <View>
+                <Text style={[styles.directShareTitle, !isDarkMode && styles.directShareTitleLight]}>
+                  Share to Device
+                </Text>
+                <Text style={styles.directShareSub}>
+                  {directSharePendingFiles.length} file{directSharePendingFiles.length === 1 ? '' : 's'} selected to transfer
+                </Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => setDirectShareModalVisible(false)}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            {quickShareLoading ? (
-              <View style={{ padding: 30, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#ec4899" />
-                <Text style={[styles.loadingText, { color: '#ec4899' }]}>Loading recent media...</Text>
-              </View>
-            ) : quickShareItems.length === 0 ? (
-              <View style={{ padding: 24, alignItems: 'center' }}>
-                <Text style={{ fontSize: 32, marginBottom: 8 }}>📁</Text>
-                <Text style={styles.modalSubtitle}>No recent files found in this category.</Text>
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  style={[styles.modalPrimaryBtn, { marginTop: 12, paddingHorizontal: 20 }]}
-                  onPress={() => {
-                    setQuickShareVisible(false);
-                    setCurrentTab('phone-explorer');
-                    setPhoneMultiSelect(true);
-                  }}>
-                  <Text style={styles.modalPrimaryBtnText}>Browse All Files in Explorer</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
-                {quickShareItems.slice(0, 50).map((file, idx) => {
-                  const isChecked = quickShareSelected.has(file.path);
-                  return (
-                    <TouchableOpacity
-                      key={file.path || idx}
-                      activeOpacity={0.75}
-                      style={[styles.quickShareRow, isChecked && styles.quickShareRowSelected]}
-                      onPress={() => {
-                        const next = new Set(quickShareSelected);
-                        isChecked ? next.delete(file.path) : next.add(file.path);
-                        setQuickShareSelected(next);
-                      }}>
-                      <View style={[styles.checkCircle, isChecked && styles.checkCircleSelected, { position: 'relative', top: 0, right: 0 }]}>
-                        {isChecked && <Text style={styles.checkMark}>✓</Text>}
-                      </View>
-                      <Text style={{ fontSize: 20 }}>{getFileIcon(file.ext, false)}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listRowName} numberOfLines={1}>{file.name}</Text>
-                        <Text style={styles.listRowMeta}>{formatFileSize(file.size)}</Text>
-                      </View>
-                      <TouchableOpacity
-                        activeOpacity={0.75}
-                        style={styles.quickBeamSingleBtn}
-                        onPress={() => handleBeamFilesToPc([file.path])}>
-                        <Text style={styles.quickBeamSingleBtnText}>Beam ⚡</Text>
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
-
-            <View style={[styles.modalBtnRow, { marginTop: 14 }]}>
+            <View style={styles.directShareDeviceList}>
+              {/* Primary Connected PC Device */}
               <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.modalCancelBtn}
-                onPress={() => setQuickShareVisible(false)}>
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.75}
-                disabled={quickShareSelected.size === 0 || isBeaming}
-                style={[styles.modalPrimaryBtn, (quickShareSelected.size === 0 || isBeaming) && { opacity: 0.5 }]}
-                onPress={() => handleBeamFilesToPc(quickShareSelected)}>
-                <Text style={styles.modalPrimaryBtnText}>
-                  {isBeaming ? 'Beaming...' : `Beam (${quickShareSelected.size}) to PC 📤`}
+                activeOpacity={0.8}
+                style={[
+                  styles.directShareDeviceBtn,
+                  pairedPc && styles.directShareDeviceBtnActive,
+                  !isDarkMode && styles.directShareDeviceBtnLight,
+                ]}
+                onPress={async () => {
+                  setDirectShareModalVisible(false);
+                  if (pairedPc) {
+                    showToast(`🚀 Sending ${directSharePendingFiles.length} file(s) to ${pcHostName || 'PC'} Downloads...`);
+                    const paths = directSharePendingFiles.map((f) => (typeof f === 'string' ? f : f.path)).filter(Boolean);
+                    await handleSendFilesToPc(paths);
+                  } else {
+                    showToast('⚡ Please pair with PC first');
+                    setShowPairModal(true);
+                  }
+                }}>
+                <View style={styles.directShareIconWrap}>
+                  <Text style={styles.directShareIconEmoji}>💻</Text>
+                  {pairedPc && <View style={styles.directShareOnlineDot} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.directShareDeviceName, !isDarkMode && styles.directShareDeviceNameLight]}>
+                    {pcHostName || 'Windows PC'}
+                  </Text>
+                  <Text style={styles.directShareDeviceMeta}>
+                    {pairedPc ? 'Downloads folder • Online' : 'Tap to Pair PC & Send'}
+                  </Text>
+                </View>
+                <Text style={styles.directShareActionText}>
+                  {pairedPc ? 'Send ➔' : 'Pair ⚡'}
                 </Text>
               </TouchableOpacity>
+
+              {/* Nearby LAN / Other Device Option */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.directShareDeviceBtn, !isDarkMode && styles.directShareDeviceBtnLight]}
+                onPress={() => {
+                  setDirectShareModalVisible(false);
+                  setShowPairModal(true);
+                }}>
+                <View style={styles.directShareIconWrap}>
+                  <Text style={styles.directShareIconEmoji}>📱</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.directShareDeviceName, !isDarkMode && styles.directShareDeviceNameLight]}>
+                    Nearby Phone / Peer
+                  </Text>
+                  <Text style={styles.directShareDeviceMeta}>
+                    Connect via IP or QR Code
+                  </Text>
+                </View>
+                <Text style={styles.directShareActionText}>Connect ➔</Text>
+              </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.directShareCancelBtn}
+              onPress={() => setDirectShareModalVisible(false)}>
+              <Text style={styles.directShareCancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========================================================= */}
+      {/* DIRECT SHARE DEVICE PICKER MODAL (INSTANT ICONS & NAMES) */}
+      {/* ========================================================= */}
+      <Modal visible={directShareModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalDismissArea}
+            activeOpacity={1}
+            onPress={() => setDirectShareModalVisible(false)}
+          />
+          <View style={[styles.directShareCard, !isDarkMode && styles.directShareCardLight]}>
+            <View style={styles.directShareHeader}>
+              <View>
+                <Text style={[styles.directShareTitle, !isDarkMode && styles.directShareTitleLight]}>
+                  Share to Device
+                </Text>
+                <Text style={styles.directShareSub}>
+                  {directSharePendingFiles.length} file{directSharePendingFiles.length === 1 ? '' : 's'} selected to transfer
+                </Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => setDirectShareModalVisible(false)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.directShareDeviceList}>
+              {/* Primary Connected PC Device */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[
+                  styles.directShareDeviceBtn,
+                  pairedPc && styles.directShareDeviceBtnActive,
+                  !isDarkMode && styles.directShareDeviceBtnLight,
+                ]}
+                onPress={async () => {
+                  setDirectShareModalVisible(false);
+                  if (pairedPc) {
+                    showToast(`🚀 Sending ${directSharePendingFiles.length} file(s) to ${pcHostName || 'PC'} Downloads...`);
+                    const paths = directSharePendingFiles.map((f) => (typeof f === 'string' ? f : f.path)).filter(Boolean);
+                    await handleSendFilesToPc(paths);
+                  } else {
+                    showToast('⚡ Please pair with PC first');
+                    setShowPairModal(true);
+                  }
+                }}>
+                <View style={styles.directShareIconWrap}>
+                  <Text style={styles.directShareIconEmoji}>💻</Text>
+                  {pairedPc && <View style={styles.directShareOnlineDot} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.directShareDeviceName, !isDarkMode && styles.directShareDeviceNameLight]}>
+                    {pcHostName || 'Windows PC'}
+                  </Text>
+                  <Text style={styles.directShareDeviceMeta}>
+                    {pairedPc ? 'Downloads folder • Online' : 'Tap to Pair PC & Send'}
+                  </Text>
+                </View>
+                <Text style={styles.directShareActionText}>
+                  {pairedPc ? 'Send ➔' : 'Pair ⚡'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Nearby LAN / Other Device Option */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.directShareDeviceBtn, !isDarkMode && styles.directShareDeviceBtnLight]}
+                onPress={() => {
+                  setDirectShareModalVisible(false);
+                  setShowPairModal(true);
+                }}>
+                <View style={styles.directShareIconWrap}>
+                  <Text style={styles.directShareIconEmoji}>📱</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.directShareDeviceName, !isDarkMode && styles.directShareDeviceNameLight]}>
+                    Nearby Phone / Peer
+                  </Text>
+                  <Text style={styles.directShareDeviceMeta}>
+                    Connect via IP or QR Code
+                  </Text>
+                </View>
+                <Text style={styles.directShareActionText}>Connect ➔</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.directShareCancelBtn}
+              onPress={() => setDirectShareModalVisible(false)}>
+              <Text style={styles.directShareCancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========================================================= */}
+      {/* DEDICATED SORT OPTIONS MODAL DROPDOWN                     */}
+      {/* ========================================================= */}
+      <Modal visible={!!sortModalTarget} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalDismissArea}
+            activeOpacity={1}
+            onPress={() => setSortModalTarget(null)}
+          />
+          <View style={[styles.sortModalCard, !isDarkMode && styles.sortModalCardLight]}>
+            <View style={styles.sortModalHeader}>
+              <Text style={[styles.sortModalTitle, !isDarkMode && styles.sortModalTitleLight]}>
+                ⇅ Sort Files & Folders
+              </Text>
+              <TouchableOpacity activeOpacity={0.75} onPress={() => setSortModalTarget(null)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {[
+              { id: 'latest', label: '⏱️ Latest First (Date Newest)', sub: 'Default: newest items appear at the top' },
+              { id: 'oldest', label: '⏱️ Oldest First (Date Oldest)', sub: 'Ascending: oldest items at top' },
+              { id: 'name', label: '🔤 Name (A → Z)', sub: 'Alphabetical ascending' },
+              { id: 'name-desc', label: '🔤 Name (Z → A)', sub: 'Alphabetical descending' },
+              { id: 'size', label: '📊 Size (Largest First)', sub: 'Highest file size at top' },
+              { id: 'size-asc', label: '📊 Size (Smallest First)', sub: 'Smallest file size at top' },
+            ].map((opt) => {
+              const currentSort = sortModalTarget === 'phone' ? phoneSortBy : pcSortBy;
+              const isSelected = currentSort === opt.id;
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  activeOpacity={0.75}
+                  style={[styles.sortOptionRow, isSelected && styles.sortOptionRowActive]}
+                  onPress={() => {
+                    if (sortModalTarget === 'phone') {
+                      setPhoneSortBy(opt.id);
+                    } else if (sortModalTarget === 'pc') {
+                      setPcSortBy(opt.id);
+                    }
+                    setSortModalTarget(null);
+                  }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.sortOptionLabel, isSelected && styles.sortOptionLabelActive]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={styles.sortOptionSub}>{opt.sub}</Text>
+                  </View>
+                  {isSelected && <Text style={styles.sortOptionCheckMark}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </Modal>
@@ -3100,7 +3708,7 @@ export default function App() {
 }
 
 // =========================================================
-// STYLES: Vibrant Pink/Neon Accents matching Fylo logo (#ec4899, #f43f5e, #a855f7)
+// STYLES: Vibrant Pink/Neon Accents matching Fylo logo (#2563eb, #3b82f6, #0ea5e9)
 // =========================================================
 const styles = StyleSheet.create({
   container: {
@@ -3114,7 +3722,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(236, 72, 153, 0.15)',
+    borderBottomColor: 'rgba(37, 99, 235, 0.15)',
     backgroundColor: '#0d1322',
   },
   brandRow: {
@@ -3132,10 +3740,10 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#ec4899',
+    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5,
     shadowRadius: 6,
@@ -3154,7 +3762,7 @@ const styles = StyleSheet.create({
   },
   brandSub: {
     fontSize: 9.5,
-    color: '#f472b6',
+    color: '#60a5fa',
     fontWeight: '700',
     marginTop: -2,
   },
@@ -3173,8 +3781,8 @@ const styles = StyleSheet.create({
     borderColor: '#10b981',
   },
   topStatusPillIdle: {
-    backgroundColor: 'rgba(236, 72, 153, 0.12)',
-    borderColor: '#ec4899',
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    borderColor: '#2563eb',
   },
   topStatusPillText: {
     color: '#ffffff',
@@ -3206,9 +3814,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pillTabActive: {
-    backgroundColor: '#ec4899',
-    borderColor: '#f43f5e',
-    shadowColor: '#ec4899',
+    backgroundColor: '#2563eb',
+    borderColor: '#3b82f6',
+    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.35,
     shadowRadius: 4,
@@ -3230,16 +3838,16 @@ const styles = StyleSheet.create({
     top: 96,
     alignSelf: 'center',
     zIndex: 9999,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: 999,
-    shadowColor: '#ec4899',
+    shadowColor: '#2563eb',
     shadowOpacity: 0.45,
     shadowRadius: 8,
     elevation: 10,
     borderWidth: 1,
-    borderColor: '#f43f5e',
+    borderColor: '#3b82f6',
   },
   toastText: {
     color: '#ffffff',
@@ -3257,7 +3865,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(236, 72, 153, 0.25)',
+    borderColor: 'rgba(37, 99, 235, 0.25)',
     marginBottom: 10,
   },
   beaconHeaderRow: {
@@ -3283,7 +3891,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3295,7 +3903,7 @@ const styles = StyleSheet.create({
   },
   beaconStatusLabelIdle: {
     fontSize: 9.5,
-    color: '#f472b6',
+    color: '#60a5fa',
     fontWeight: '900',
     letterSpacing: 0.5,
   },
@@ -3327,11 +3935,11 @@ const styles = StyleSheet.create({
   heroPrimaryBtn: {
     flex: 1,
     minHeight: 40,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#ec4899',
+    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
@@ -3360,13 +3968,13 @@ const styles = StyleSheet.create({
     minHeight: 40,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#ec4899',
+    borderColor: '#2563eb',
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   heroOutlineBtnText: {
-    color: '#f472b6',
+    color: '#60a5fa',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -3383,9 +3991,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     borderWidth: 1.5,
-    borderColor: '#ec4899',
+    borderColor: '#2563eb',
     marginBottom: 10,
-    shadowColor: '#ec4899',
+    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -3407,7 +4015,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+    backgroundColor: 'rgba(37, 99, 235, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3421,36 +4029,36 @@ const styles = StyleSheet.create({
   },
   quickShareCardSub: {
     fontSize: 10,
-    color: '#f472b6',
+    color: '#60a5fa',
     marginTop: 1,
   },
   quickSharePillBadge: {
-    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+    backgroundColor: 'rgba(37, 99, 235, 0.2)',
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#ec4899',
+    borderColor: '#2563eb',
   },
   quickSharePillBadgeText: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 9.5,
     fontWeight: '900',
   },
-  quickShareBeamBtn: {
+  quickShareSendBtn: {
     minHeight: 42,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-    shadowColor: '#ec4899',
+    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.35,
     shadowRadius: 5,
     elevation: 3,
   },
-  quickShareBeamBtnText: {
+  quickShareSendBtnText: {
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '900',
@@ -3501,20 +4109,20 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   cardHeaderLink: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 11,
     fontWeight: '800',
   },
 
   /* Storage Meter */
   storagePercentChip: {
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 999,
   },
   storagePercentChipText: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 10,
     fontWeight: '800',
   },
@@ -3527,7 +4135,7 @@ const styles = StyleSheet.create({
   },
   storageFill: {
     height: '100%',
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     borderRadius: 4,
   },
   storageLegendRow: {
@@ -3607,7 +4215,7 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
   },
   jumperArrow: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 16,
     fontWeight: '800',
   },
@@ -3640,12 +4248,12 @@ const styles = StyleSheet.create({
   },
   clipboardActionBtnPrimary: {
     flex: 1,
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
     borderWidth: 1,
-    borderColor: '#ec4899',
+    borderColor: '#2563eb',
   },
   clipboardActionBtnPrimaryText: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -3694,7 +4302,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   serverToggleBtnStart: {
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
   },
   serverToggleBtnStop: {
     backgroundColor: '#ef4444',
@@ -3788,8 +4396,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pcDrivePillActive: {
-    backgroundColor: 'rgba(236, 72, 153, 0.18)',
-    borderColor: '#ec4899',
+    backgroundColor: 'rgba(37, 99, 235, 0.18)',
+    borderColor: '#2563eb',
   },
   pcDrivePillIcon: {
     fontSize: 14,
@@ -3864,11 +4472,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   breadcrumbItemActive: {
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
     borderRadius: 6,
   },
   breadcrumbTextRoot: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 10.5,
     fontWeight: '800',
   },
@@ -3898,7 +4506,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   refreshBtnText: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 16,
     fontWeight: '800',
   },
@@ -3911,10 +4519,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#172033',
   },
   viewModeBtnActive: {
-    backgroundColor: 'rgba(236, 72, 153, 0.25)',
+    backgroundColor: 'rgba(37, 99, 235, 0.25)',
   },
   viewModeBtnText: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -3962,10 +4570,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(236, 72, 153, 0.3)',
+    borderColor: 'rgba(37, 99, 235, 0.3)',
   },
   sortToggleBtnText: {
-    color: '#f472b6',
+    color: '#60a5fa',
     fontSize: 10.5,
     fontWeight: '800',
   },
@@ -3978,7 +4586,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   multiSelectToggleActive: {
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
   },
   multiSelectToggleText: {
     color: '#ffffff',
@@ -4005,8 +4613,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filterPillActive: {
-    backgroundColor: '#ec4899',
-    borderColor: '#f43f5e',
+    backgroundColor: '#2563eb',
+    borderColor: '#3b82f6',
   },
   filterPillText: {
     color: '#94a3b8',
@@ -4039,8 +4647,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   gridTileSelected: {
-    borderColor: '#ec4899',
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    borderColor: '#2563eb',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
   },
   gridThumbnailImage: {
     width: '100%',
@@ -4079,8 +4687,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   checkCircleSelected: {
-    backgroundColor: '#ec4899',
-    borderColor: '#ec4899',
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
   },
   checkMark: {
     color: '#ffffff',
@@ -4105,8 +4713,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   listRowSelected: {
-    borderColor: '#ec4899',
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    borderColor: '#2563eb',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
   },
   listRowEmoji: {
     fontSize: 20,
@@ -4125,7 +4733,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   listRowChevron: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 15,
     fontWeight: '800',
   },
@@ -4138,21 +4746,21 @@ const styles = StyleSheet.create({
     right: 12,
     backgroundColor: '#0d1322',
     borderWidth: 1.5,
-    borderColor: '#ec4899',
+    borderColor: '#2563eb',
     borderRadius: 18,
     paddingVertical: 8,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#ec4899',
+    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 8,
   },
   floatingSelectCount: {
-    color: '#f472b6',
+    color: '#60a5fa',
     fontWeight: '800',
     fontSize: 12,
   },
@@ -4160,15 +4768,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
   },
-  floatingBeamBtn: {
+  floatingSendBtn: {
     minHeight: 34,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     paddingHorizontal: 12,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  floatingBeamBtnText: {
+  floatingSendBtnText: {
     color: '#ffffff',
     fontSize: 10.5,
     fontWeight: '800',
@@ -4238,7 +4846,7 @@ const styles = StyleSheet.create({
   },
   pcConnectPromptBtn: {
     minHeight: 42,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     borderRadius: 12,
     paddingHorizontal: 20,
     alignItems: 'center',
@@ -4252,15 +4860,15 @@ const styles = StyleSheet.create({
 
   /* CLIPBOARD TAB */
   syncRefreshChip: {
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
     borderWidth: 1,
-    borderColor: '#ec4899',
+    borderColor: '#2563eb',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 999,
   },
   syncRefreshChipText: {
-    color: '#ec4899',
+    color: '#2563eb',
     fontSize: 10.5,
     fontWeight: '800',
   },
@@ -4325,7 +4933,7 @@ const styles = StyleSheet.create({
   },
   runDiagHeroBtn: {
     minHeight: 42,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
@@ -4366,7 +4974,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -4417,7 +5025,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   lightboxMeta: {
-    color: '#f472b6',
+    color: '#60a5fa',
     fontSize: 9.5,
     marginTop: 1,
   },
@@ -4471,13 +5079,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#ec4899',
+    borderColor: '#2563eb',
   },
   zoomCtrlBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+    backgroundColor: 'rgba(37, 99, 235, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -4490,7 +5098,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   zoomScaleBadgeText: {
-    color: '#f472b6',
+    color: '#60a5fa',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -4504,7 +5112,7 @@ const styles = StyleSheet.create({
   lightboxDlBtn: {
     flex: 1,
     minHeight: 40,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -4514,15 +5122,15 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '800',
   },
-  lightboxBeamBtn: {
+  lightboxSendBtn: {
     flex: 1,
     minHeight: 40,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lightboxBeamBtnText: {
+  lightboxSendBtnText: {
     color: '#ffffff',
     fontSize: 11.5,
     fontWeight: '800',
@@ -4555,18 +5163,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   quickShareRowSelected: {
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
   },
-  quickBeamSingleBtn: {
-    backgroundColor: 'rgba(236, 72, 153, 0.2)',
+  quickSendSingleBtn: {
+    backgroundColor: 'rgba(37, 99, 235, 0.2)',
     borderWidth: 1,
-    borderColor: '#ec4899',
+    borderColor: '#2563eb',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 6,
   },
-  quickBeamSingleBtnText: {
-    color: '#f472b6',
+  quickSendSingleBtnText: {
+    color: '#60a5fa',
     fontSize: 10,
     fontWeight: '800',
   },
@@ -4583,7 +5191,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(236, 72, 153, 0.25)',
+    borderColor: 'rgba(37, 99, 235, 0.25)',
   },
   modalHeaderRow: {
     flexDirection: 'row',
@@ -4624,8 +5232,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   modalSubTabActive: {
-    backgroundColor: '#ec4899',
-    borderColor: '#f43f5e',
+    backgroundColor: '#2563eb',
+    borderColor: '#3b82f6',
   },
   modalSubTabText: {
     color: '#94a3b8',
@@ -4637,10 +5245,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   qrViewfinderBox: {
-    backgroundColor: 'rgba(236, 72, 153, 0.08)',
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#ec4899',
+    borderColor: '#2563eb',
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
@@ -4648,7 +5256,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   qrScanBtnTitle: {
-    color: '#f472b6',
+    color: '#60a5fa',
     fontSize: 14,
     fontWeight: '800',
     marginBottom: 3,
@@ -4728,7 +5336,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     borderRadius: 10,
-    backgroundColor: '#ec4899',
+    backgroundColor: '#2563eb',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -4762,5 +5370,748 @@ const styles = StyleSheet.create({
   win11FolderFront: {
     backgroundColor: '#fbbf24',
     borderRadius: 3,
+  },
+
+  /* Collapsible Navigation Sidebar Drawer */
+  brandLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  hamburgerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hamburgerBtnLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+  },
+  hamburgerIcon: {
+    color: '#60a5fa',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  hamburgerIconLight: {
+    color: '#2563eb',
+  },
+  drawerBackdrop: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  drawerDismissArea: {
+    flex: 1,
+  },
+  drawerPanel: {
+    width: 300,
+    height: '100%',
+    backgroundColor: '#0a1020',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(37, 99, 235, 0.25)',
+    paddingTop: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  drawerPanelLight: {
+    backgroundColor: '#ffffff',
+    borderRightColor: '#e2e8f0',
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(37, 99, 235, 0.15)',
+    marginBottom: 14,
+  },
+  drawerHeaderLight: {
+    borderBottomColor: '#e2e8f0',
+  },
+  drawerHeaderBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  drawerTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: -0.3,
+  },
+  drawerTitleLight: {
+    color: '#0f172a',
+  },
+  drawerSub: {
+    fontSize: 10,
+    color: '#60a5fa',
+    fontWeight: '700',
+  },
+  drawerCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerCloseBtnText: {
+    color: '#94a3b8',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  drawerConnCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 16,
+  },
+  drawerConnCardActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  drawerConnTitle: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  drawerConnSub: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  drawerNavList: {
+    flex: 1,
+  },
+  drawerNavItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 6,
+    backgroundColor: 'transparent',
+  },
+  drawerNavItemActive: {
+    backgroundColor: 'rgba(37, 99, 235, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+  },
+  drawerNavIcon: {
+    fontSize: 20,
+  },
+  drawerNavLabel: {
+    color: '#94a3b8',
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  drawerNavLabelActive: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+  drawerNavSub: {
+    color: '#64748b',
+    fontSize: 10,
+    marginTop: 1,
+  },
+  drawerThemeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginTop: 10,
+  },
+  drawerThemeRowLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  drawerThemeText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  drawerThemeTextLight: {
+    color: '#0f172a',
+  },
+  drawerFooter: {
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  drawerFooterLight: {
+    borderTopColor: '#e2e8f0',
+  },
+  drawerFooterText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  drawerUnpairBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  drawerUnpairBtnText: {
+    color: '#f87171',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  /* Dedicated Sort Modal */
+  modalDismissArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  sortModalCard: {
+    width: '88%',
+    maxWidth: 380,
+    backgroundColor: '#0d1527',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+    padding: 18,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  sortModalCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+  },
+  sortModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 8,
+  },
+  sortModalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  sortModalTitleLight: {
+    color: '#0f172a',
+  },
+  sortOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginVertical: 2,
+  },
+  sortOptionRowActive: {
+    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+  },
+  sortOptionLabel: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  sortOptionLabelActive: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+  sortOptionSub: {
+    color: '#64748b',
+    fontSize: 10.5,
+    marginTop: 1,
+  },
+  sortOptionCheckMark: {
+    color: '#60a5fa',
+    fontSize: 16,
+    fontWeight: '900',
+    marginLeft: 8,
+  },
+
+  /* Share Hub Bento Card on Mobile Homepage */
+  shareHubCountBadge: {
+    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.3)',
+  },
+  shareHubCountText: {
+    color: '#60a5fa',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  shareHubEmpty: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareHubEmptyTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  shareHubEmptyTitleLight: {
+    color: '#0f172a',
+  },
+  shareHubEmptySub: {
+    color: '#94a3b8',
+    fontSize: 11.5,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  shareHubList: {
+    marginTop: 6,
+  },
+  shareHubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    marginBottom: 6,
+  },
+  shareHubRowLight: {
+    backgroundColor: '#f8fafc',
+  },
+  shareHubFileName: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  shareHubFileNameLight: {
+    color: '#0f172a',
+  },
+  shareHubFileMeta: {
+    color: '#64748b',
+    fontSize: 10,
+    marginTop: 1,
+  },
+  shareHubStatusChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  shareHubStatusText: {
+    color: '#10b981',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  shareHubClearBtn: {
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  shareHubClearBtnText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  /* Enhanced Video Player Hub in Lightbox */
+  lightboxVideoHub: {
+    width: '90%',
+    maxWidth: 420,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  lightboxVideoPreviewCard: {
+    width: '100%',
+    borderRadius: 24,
+    backgroundColor: 'rgba(13, 21, 39, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  lightboxVideoGlowCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(37, 99, 235, 0.18)',
+    borderWidth: 2,
+    borderColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  lightboxVideoBigPlayBtn: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxVideoPlayIcon: {
+    color: '#ffffff',
+    fontSize: 28,
+    marginLeft: 4,
+  },
+  lightboxVideoName: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  lightboxVideoSub: {
+    color: '#94a3b8',
+    fontSize: 11.5,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  lightboxVideoActionGroup: {
+    width: '100%',
+    marginTop: 18,
+    gap: 10,
+  },
+  lightboxVideoPrimaryPlayBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  lightboxVideoPrimaryPlayBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  gridVideoThumbWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  gridVideoPlayBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridVideoPlayBadgeIcon: {
+    color: '#ffffff',
+    fontSize: 9,
+    marginLeft: 1,
+    fontWeight: '900',
+  },
+
+  /* Light Theme Overrides */
+  containerLight: {
+    backgroundColor: '#f8fafc',
+  },
+  topHeaderLight: {
+    backgroundColor: '#ffffff',
+    borderBottomColor: '#e2e8f0',
+  },
+  brandTitleLight: {
+    color: '#0f172a',
+  },
+  bentoCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    shadowColor: '#64748b',
+    shadowOpacity: 0.08,
+  },
+  bentoCardTitleLight: {
+    color: '#0f172a',
+  },
+  
+  /* Direct Share Device Picker Modal */
+  directShareCard: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: '#0d1527',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+    padding: 20,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  directShareCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+  },
+  directShareHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 16,
+  },
+  directShareTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  directShareTitleLight: {
+    color: '#0f172a',
+  },
+  directShareSub: {
+    fontSize: 11.5,
+    color: '#60a5fa',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  directShareDeviceList: {
+    gap: 10,
+    marginBottom: 14,
+  },
+  directShareDeviceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  directShareDeviceBtnActive: {
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+  },
+  directShareDeviceBtnLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  directShareIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(37, 99, 235, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  directShareIconEmoji: {
+    fontSize: 22,
+  },
+  directShareOnlineDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+  },
+  directShareDeviceName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  directShareDeviceNameLight: {
+    color: '#0f172a',
+  },
+  directShareDeviceMeta: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  directShareActionText: {
+    color: '#60a5fa',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  directShareCancelBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  directShareCancelBtnText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  /* Direct Share Device Picker Modal */
+  directShareCard: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: '#0d1527',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+    padding: 20,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  directShareCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+  },
+  directShareHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 16,
+  },
+  directShareTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  directShareTitleLight: {
+    color: '#0f172a',
+  },
+  directShareSub: {
+    fontSize: 11.5,
+    color: '#60a5fa',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  directShareDeviceList: {
+    gap: 10,
+    marginBottom: 14,
+  },
+  directShareDeviceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  directShareDeviceBtnActive: {
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+  },
+  directShareDeviceBtnLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  directShareIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(37, 99, 235, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  directShareIconEmoji: {
+    fontSize: 22,
+  },
+  directShareOnlineDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+  },
+  directShareDeviceName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  directShareDeviceNameLight: {
+    color: '#0f172a',
+  },
+  directShareDeviceMeta: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  directShareActionText: {
+    color: '#60a5fa',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  directShareCancelBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  directShareCancelBtnText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

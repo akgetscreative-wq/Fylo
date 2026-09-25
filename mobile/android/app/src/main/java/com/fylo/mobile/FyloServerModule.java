@@ -6,6 +6,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.BatteryManager;
@@ -18,6 +19,9 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import android.os.StrictMode;
+import android.content.ActivityNotFoundException;
 import android.database.Cursor;
 import android.provider.OpenableColumns;
 import com.facebook.react.bridge.ActivityEventListener;
@@ -206,6 +210,52 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
             });
         } catch (Throwable e) {
             safePromise.reject("CLIP_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void savePairedDevice(String hostPort, String hostName, String authToken, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putString("paired_pc", hostPort != null ? hostPort.trim() : "");
+            editor.putString("pc_hostname", hostName != null ? hostName.trim() : "");
+            editor.putString("pc_token", authToken != null ? authToken.trim() : "");
+            editor.apply();
+            safePromise.resolve(true);
+        } catch (Throwable e) {
+            Log.e(TAG, "savePairedDevice error: " + e.getMessage(), e);
+            safePromise.reject("PREF_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void getSavedPairedDevice(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            WritableMap map = Arguments.createMap();
+            map.putString("paired_pc", prefs.getString("paired_pc", ""));
+            map.putString("pc_hostname", prefs.getString("pc_hostname", ""));
+            map.putString("pc_token", prefs.getString("pc_token", ""));
+            safePromise.resolve(map);
+        } catch (Throwable e) {
+            Log.e(TAG, "getSavedPairedDevice error: " + e.getMessage(), e);
+            safePromise.reject("PREF_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void clearSavedPairedDevice(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            prefs.edit().clear().apply();
+            safePromise.resolve(true);
+        } catch (Throwable e) {
+            Log.e(TAG, "clearSavedPairedDevice error: " + e.getMessage(), e);
+            safePromise.reject("PREF_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
@@ -520,8 +570,102 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         }
     }
 
+    private static final int REQUEST_CODE_FILE_PICKER = 8842;
+    private SafePromise mPickerPromise;
+
+    @ReactMethod
+    public void openNativeFilePicker(boolean allowMultiple, Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity == null) {
+            SafePromise safePromise = new SafePromise(promise);
+            safePromise.reject("NO_ACTIVITY", "Current activity is unavailable");
+            return;
+        }
+
+        if (this.mPickerPromise != null) {
+            this.mPickerPromise.resolve(Arguments.createArray());
+            this.mPickerPromise = null;
+        }
+        this.mPickerPromise = new SafePromise(promise);
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            if (allowMultiple) {
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            }
+            currentActivity.startActivityForResult(intent, REQUEST_CODE_FILE_PICKER);
+        } catch (Throwable t) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                if (allowMultiple) {
+                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                }
+                currentActivity.startActivityForResult(intent, REQUEST_CODE_FILE_PICKER);
+            } catch (Throwable t2) {
+                Log.e(TAG, "openNativeFilePicker error: " + t2.getMessage(), t2);
+                if (this.mPickerPromise != null) {
+                    this.mPickerPromise.reject("PICKER_ERROR", t2.getMessage());
+                    this.mPickerPromise = null;
+                }
+            }
+        }
+    }
+
     @Override
     public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_FILE_PICKER) {
+            if (mPickerPromise != null) {
+                if (resultCode == Activity.RESULT_OK && data != null) {
+                    final Intent finalData = data;
+                    new Thread(() -> {
+                        WritableArray result = Arguments.createArray();
+                        try {
+                            List<Uri> uris = new ArrayList<>();
+                            if (finalData.getClipData() != null) {
+                                ClipData clipData = finalData.getClipData();
+                                for (int i = 0; i < clipData.getItemCount(); i++) {
+                                    Uri uri = clipData.getItemAt(i).getUri();
+                                    if (uri != null) uris.add(uri);
+                                }
+                            } else if (finalData.getData() != null) {
+                                uris.add(finalData.getData());
+                            }
+
+                            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                            File sharedDir = new File(downloadsDir, "FyloShared");
+                            if (!sharedDir.exists()) sharedDir.mkdirs();
+                            if (!sharedDir.canWrite()) {
+                                File externalFiles = reactContext.getExternalFilesDir(null);
+                                sharedDir = new File(externalFiles != null ? externalFiles : reactContext.getFilesDir(), "FyloShared");
+                                sharedDir.mkdirs();
+                            }
+
+                            for (Uri uri : uris) {
+                                WritableMap map = copySingleUri(uri, reactContext, sharedDir);
+                                if (map != null) {
+                                    result.pushMap(map);
+                                }
+                            }
+                        } catch (Throwable e) {
+                            Log.e(TAG, "Native file picker processing error: " + e.getMessage(), e);
+                        }
+                        if (mPickerPromise != null) {
+                            mPickerPromise.resolve(result);
+                            mPickerPromise = null;
+                        }
+                    }).start();
+                } else {
+                    mPickerPromise.resolve(Arguments.createArray());
+                    mPickerPromise = null;
+                }
+            }
+            return;
+        }
+
         try {
             IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
             if (result != null) {
@@ -591,6 +735,133 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         } catch (Throwable ignored) {}
     }
 
+    @ReactMethod
+    public void openVideoPlayer(String urlOrPath, String mimeType, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            if (urlOrPath == null || urlOrPath.trim().isEmpty()) {
+                safePromise.reject("INVALID_URL", "Video URL or path is empty");
+                return;
+            }
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            Uri uri;
+            if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://") || urlOrPath.startsWith("content://")) {
+                uri = Uri.parse(urlOrPath);
+            } else {
+                File file = new File(urlOrPath);
+                if (!file.exists()) {
+                    safePromise.reject("NOT_FOUND", "Video file does not exist: " + urlOrPath);
+                    return;
+                }
+                try {
+                    uri = FileProvider.getUriForFile(
+                        reactContext,
+                        reactContext.getPackageName() + ".provider",
+                        file
+                    );
+                } catch (Throwable t) {
+                    try {
+                        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
+                    } catch (Throwable ignored) {}
+                    uri = Uri.fromFile(file);
+                }
+            }
+
+            String type = (mimeType != null && !mimeType.trim().isEmpty() && !"undefined".equals(mimeType))
+                ? mimeType.trim() : "video/*";
+            intent.setDataAndType(uri, type);
+
+            Activity currentActivity = getCurrentActivity();
+            if (currentActivity != null) {
+                currentActivity.startActivity(intent);
+            } else {
+                reactContext.startActivity(intent);
+            }
+            safePromise.resolve(true);
+        } catch (ActivityNotFoundException anfe) {
+            Log.e(TAG, "No app available to play video: " + anfe.getMessage());
+            safePromise.reject("NO_PLAYER", "No video player app found to play this video.");
+        } catch (Throwable e) {
+            Log.e(TAG, "openVideoPlayer error: " + e.getMessage(), e);
+            safePromise.reject("PLAYER_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    public static WritableMap copySingleUri(Uri uri, Context context, File sharedDir) {
+        if (uri == null || context == null || sharedDir == null) return null;
+        try {
+            String displayName = null;
+            long fileSize = 0;
+
+            try (Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+                    if (nameIndex >= 0) displayName = cursor.getString(nameIndex);
+                    if (sizeIndex >= 0) fileSize = cursor.getLong(sizeIndex);
+                }
+            } catch (Throwable ignored) {}
+
+            if (displayName == null || displayName.trim().isEmpty()) {
+                displayName = uri.getLastPathSegment();
+            }
+            if (displayName == null || displayName.trim().isEmpty()) {
+                displayName = "shared_file_" + System.currentTimeMillis();
+            }
+            // Sanitize file name
+            displayName = displayName.replaceAll("[\\\\/:*?\"<>|]", "_");
+
+            File targetFile = new File(sharedDir, displayName);
+            // Avoid overwriting existing files with same name
+            if (targetFile.exists()) {
+                String nameWithoutExt = displayName;
+                String ext = "";
+                int dot = displayName.lastIndexOf('.');
+                if (dot > 0) {
+                    nameWithoutExt = displayName.substring(0, dot);
+                    ext = displayName.substring(dot);
+                }
+                targetFile = new File(sharedDir, nameWithoutExt + "_" + System.currentTimeMillis() + ext);
+            }
+
+            try (InputStream in = context.getContentResolver().openInputStream(uri);
+                 FileOutputStream out = new FileOutputStream(targetFile)) {
+                if (in != null) {
+                    byte[] buf = new byte[65536];
+                    int len;
+                    while ((len = in.read(buf)) > 0) {
+                        out.write(buf, 0, len);
+                    }
+                    out.flush();
+                }
+            }
+
+            if (fileSize <= 0) {
+                fileSize = targetFile.length();
+            }
+
+            String mimeType = context.getContentResolver().getType(uri);
+            if (mimeType == null) {
+                mimeType = "application/octet-stream";
+            }
+
+            WritableMap map = Arguments.createMap();
+            map.putString("name", targetFile.getName());
+            map.putString("path", targetFile.getAbsolutePath());
+            map.putDouble("size", (double) fileSize);
+            map.putString("mimeType", mimeType);
+            map.putString("uri", uri.toString());
+            return map;
+        } catch (Throwable t) {
+            Log.e(TAG, "copySingleUri error: " + uri, t);
+            return null;
+        }
+    }
+
     /**
      * Process incoming Android SEND and SEND_MULTIPLE share intents from any app
      */
@@ -650,71 +921,9 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
 
                 for (Uri uri : uris) {
                     if (uri == null) continue;
-                    try {
-                        String displayName = null;
-                        long fileSize = 0;
-
-                        try (Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
-                            if (cursor != null && cursor.moveToFirst()) {
-                                int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
-                                if (nameIndex >= 0) displayName = cursor.getString(nameIndex);
-                                if (sizeIndex >= 0) fileSize = cursor.getLong(sizeIndex);
-                            }
-                        } catch (Throwable ignored) {}
-
-                        if (displayName == null || displayName.trim().isEmpty()) {
-                            displayName = uri.getLastPathSegment();
-                        }
-                        if (displayName == null || displayName.trim().isEmpty()) {
-                            displayName = "shared_file_" + System.currentTimeMillis();
-                        }
-                        // Sanitize file name
-                        displayName = displayName.replaceAll("[\\\\/:*?\"<>|]", "_");
-
-                        File targetFile = new File(sharedDir, displayName);
-                        // Avoid overwriting existing files with same name
-                        if (targetFile.exists()) {
-                            String nameWithoutExt = displayName;
-                            String ext = "";
-                            int dot = displayName.lastIndexOf('.');
-                            if (dot > 0) {
-                                nameWithoutExt = displayName.substring(0, dot);
-                                ext = displayName.substring(dot);
-                            }
-                            targetFile = new File(sharedDir, nameWithoutExt + "_" + System.currentTimeMillis() + ext);
-                        }
-
-                        try (InputStream in = context.getContentResolver().openInputStream(uri);
-                             FileOutputStream out = new FileOutputStream(targetFile)) {
-                            if (in != null) {
-                                byte[] buf = new byte[65536];
-                                int len;
-                                while ((len = in.read(buf)) > 0) {
-                                    out.write(buf, 0, len);
-                                }
-                                out.flush();
-                            }
-                        }
-
-                        if (fileSize <= 0) {
-                            fileSize = targetFile.length();
-                        }
-
-                        String mimeType = context.getContentResolver().getType(uri);
-                        if (mimeType == null) {
-                            mimeType = "application/octet-stream";
-                        }
-
-                        WritableMap map = Arguments.createMap();
-                        map.putString("name", targetFile.getName());
-                        map.putString("path", targetFile.getAbsolutePath());
-                        map.putDouble("size", (double) fileSize);
-                        map.putString("mimeType", mimeType);
-                        map.putString("uri", uri.toString());
+                    WritableMap map = copySingleUri(uri, context, sharedDir);
+                    if (map != null) {
                         processedFiles.add(map);
-                    } catch (Throwable t) {
-                        Log.e(TAG, "Error copying shared uri: " + uri, t);
                     }
                 }
 

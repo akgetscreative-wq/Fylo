@@ -623,10 +623,12 @@ app.post('/api/register-folder', (req, res) => {
             type: 'folder',
             path: folderPath,
             fileCount: fileCount,
+            sharedAt: Date.now(),
+            downloadUrl: `/api/download/${id}`,
             ownerSessionId: req.sessionId || 'host'
         };
 
-        fileRegistry.push(folderEntry);
+        fileRegistry.unshift(folderEntry);
         res.json({ success: true, entry: folderEntry });
     } catch (e) {
         console.error('Folder registration error:', e);
@@ -635,7 +637,12 @@ app.post('/api/register-folder', (req, res) => {
 });
 
 app.get('/api/files', (req, res) => {
-    res.json(fileRegistry);
+    const sorted = [...fileRegistry].sort((a, b) => {
+        const timeA = Number(a.sharedAt || a.timestamp || a.modified || a.mtime || 0);
+        const timeB = Number(b.sharedAt || b.timestamp || b.modified || b.mtime || 0);
+        return timeB - timeA;
+    });
+    res.json(sorted);
 });
 
 app.delete('/api/files', (req, res) => {
@@ -896,7 +903,7 @@ app.post('/api/clipboard', (req, res) => {
     res.json({ success: true });
 });
 
-let clipboardSyncEnabled = true;
+let clipboardSyncEnabled = false;
 let lastSystemClipboardText = "";
 try {
     lastSystemClipboardText = clipboard.readText();
@@ -1353,7 +1360,38 @@ app.post('/api/mobile/fs/download-direct', (req, res) => {
 
         fileStream.on('finish', () => {
             fileStream.close();
-            res.json({ success: true, savedPath: saveDestination, fileName });
+            try {
+                const stat = fs.existsSync(saveDestination) ? fs.statSync(saveDestination) : null;
+                const size = stat ? stat.size : 0;
+                let sizeLabel = size + ' B';
+                if (size >= 1024 * 1024 * 1024) sizeLabel = (size / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+                else if (size >= 1024 * 1024) sizeLabel = (size / (1024 * 1024)).toFixed(1) + ' MB';
+                else if (size >= 1024) sizeLabel = (size / 1024).toFixed(1) + ' KB';
+                const ext = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
+                const fileId = crypto.randomBytes(8).toString('hex') + Date.now().toString(36);
+                const entry = {
+                    id: fileId,
+                    name: fileName,
+                    size: size,
+                    sizeLabel: sizeLabel,
+                    ext: ext,
+                    type: 'file',
+                    path: saveDestination,
+                    uploadedBy: (device && device.name) || 'Mobile Phone',
+                    sharedAt: Date.now(),
+                    downloadUrl: `/api/download/${fileId}`,
+                    ownerSessionId: req.sessionId || 'mobile'
+                };
+                const existingIdx = fileRegistry.findIndex(x => (x.path && x.path === saveDestination) || (x.name === fileName && x.size === size));
+                if (existingIdx >= 0) {
+                    fileRegistry[existingIdx] = entry;
+                } else {
+                    fileRegistry.unshift(entry);
+                }
+            } catch (err) {
+                console.warn('download-direct registry error:', err);
+            }
+            res.json({ success: true, savedPath: saveDestination, fileName, entry });
         });
     });
 
@@ -1362,6 +1400,55 @@ app.post('/api/mobile/fs/download-direct', (req, res) => {
         fs.unlink(saveDestination, () => {});
         res.status(502).json({ error: err.message });
     });
+});
+
+// Share event notification from mobile (registers sent or direct shared files to Share Hub)
+app.post('/api/files/share-event', (req, res) => {
+    try {
+        const { files, deviceName, savedPath } = req.body;
+        const incoming = Array.isArray(files) ? files : (files ? [files] : (req.body.name ? [req.body] : []));
+        for (const f of incoming) {
+            if (!f || !f.name) continue;
+            const ext = (f.name.lastIndexOf('.') > 0) ? f.name.substring(f.name.lastIndexOf('.') + 1).toLowerCase() : (f.ext || '');
+            let size = typeof f.size === 'number' ? f.size : 0;
+            const localFilePath = f.savedPath || (f.path && fs.existsSync(f.path) ? f.path : path.join(downloadFolder, f.name));
+            if (!size && localFilePath && fs.existsSync(localFilePath)) {
+                try { size = fs.statSync(localFilePath).size; } catch (e) {}
+            }
+            let sizeLabel = f.sizeLabel;
+            if (!sizeLabel) {
+                if (size >= 1024 * 1024 * 1024) sizeLabel = (size / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+                else if (size >= 1024 * 1024) sizeLabel = (size / (1024 * 1024)).toFixed(1) + ' MB';
+                else if (size >= 1024) sizeLabel = (size / 1024).toFixed(1) + ' KB';
+                else sizeLabel = size + ' B';
+            }
+
+            const fileId = f.id || crypto.randomBytes(8).toString('hex') + Date.now().toString(36);
+            const entry = {
+                id: fileId,
+                name: f.name,
+                size: size,
+                sizeLabel: sizeLabel,
+                ext: ext,
+                type: 'file',
+                path: localFilePath,
+                uploadedBy: f.uploadedBy || deviceName || (req.body.device ? req.body.device.name : 'Mobile Phone'),
+                sharedAt: f.sharedAt || Date.now(),
+                downloadUrl: f.downloadUrl || `/api/download/${fileId}`,
+                ownerSessionId: f.ownerSessionId || req.sessionId || 'mobile'
+            };
+            const existingIdx = fileRegistry.findIndex(x => (localFilePath && x.path === localFilePath) || (x.name === f.name && x.size === size));
+            if (existingIdx >= 0) {
+                fileRegistry[existingIdx] = { ...fileRegistry[existingIdx], ...entry, sharedAt: Date.now() };
+            } else {
+                fileRegistry.unshift(entry);
+            }
+        }
+        res.json({ success: true, count: fileRegistry.length });
+    } catch (err) {
+        console.error('share-event error:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Direct upload/push from PC to Phone (Electron Host feature)
@@ -1392,6 +1479,37 @@ app.post('/api/mobile/fs/upload-direct', (req, res) => {
             let body = '';
             remoteRes.on('data', chunk => body += chunk);
             remoteRes.on('end', () => {
+                // Register transferred file in fileRegistry
+                try {
+                    const fileId = crypto.randomBytes(8).toString('hex') + Date.now().toString(36);
+                    let sizeLabel = stat.size + ' B';
+                    if (stat.size >= 1024 * 1024 * 1024) sizeLabel = (stat.size / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+                    else if (stat.size >= 1024 * 1024) sizeLabel = (stat.size / (1024 * 1024)).toFixed(1) + ' MB';
+                    else if (stat.size >= 1024) sizeLabel = (stat.size / 1024).toFixed(1) + ' KB';
+                    const ext = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
+                    const entry = {
+                        id: fileId,
+                        name: fileName,
+                        size: stat.size,
+                        sizeLabel: sizeLabel,
+                        ext: ext,
+                        type: 'file',
+                        path: filePath,
+                        uploadedBy: 'My PC',
+                        sharedAt: Date.now(),
+                        downloadUrl: `/api/download/${fileId}`,
+                        ownerSessionId: req.sessionId || 'host'
+                    };
+                    const existingIdx = fileRegistry.findIndex(x => (x.path && x.path === filePath) || (x.name === fileName && x.size === stat.size));
+                    if (existingIdx >= 0) {
+                        fileRegistry[existingIdx].sharedAt = Date.now();
+                    } else {
+                        fileRegistry.unshift(entry);
+                    }
+                } catch (regErr) {
+                    console.warn('upload-direct registry error:', regErr);
+                }
+
                 try {
                     const parsed = JSON.parse(body);
                     res.json(parsed);
@@ -1432,6 +1550,33 @@ app.post('/api/mobile/fs/upload-stream', (req, res) => {
         let body = '';
         remoteRes.on('data', chunk => body += chunk);
         remoteRes.on('end', () => {
+            // Register in fileRegistry
+            try {
+                const fileSize = parseInt(req.headers['content-length'] || 0, 10);
+                const fileId = crypto.randomBytes(8).toString('hex') + Date.now().toString(36);
+                let sizeLabel = fileSize + ' B';
+                if (fileSize >= 1024 * 1024 * 1024) sizeLabel = (fileSize / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+                else if (fileSize >= 1024 * 1024) sizeLabel = (fileSize / (1024 * 1024)).toFixed(1) + ' MB';
+                else if (fileSize >= 1024) sizeLabel = (fileSize / 1024).toFixed(1) + ' KB';
+                const ext = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
+                const entry = {
+                    id: fileId,
+                    name: fileName,
+                    size: fileSize,
+                    sizeLabel: sizeLabel,
+                    ext: ext,
+                    type: 'file',
+                    path: null,
+                    uploadedBy: 'My PC',
+                    sharedAt: Date.now(),
+                    downloadUrl: `/api/download/${fileId}`,
+                    ownerSessionId: req.sessionId || 'host'
+                };
+                fileRegistry.unshift(entry);
+            } catch (streamErr) {
+                console.warn('upload-stream registry error:', streamErr);
+            }
+
             try {
                 res.json(JSON.parse(body));
             } catch (e) {
@@ -1639,6 +1784,9 @@ app.get('/api/pc/explorer/list', (req, res) => {
         items.sort((a, b) => {
             if (a.isDir && !b.isDir) return -1;
             if (!a.isDir && b.isDir) return 1;
+            const timeA = Number(a.modified || 0);
+            const timeB = Number(b.modified || 0);
+            if (timeA !== timeB) return timeB - timeA;
             return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
         });
 
