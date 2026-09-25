@@ -161,6 +161,13 @@ app.use((req, res, next) => {
         if (/android/i.test(userAgent)) {
             kind = 'android';
             name = 'Android Phone';
+            const uaMatch = userAgent.match(/Android[^;]+;\s*([^;\)]+)/i);
+            if (uaMatch && uaMatch[1]) {
+                const rawModel = uaMatch[1].trim().replace(/Build\/.*$/, '').trim();
+                if (rawModel && rawModel.length < 35 && !rawModel.startsWith('wv')) {
+                    name = rawModel;
+                }
+            }
         } else if (/iphone|ipad|ipod/i.test(userAgent)) {
             kind = 'ios';
             name = 'iPhone / iPad';
@@ -722,8 +729,25 @@ setInterval(() => {
 
 app.get('/api/devices', (req, res) => {
     const now = Date.now();
-    const deviceList = Object.values(devices).map(d => {
-        const isOnline = (now - d.lastActive) < 15000;
+    const deviceMap = { ...devices };
+
+    // Include native mobile devices if not already present
+    Object.values(mobileDevices).forEach(m => {
+        if (!deviceMap[m.id]) {
+            deviceMap[m.id] = {
+                id: m.id,
+                name: m.name || m.model || 'Android Phone',
+                kind: 'android',
+                isHost: false,
+                lastActive: m.lastActive
+            };
+        } else {
+            deviceMap[m.id].lastActive = Math.max(deviceMap[m.id].lastActive || 0, m.lastActive || 0);
+        }
+    });
+
+    const deviceList = Object.values(deviceMap).map(d => {
+        const isOnline = (now - d.lastActive) < 25000;
         return {
             id: d.id,
             name: d.name,
@@ -785,31 +809,51 @@ app.post('/api/mobile/connect', (req, res) => {
                        req.ip.includes('192.168.') || req.ip.includes('10.') || req.ip.includes('172.') ||
                        req.ip.includes('::ffff:192.168.') || req.ip.includes('::ffff:10.');
 
-    if (authToken && authToken !== secretToken && authToken !== 'lan') {
+    if (authToken && authToken !== secretToken && authToken !== 'lan' && !isLocalReq) {
         return res.status(403).json({ error: 'Invalid authentication token. Please scan the QR code on PC.' });
     }
 
-    if (!deviceId || !ip || !port) {
+    if (!deviceId) {
         return res.status(400).json({ error: 'Missing device information' });
     }
 
+    // Resolve real client IP: if mobile provided a valid LAN IP, use it. Otherwise use socket remoteAddress.
+    let resolvedIp = ip;
+    const socketRemote = (req.socket.remoteAddress || req.ip || '').replace(/^.*:/, '');
+    if (!resolvedIp || resolvedIp === '127.0.0.1' || resolvedIp === 'Detecting...' || resolvedIp.startsWith('127.')) {
+        resolvedIp = socketRemote || '127.0.0.1';
+    }
+
+    const phonePort = port ? parseInt(port, 10) : 8080;
+    const phoneName = deviceName || model || 'Android Phone';
+
     mobileDevices[deviceId] = {
         id: deviceId,
-        name: deviceName || 'Android Phone',
+        name: phoneName,
         model: model || 'Android Device',
-        ip: ip,
-        port: port,
+        ip: resolvedIp,
+        port: phonePort,
         readOnly: readOnly !== undefined ? readOnly : true,
         storage: storage || { total: 0, free: 0 },
         battery: battery !== undefined ? battery : null,
         lastActive: Date.now()
     };
 
-    console.log(`[Fylo v4] Mobile connected: ${deviceName} (${ip}:${port}), Read-Only: ${readOnly}`);
+    // Mirror to general devices map for global dashboard & devices view
+    devices[deviceId] = {
+        id: deviceId,
+        name: phoneName,
+        kind: 'android',
+        isHost: false,
+        lastActive: Date.now()
+    };
+
+    console.log(`[Fylo v4] Mobile connected: ${phoneName} (${resolvedIp}:${phonePort}), Read-Only: ${readOnly}`);
     res.json({ 
         success: true, 
         message: 'Paired with Fylo PC', 
         hostIp: getActiveIp(),
+        hostName: os.hostname(),
         authToken: secretToken 
     });
 });
@@ -826,8 +870,33 @@ app.get('/api/mobile/devices', (req, res) => {
         readOnly: d.readOnly,
         storage: d.storage,
         battery: d.battery,
-        online: (now - d.lastActive) < 30000
+        online: (now - d.lastActive) < 30000,
+        isWebClient: false
     }));
+
+    // If no native mobile app is online, check if any Android/Mobile web clients are active (e.g. scanned with camera)
+    if (list.filter(d => d.online).length === 0) {
+        Object.values(devices).forEach(d => {
+            if (!d.isHost && (d.kind === 'android' || d.kind === 'mobile' || d.kind === 'ios')) {
+                const isOnline = (now - d.lastActive) < 25000;
+                if (isOnline) {
+                    list.push({
+                        id: d.id,
+                        name: d.name || 'Mobile Phone',
+                        model: 'Web Browser Companion',
+                        ip: d.ip || '',
+                        port: PORT,
+                        readOnly: true,
+                        storage: { total: 0, free: 0 },
+                        battery: null,
+                        online: true,
+                        isWebClient: true
+                    });
+                }
+            }
+        });
+    }
+
     res.json(list);
 });
 
@@ -839,9 +908,12 @@ app.post('/api/mobile/heartbeat', (req, res) => {
         if (battery !== undefined) mobileDevices[deviceId].battery = battery;
         if (storage) mobileDevices[deviceId].storage = storage;
         if (readOnly !== undefined) mobileDevices[deviceId].readOnly = readOnly;
+        if (devices[deviceId]) {
+            devices[deviceId].lastActive = Date.now();
+        }
         return res.json({ success: true });
     }
-    res.status(404).json({ error: 'Device not found' });
+    res.status(404).json({ error: 'Device not found', needReconnect: true });
 });
 
 // Disconnect mobile device
@@ -850,7 +922,39 @@ app.post('/api/mobile/disconnect', (req, res) => {
     if (deviceId && mobileDevices[deviceId]) {
         delete mobileDevices[deviceId];
     }
+    if (deviceId && devices[deviceId]) {
+        delete devices[deviceId];
+    }
     res.json({ success: true });
+});
+
+// Direct APK Download Endpoint
+const apkCandidates = [
+    path.join(__dirname, 'dist', 'fylo-4.0.0.apk'),
+    path.join(__dirname, 'dist', 'fylo-v4.0.0.apk', 'app-release.apk'),
+    path.join(__dirname, 'dist', 'fylo-v4.0.0.apk'),
+    path.join(__dirname, 'mobile', 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk')
+];
+
+function getExistingApkPath() {
+    for (const p of apkCandidates) {
+        try {
+            if (fs.existsSync(p) && fs.statSync(p).isFile()) {
+                return p;
+            }
+        } catch(e) {}
+    }
+    return null;
+}
+
+app.get(['/fylo.apk', '/api/apk/download'], (req, res) => {
+    const apkPath = getExistingApkPath();
+    if (apkPath) {
+        res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+        res.setHeader('Content-Disposition', 'attachment; filename="fylo-v4.0.0.apk"');
+        return res.sendFile(apkPath);
+    }
+    res.status(404).send('Fylo APK file not found on PC host.');
 });
 
 // Proxy directory listing from mobile

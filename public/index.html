@@ -2600,6 +2600,8 @@
 
         #startup-landing.hidden-landing {
             opacity: 0 !important;
+            visibility: hidden !important;
+            display: none !important;
             pointer-events: none !important;
             transform: scale(0.96) !important;
         }
@@ -5873,14 +5875,10 @@
                 if ($('#top-current-view-tagline')) $('#top-current-view-tagline').textContent = meta.tagline;
             }
 
-            // Show prominent Back to Dashboard button on feature views, hide on dashboard
+            // Keep topBackBtn hidden to preserve clean pill navigation bar
             const topBackBtn = $('#top-back-dashboard-btn');
             if (topBackBtn) {
-                if (targetId === 'view-dashboard') {
-                    topBackBtn.classList.add('hidden');
-                } else {
-                    topBackBtn.classList.remove('hidden');
-                }
+                topBackBtn.classList.add('hidden');
             }
 
             if (targetId === 'view-pc-explorer' && (!currentPCPath || currentPCItems.length === 0)) {
@@ -6037,17 +6035,29 @@
                 let totalDevices = 0;
                 let deviceNames = [];
 
+                if (mDevRes.ok) {
+                    const mData = await mDevRes.json();
+                    const mDevs = (Array.isArray(mData) ? mData : Object.values(mData || {})).filter(d => d.online);
+                    mDevs.forEach(d => {
+                        const name = d.name || d.model || 'Android Phone';
+                        if (!deviceNames.includes(name)) {
+                            deviceNames.push(name);
+                            totalDevices++;
+                        }
+                    });
+                }
                 if (devRes.ok) {
                     const dData = await devRes.json();
                     const devs = Array.isArray(dData) ? dData : (dData.devices || []);
-                    totalDevices += devs.length;
-                    devs.forEach(d => deviceNames.push(d.name || d.ip || 'LAN Device'));
-                }
-                if (mDevRes.ok) {
-                    const mData = await mDevRes.json();
-                    const mDevs = Object.values(mData || {});
-                    totalDevices += mDevs.length;
-                    mDevs.forEach(d => deviceNames.push(d.name || 'Android Phone'));
+                    // Filter out PC self / host so we only count remote connected clients
+                    const remoteDevs = devs.filter(d => !d.isSelf && !d.isHost && d.online);
+                    remoteDevs.forEach(d => {
+                        const name = d.name || 'Remote Client';
+                        if (!deviceNames.includes(name)) {
+                            deviceNames.push(name);
+                            totalDevices++;
+                        }
+                    });
                 }
 
                 const badgeEl = $('#dash-connected-badge');
@@ -6057,7 +6067,7 @@
                     if (totalDevices === 0) {
                         devListEl.innerHTML = '<span style="opacity: 0.7;">No devices connected yet. Scan QR code from phone to link.</span>';
                     } else {
-                        devListEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 4px;">${deviceNames.map(name => `<span style="display: flex; align-items: center; gap: 6px;"><span class="pill-dot live-pulse"></span> ${escapeHtml(name)}</span>`).join('')}</div>`;
+                        devListEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 6px;">${deviceNames.map(name => `<span style="display: flex; align-items: center; gap: 8px; font-weight: 700;"><span class="pill-dot live-pulse"></span> ${escapeHtml(name)}</span>`).join('')}</div>`;
                     }
                 }
             } catch (err) {
@@ -7681,15 +7691,21 @@
                 mobileDeviceList = Array.isArray(devices) ? devices : [];
 
                 const onlineDevices = mobileDeviceList.filter(d => d.online);
-                const badge = $('#phone-nav-badge');
-                if (badge) {
-                    if (onlineDevices.length > 0) {
-                        badge.textContent = onlineDevices.length;
-                        badge.classList.remove('hidden');
-                    } else {
-                        badge.classList.add('hidden');
+                const nativeOnlineDevices = onlineDevices.filter(d => !d.isWebClient);
+                const webOnlineDevices = onlineDevices.filter(d => d.isWebClient);
+
+                // Update sync badges across sidebar and top nav pill
+                const badges = [$('#phone-nav-badge'), $('#top-phone-sync-badge')];
+                badges.forEach(badge => {
+                    if (badge) {
+                        if (onlineDevices.length > 0) {
+                            badge.textContent = onlineDevices.length;
+                            badge.classList.remove('hidden');
+                        } else {
+                            badge.classList.add('hidden');
+                        }
                     }
-                }
+                });
 
                 const emptyContainer = $('#phone-empty-container');
                 const activeContainer = $('#phone-active-container');
@@ -7702,39 +7718,83 @@
                     currentPhoneId = null;
                     if (topPhoneVal) topPhoneVal.textContent = 'Phone Disconnected';
                     if (topPhoneDot) topPhoneDot.classList.remove('live-pulse');
+                    const webBanner = $('#phone-web-paired-banner');
+                    if (webBanner) webBanner.remove();
                     return;
                 }
 
-                if (topPhoneVal) topPhoneVal.textContent = `${onlineDevices[0].name || 'Phone'} (Connected)`;
-                if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
+                if (nativeOnlineDevices.length > 0) {
+                    // Native Fylo Android APK Connected: Full active workspace
+                    const primaryDevice = nativeOnlineDevices[0];
+                    if (topPhoneVal) topPhoneVal.textContent = `${primaryDevice.name || 'Phone'} (Connected)`;
+                    if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
 
-                if (emptyContainer) emptyContainer.classList.add('hidden');
-                if (activeContainer) activeContainer.classList.remove('hidden');
+                    if (emptyContainer) emptyContainer.classList.add('hidden');
+                    if (activeContainer) activeContainer.classList.remove('hidden');
 
-                // If no device currently selected, pick the first
-                if (!currentPhoneId || !onlineDevices.some(d => d.id === currentPhoneId)) {
-                    currentPhoneId = onlineDevices[0].id;
-                    updatePhoneHeader(onlineDevices[0]);
-                    fetchPhoneFolder(currentPhonePath, false);
-                } else {
-                    const currentDev = onlineDevices.find(d => d.id === currentPhoneId);
-                    if (currentDev) updatePhoneHeader(currentDev);
-                }
+                    // If no device currently selected, pick the first native device
+                    if (!currentPhoneId || !nativeOnlineDevices.some(d => d.id === currentPhoneId)) {
+                        currentPhoneId = primaryDevice.id;
+                        updatePhoneHeader(primaryDevice);
+                        fetchPhoneFolder(currentPhonePath || '/storage/emulated/0', false);
+                    } else {
+                        const currentDev = nativeOnlineDevices.find(d => d.id === currentPhoneId) || primaryDevice;
+                        updatePhoneHeader(currentDev);
+                    }
 
-                // Update device dropdown if multiple phones
-                const selector = $('#phone-device-selector');
-                if (selector && onlineDevices.length > 1) {
-                    selector.style.display = 'block';
-                    selector.innerHTML = '';
-                    onlineDevices.forEach(d => {
-                        const opt = document.createElement('option');
-                        opt.value = d.id;
-                        opt.textContent = `${d.name} (${d.model})`;
-                        opt.selected = (d.id === currentPhoneId);
-                        selector.appendChild(opt);
-                    });
-                } else if (selector) {
-                    selector.style.display = 'none';
+                    // Update device dropdown if multiple phones
+                    const selector = $('#phone-device-selector');
+                    if (selector && nativeOnlineDevices.length > 1) {
+                        selector.style.display = 'block';
+                        selector.innerHTML = '';
+                        nativeOnlineDevices.forEach(d => {
+                            const opt = document.createElement('option');
+                            opt.value = d.id;
+                            opt.textContent = `${d.name} (${d.model})`;
+                            opt.selected = (d.id === currentPhoneId);
+                            selector.appendChild(opt);
+                        });
+                    } else if (selector) {
+                        selector.style.display = 'none';
+                    }
+                } else if (webOnlineDevices.length > 0) {
+                    // Mobile Web Client Connected (e.g. via Camera QR scan)
+                    const webDev = webOnlineDevices[0];
+                    if (topPhoneVal) topPhoneVal.textContent = `${webDev.name || 'Phone'} (Web Linked)`;
+                    if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
+
+                    if (emptyContainer) emptyContainer.classList.remove('hidden');
+                    if (activeContainer) activeContainer.classList.add('hidden');
+
+                    // Inject active web client indicator card into pairing studio
+                    let webBanner = $('#phone-web-paired-banner');
+                    if (!webBanner && emptyContainer) {
+                        webBanner = document.createElement('div');
+                        webBanner.id = 'phone-web-paired-banner';
+                        webBanner.style.cssText = 'margin-bottom: 16px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 16px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; box-shadow: 0 8px 24px rgba(0,0,0,0.25);';
+                        emptyContainer.insertBefore(webBanner, emptyContainer.firstChild);
+                    }
+                    if (webBanner) {
+                        webBanner.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="font-size: 2rem;">📱</div>
+                                <div>
+                                    <div style="font-weight: 800; font-size: 1rem; color: #60a5fa; display: flex; align-items: center; gap: 8px;">
+                                        <span>${escapeHtml(webDev.name)} Linked via Browser</span>
+                                        <span class="pill-dot live-pulse"></span>
+                                    </div>
+                                    <div style="font-size: 0.82rem; color: var(--text-light); margin-top: 2px;">
+                                        For full PC-like folder navigation, camera photos, and background file streaming even when your screen is locked, launch the Fylo APK on your phone.
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="/fylo.apk" download="fylo-v4.0.0.apk" class="btn btn-accent" style="padding: 9px 16px; font-size: 0.85rem; font-weight: 800; text-decoration: none; border-radius: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                                    📥 Download Fylo APK
+                                </a>
+                            </div>
+                        `;
+                    }
                 }
             } catch (err) {
                 console.error('loadMobileDevices error:', err);
@@ -7745,13 +7805,21 @@
             if ($('#phone-name-display')) $('#phone-name-display').textContent = device.name || 'Android Phone';
             if ($('#phone-model-display')) $('#phone-model-display').textContent = device.model || 'Android Device';
             if ($('#phone-battery-display')) {
-                $('#phone-battery-display').textContent = device.battery !== null ? `🔋 ${device.battery}%` : '🔋 Connected';
+                $('#phone-battery-display').textContent = (device.battery !== null && device.battery !== undefined && device.battery >= 0)
+                    ? `🔋 ${device.battery}%`
+                    : '🔋 Connected';
             }
             if ($('#phone-storage-display')) {
-                if (device.storage && device.storage.total > 0) {
-                    const freeGB = (device.storage.free / (1024 * 1024 * 1024)).toFixed(1);
-                    const totalGB = (device.storage.total / (1024 * 1024 * 1024)).toFixed(1);
-                    $('#phone-storage-display').textContent = `💾 ${freeGB} GB free of ${totalGB} GB`;
+                if (device.storage) {
+                    if (typeof device.storage.freeGB === 'string' && device.storage.freeGB !== '--') {
+                        $('#phone-storage-display').textContent = `💾 ${device.storage.freeGB} free of ${device.storage.totalGB}`;
+                    } else if (device.storage.total > 0) {
+                        const freeGB = (device.storage.free / (1024 * 1024 * 1024)).toFixed(1);
+                        const totalGB = (device.storage.total / (1024 * 1024 * 1024)).toFixed(1);
+                        $('#phone-storage-display').textContent = `💾 ${freeGB} GB free of ${totalGB} GB`;
+                    } else {
+                        $('#phone-storage-display').textContent = `💾 Storage: Active`;
+                    }
                 } else {
                     $('#phone-storage-display').textContent = `💾 Storage: Active`;
                 }
@@ -7777,6 +7845,18 @@
             }
             updateNavButtons();
 
+            // Highlight corresponding common shelf folder chip
+            document.querySelectorAll('#phone-common-shelf .common-folder-card').forEach(card => {
+                const cp = card.getAttribute('data-path');
+                if (cp && targetPath && (targetPath === cp || targetPath.startsWith(cp))) {
+                    card.style.borderColor = 'var(--accent)';
+                    card.style.background = 'rgba(255,255,255,0.06)';
+                } else {
+                    card.style.borderColor = '';
+                    card.style.background = '';
+                }
+            });
+
             const grid = $('#phone-grid-view');
             if (grid) {
                 grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-light); font-weight: 600;">Loading folder contents...</div>';
@@ -7785,7 +7865,21 @@
             try {
                 const res = await apiFetch(`/api/mobile/fs/list?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(targetPath)}`);
                 if (!res.ok) {
-                    if (grid) grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--danger-text); font-weight: 700;">Could not load folder from phone. Check connection.</div>';
+                    let errData = {};
+                    try { errData = await res.json(); } catch(e) {}
+                    if (res.status === 403 || errData.permissionRequired) {
+                        if (grid) grid.innerHTML = `
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+                                <div style="font-size: 2rem; margin-bottom: 8px;">🔒</div>
+                                <div style="color: #f59e0b; font-weight: 800; font-size: 1.1rem; margin-bottom: 4px;">Storage Permission Required on Phone</div>
+                                <div style="color: var(--text-light); font-size: 0.85rem; max-width: 420px; margin: 0 auto;">
+                                    Please open the Fylo app on your Android phone and grant "All Files Access" permission to browse files.
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        if (grid) grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--danger-text); font-weight: 700;">Could not load folder: ${escapeHtml(errData.error || 'Check connection')}</div>`;
+                    }
                     return;
                 }
                 const data = await res.json();

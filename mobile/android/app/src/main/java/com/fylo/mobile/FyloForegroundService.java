@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.IBinder;
@@ -22,6 +23,7 @@ public class FyloForegroundService extends Service {
 
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
+    private static final Object SERVER_LOCK = new Object();
     private static FyloHttpServer httpServer;
 
     @Override
@@ -29,21 +31,44 @@ public class FyloForegroundService extends Service {
         super.onCreate();
         createNotificationChannel();
 
-        // Acquire WakeLock to prevent CPU sleep when phone screen is locked
+        // Safely acquire WakeLock with timeout and SecurityException guard
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if (pm != null) {
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Fylo:ServerWakeLock");
-            wakeLock.acquire();
+            try {
+                wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Fylo:ServerWakeLock");
+                wakeLock.setReferenceCounted(false);
+                // 12-hour auto-release safety timeout to prevent permanent battery drain if app is abandoned
+                wakeLock.acquire(12 * 60 * 60 * 1000L);
+            } catch (SecurityException se) {
+                Log.w(TAG, "WakeLock permission denied: " + se.getMessage());
+                wakeLock = null;
+            } catch (Throwable t) {
+                Log.w(TAG, "WakeLock acquire error: " + t.getMessage());
+                wakeLock = null;
+            }
         }
 
-        // Acquire WifiLock to prevent Wi-Fi chip from sleeping
+        // Safely acquire WifiLock with modern mode selection
         WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wm != null) {
-            wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Fylo:WifiLock");
-            wifiLock.acquire();
+            try {
+                int wifiMode = WifiManager.WIFI_MODE_FULL_HIGH_PERF;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    wifiMode = WifiManager.WIFI_MODE_FULL_LOW_LATENCY;
+                }
+                wifiLock = wm.createWifiLock(wifiMode, "Fylo:WifiLock");
+                wifiLock.setReferenceCounted(false);
+                wifiLock.acquire();
+            } catch (SecurityException se) {
+                Log.w(TAG, "WifiLock permission denied: " + se.getMessage());
+                wifiLock = null;
+            } catch (Throwable t) {
+                Log.w(TAG, "WifiLock acquire error: " + t.getMessage());
+                wifiLock = null;
+            }
         }
 
-        Log.i(TAG, "FyloForegroundService created with WakeLock & WifiLock");
+        Log.i(TAG, "FyloForegroundService created");
     }
 
     @Override
@@ -53,80 +78,135 @@ public class FyloForegroundService extends Service {
         String authToken = intent != null ? intent.getStringExtra("authToken") : null;
 
         Notification notification = createNotification(port);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "startForeground failed (API " + Build.VERSION.SDK_INT + "): " + t.getMessage());
         }
 
-        if (httpServer == null) {
-            try {
-                httpServer = new FyloHttpServer(this, port, readOnly);
-                if (authToken != null && !authToken.trim().isEmpty()) {
-                    httpServer.setAuthToken(authToken);
+        synchronized (SERVER_LOCK) {
+            if (httpServer == null) {
+                try {
+                    httpServer = new FyloHttpServer(this, port, readOnly);
+                    if (authToken != null && !authToken.trim().isEmpty()) {
+                        httpServer.setAuthToken(authToken.trim());
+                    }
+                    httpServer.start();
+                    Log.i(TAG, "Fylo HTTP Server started inside Foreground Service on port " + port);
+                } catch (Throwable e) {
+                    Log.e(TAG, "Failed to start HTTP server", e);
                 }
-                httpServer.start();
-                Log.i(TAG, "Fylo HTTP Server started inside Foreground Service");
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to start HTTP server", e);
+            } else {
+                httpServer.setReadOnly(readOnly);
+                if (authToken != null && !authToken.trim().isEmpty()) {
+                    httpServer.setAuthToken(authToken.trim());
+                }
             }
-        } else if (authToken != null && !authToken.trim().isEmpty()) {
-            httpServer.setAuthToken(authToken);
         }
 
         return START_STICKY;
     }
 
     public static FyloHttpServer getHttpServer() {
-        return httpServer;
+        synchronized (SERVER_LOCK) {
+            return httpServer;
+        }
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Fylo Service",
-                    NotificationManager.IMPORTANCE_LOW
-            );
-            channel.setDescription("Keeps Fylo server running when phone is locked");
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
+            try {
+                NotificationChannel channel = new NotificationChannel(
+                        CHANNEL_ID,
+                        "Fylo Background Service",
+                        NotificationManager.IMPORTANCE_LOW
+                );
+                channel.setDescription("Keeps Fylo server running when phone is locked");
+                channel.setShowBadge(false);
+                NotificationManager manager = getSystemService(NotificationManager.class);
+                if (manager != null) {
+                    manager.createNotificationChannel(channel);
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "Failed to create notification channel: " + t.getMessage());
             }
         }
     }
 
     private Notification createNotification(int port) {
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                this, 0, notificationIntent,
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
-        );
+        PendingIntent pendingIntent = null;
+        try {
+            Intent notificationIntent = new Intent(this, MainActivity.class);
+            notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            int pFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                pFlags |= PendingIntent.FLAG_IMMUTABLE;
+            }
+            pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, pFlags);
+        } catch (Throwable t) {
+            Log.w(TAG, "Could not create PendingIntent: " + t.getMessage());
+        }
 
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
+        int iconRes = 0;
+        try {
+            iconRes = getApplicationInfo().icon;
+        } catch (Throwable ignored) {}
+        if (iconRes == 0) {
+            iconRes = android.R.drawable.stat_sys_upload;
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Fylo Mobile Server Active")
                 .setContentText("Listening on port " + port + " • Screen can be locked")
-                .setSmallIcon(android.R.drawable.stat_sys_upload)
-                .setContentIntent(pendingIntent)
+                .setSmallIcon(iconRes)
                 .setOngoing(true)
-                .build();
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE);
+
+        if (pendingIntent != null) {
+            builder.setContentIntent(pendingIntent);
+        }
+
+        return builder.build();
     }
 
     @Override
     public void onDestroy() {
-        if (httpServer != null) {
-            httpServer.stop();
-            httpServer = null;
+        synchronized (SERVER_LOCK) {
+            if (httpServer != null) {
+                try {
+                    httpServer.stop();
+                } catch (Throwable ignored) {}
+                httpServer = null;
+            }
         }
 
-        if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.release();
-            wakeLock = null;
+        if (wakeLock != null) {
+            try {
+                if (wakeLock.isHeld()) {
+                    wakeLock.release();
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "WakeLock release error: " + t.getMessage());
+            } finally {
+                wakeLock = null;
+            }
         }
 
-        if (wifiLock != null && wifiLock.isHeld()) {
-            wifiLock.release();
-            wifiLock = null;
+        if (wifiLock != null) {
+            try {
+                if (wifiLock.isHeld()) {
+                    wifiLock.release();
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "WifiLock release error: " + t.getMessage());
+            } finally {
+                wifiLock = null;
+            }
         }
 
         super.onDestroy();
@@ -135,7 +215,7 @@ public class FyloForegroundService extends Service {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        Log.i(TAG, "Fylo app removed from recent apps / background. Stopping server.");
+        Log.i(TAG, "Fylo app removed from recent apps / background. Stopping service.");
         stopSelf();
         super.onTaskRemoved(rootIntent);
     }
@@ -145,3 +225,4 @@ public class FyloForegroundService extends Service {
         return null;
     }
 }
+
