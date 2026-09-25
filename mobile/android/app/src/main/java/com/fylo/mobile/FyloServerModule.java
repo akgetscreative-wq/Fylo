@@ -312,6 +312,18 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
     }
 
     @ReactMethod
+    public void setDeviceId(String id, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+            prefs.edit().putString("device_id", id != null ? id.trim() : "").apply();
+            safePromise.resolve(true);
+        } catch (Throwable e) {
+            safePromise.reject("PREF_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
     public void getSavedPairedDevice(Promise promise) {
         SafePromise safePromise = new SafePromise(promise);
         try {

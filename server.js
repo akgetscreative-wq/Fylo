@@ -950,7 +950,7 @@ app.get('/api/devices', (req, res) => {
     });
 
     const deviceList = Object.values(deviceMap).map(d => {
-        const isOnline = (now - d.lastActive) <= 6000;
+        const isOnline = (now - d.lastActive) <= 35000;
         return {
             id: d.id,
             name: d.name,
@@ -1123,6 +1123,29 @@ app.post('/api/mobile/connect', (req, res) => {
 // Get connected mobile devices
 app.get('/api/mobile/devices', (req, res) => {
     const now = Date.now();
+    // Active keepalive probe to phone if screen is locked and heartbeat hasn't arrived in > 6s
+    Object.values(mobileDevices).forEach(d => {
+        if ((now - d.lastActive) > 6000 && (now - d.lastActive) <= 60000 && d.ip && d.port) {
+            const probeUrl = `http://${d.ip}:${d.port}/api/info?auth=${secretToken}`;
+            const probeReq = http.get(probeUrl, (pRes) => {
+                if (pRes.statusCode === 200) {
+                    let pData = '';
+                    pRes.on('data', c => pData += c);
+                    pRes.on('end', () => {
+                        try {
+                            const parsed = JSON.parse(pData);
+                            d.lastActive = Date.now();
+                            if (parsed.battery !== undefined && parsed.battery >= 0) d.battery = parsed.battery;
+                            if (parsed.name) d.name = parsed.name;
+                        } catch (e) {}
+                    });
+                }
+            });
+            probeReq.on('error', () => {});
+            probeReq.setTimeout(2000, () => probeReq.destroy());
+        }
+    });
+
     const list = Object.values(mobileDevices).map(d => ({
         id: d.id,
         name: d.name,
@@ -1133,14 +1156,14 @@ app.get('/api/mobile/devices', (req, res) => {
         allowFullPhoneAccess: d.allowFullPhoneAccess !== false,
         storage: d.storage,
         battery: d.battery,
-        online: (now - d.lastActive) <= 6000,
+        online: (now - d.lastActive) <= 35000,
         isWebClient: false
     }));
 
     // Include active remote web companion clients (e.g. mobile Chrome / Safari)
     Object.values(devices).forEach(d => {
         if (!d.isHost && (d.isWebClient || d.kind === 'android' || d.kind === 'mobile' || d.kind === 'ios') && !list.some(m => m.id === d.id)) {
-            const isOnline = (now - d.lastActive) <= 6000;
+            const isOnline = (now - d.lastActive) <= 35000;
             list.push({
                 id: d.id,
                 name: d.name || 'Mobile Phone',
@@ -1262,7 +1285,7 @@ app.get('/api/mobile/fs/list', (req, res) => {
         return res.status(404).json({ error: 'Mobile device not connected' });
     }
 
-    if (Date.now() - device.lastActive > 6000) {
+    if (Date.now() - device.lastActive > 35000) {
         return res.status(503).json({ error: 'Mobile device is offline', offline: true, items: [] });
     }
 
@@ -1305,12 +1328,18 @@ app.get('/api/mobile/fs/list', (req, res) => {
 // Proxy file stream from mobile (with Range support)
 app.get('/api/mobile/fs/file', (req, res) => {
     const { deviceId, path: filePath, download } = req.query;
-    const device = mobileDevices[deviceId];
+    let device = deviceId ? mobileDevices[deviceId] : null;
+    if (!device) {
+        const activeDevices = Object.values(mobileDevices).filter(d => (Date.now() - d.lastActive) <= 60000);
+        if (activeDevices.length > 0) {
+            device = activeDevices[0];
+        }
+    }
     if (!device) {
         return res.status(404).send('Mobile device not connected');
     }
 
-    if (Date.now() - device.lastActive > 6000) {
+    if (Date.now() - device.lastActive > 35000) {
         return res.status(503).send('Mobile device is offline');
     }
 

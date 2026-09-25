@@ -692,6 +692,9 @@ export default function App() {
 
   // Periodic device & server status check and persistent pairing restore
   useEffect(() => {
+    if (FyloModule && FyloModule.setDeviceId) {
+      FyloModule.setDeviceId(deviceIdRef.current).catch(() => {});
+    }
     // Restore pairing from Android SharedPreferences across app restarts
     if (FyloModule && FyloModule.getSavedPairedDevice) {
       FyloModule.getSavedPairedDevice()
@@ -766,7 +769,7 @@ export default function App() {
             readOnly: readOnlyMode,
             allowFullPhoneAccess: allowFullPhoneAccess !== false,
           }),
-        }, 2500); // 2.5s timeout — fail fast
+        }, 4000); // 4s timeout
 
         const roundTripMs = Date.now() - startTime;
 
@@ -778,20 +781,22 @@ export default function App() {
           // PC doesn't recognize us, try re-pairing
           handleConnectToPc(pairedPc, pcAuthToken);
         } else {
-          // Non-OK response — PC unreachable or erroring
-          setPingLatency(null);
-          setIsPcReachable(false);
           consecutiveFails++;
+          if (consecutiveFails >= 3) {
+            setPingLatency(null);
+            setIsPcReachable(false);
+          }
         }
       } catch (e) {
-        // Network error or timeout — immediately mark offline
-        setPingLatency(null);
-        setIsPcReachable(false);
         consecutiveFails++;
+        if (consecutiveFails >= 3) {
+          setPingLatency(null);
+          setIsPcReachable(false);
+        }
       }
 
-      // After 8 consecutive failures (~28s), fully unpair
-      if (consecutiveFails >= 8) {
+      // After 10 consecutive failures (~40s), unpair
+      if (consecutiveFails >= 10) {
         addLog(`Lost connection to PC at ${pairedPc}`);
         setPairedPc(null);
         setPingLatency(null);

@@ -12,9 +12,21 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.content.SharedPreferences;
+import android.os.BatteryManager;
+import android.content.IntentFilter;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import org.json.JSONObject;
+
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class FyloForegroundService extends Service {
     private static final String TAG = "FyloForegroundService";
@@ -25,6 +37,62 @@ public class FyloForegroundService extends Service {
     private WifiManager.WifiLock wifiLock;
     private static final Object SERVER_LOCK = new Object();
     private static FyloHttpServer httpServer;
+    private ScheduledExecutorService heartbeatExecutor;
+
+    private void startNativeHeartbeat() {
+        if (heartbeatExecutor != null && !heartbeatExecutor.isShutdown()) return;
+        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
+        heartbeatExecutor.scheduleWithFixedDelay(() -> {
+            try {
+                SharedPreferences prefs = getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+                String pairedPc = prefs.getString("paired_pc", "");
+                if (pairedPc == null || pairedPc.trim().isEmpty()) return;
+
+                String token = prefs.getString("pc_token", "");
+                String deviceId = prefs.getString("device_id", "");
+                if (deviceId.isEmpty()) {
+                    deviceId = Build.MANUFACTURER + "_" + Build.MODEL;
+                }
+
+                String urlStr = "http://" + pairedPc.trim() + "/api/mobile/heartbeat";
+                URL url = new URL(urlStr);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                if (token != null && !token.isEmpty()) {
+                    conn.setRequestProperty("X-Auth-Token", token.trim());
+                }
+                conn.setConnectTimeout(3000);
+                conn.setReadTimeout(3000);
+                conn.setDoOutput(true);
+
+                JSONObject body = new JSONObject();
+                body.put("deviceId", deviceId);
+                body.put("model", Build.MODEL);
+                body.put("brand", Build.MANUFACTURER);
+                body.put("screenLocked", true);
+
+                int batteryPct = -1;
+                try {
+                    IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                    Intent batteryStatus = registerReceiver(null, ifilter);
+                    if (batteryStatus != null) {
+                        int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                        int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                        if (level >= 0 && scale > 0) batteryPct = Math.round((level / (float) scale) * 100);
+                    }
+                } catch (Throwable ignored) {}
+                body.put("battery", batteryPct);
+
+                byte[] out = body.toString().getBytes(StandardCharsets.UTF_8);
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(out);
+                }
+                int code = conn.getResponseCode();
+                conn.disconnect();
+            } catch (Throwable ignored) {}
+        }, 1, 4, TimeUnit.SECONDS);
+    }
 
     @Override
     public void onCreate() {
@@ -132,6 +200,8 @@ public class FyloForegroundService extends Service {
             }
         }
 
+        startNativeHeartbeat();
+
         return START_STICKY;
     }
 
@@ -199,6 +269,13 @@ public class FyloForegroundService extends Service {
 
     @Override
     public void onDestroy() {
+        if (heartbeatExecutor != null) {
+            try {
+                heartbeatExecutor.shutdownNow();
+            } catch (Throwable ignored) {}
+            heartbeatExecutor = null;
+        }
+
         synchronized (SERVER_LOCK) {
             if (httpServer != null) {
                 try {
