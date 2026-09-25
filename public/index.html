@@ -5650,18 +5650,12 @@
 
                     <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px;">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                            <h4 style="font-size: 1rem; color: var(--text);">🛡️ Admin Security & Deletion Control</h4>
-                            <span class="phone-readonly-badge" style="background: rgba(46, 213, 115, 0.15); color: #2ed573; border-color: rgba(46, 213, 115, 0.3);">Protected</span>
+                            <h4 style="font-size: 1rem; color: var(--text);">🛡️ Host File Security</h4>
+                            <span class="phone-readonly-badge" style="background: rgba(46, 213, 115, 0.15); color: #2ed573; border-color: rgba(46, 213, 115, 0.3);">Enforced</span>
                         </div>
-                        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 16px; line-height: 1.5;">
-                            All deletions on PC safely move files to Windows Recycle Bin. Deletions on Mobile move files to .trash. Neither can be performed without Admin Security Password verification.
+                        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 12px; line-height: 1.5;">
+                            Remote network devices (phones and web clients) have strictly read-only access — they can only view and download files. Only this host PC is permitted to modify or delete files, keeping your storage 100% secure with no password hassle.
                         </p>
-                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                            <button class="btn btn-accent" id="settings-change-admin-pwd-btn" style="padding: 10px 18px; border-radius: 12px; font-size: 0.85rem;">
-                                🔑 Change Admin Password
-                            </button>
-                            <span style="font-size: 0.8rem; color: var(--text-light); font-weight: 600;">(Default password: <code style="color:var(--accent);">admin</code>)</span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -9968,72 +9962,24 @@
         // ==========================================
         // Admin Security Password Verification & Trashing
         // ==========================================
-        let pendingTrashItem = null;
-
-        function promptAdminTrash({ type, filePath, fileName, deviceId, onDone }) {
-            pendingTrashItem = { type, filePath, fileName, deviceId, onDone };
-            const modal = $('#admin-security-modal');
-            const targetEl = $('#admin-trash-file-target');
-            const passInput = $('#admin-password-input');
-            const errorMsg = $('#admin-error-msg');
-
-            if (targetEl) targetEl.textContent = fileName || filePath;
-            if (passInput) passInput.value = '';
-            if (errorMsg) errorMsg.classList.add('hidden');
-            if (modal) modal.classList.add('active');
-            setTimeout(() => passInput?.focus(), 50);
-        }
-
-        function closeAdminTrashModal() {
-            const modal = $('#admin-security-modal');
-            if (modal) modal.classList.remove('active');
-            pendingTrashItem = null;
-        }
-
-        $('#admin-cancel-btn')?.addEventListener('click', closeAdminTrashModal);
-
-        $('#admin-pwd-toggle')?.addEventListener('click', () => {
-            const input = $('#admin-password-input');
-            if (!input) return;
-            input.type = input.type === 'password' ? 'text' : 'password';
-        });
-
-        $('#admin-password-input')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                $('#admin-confirm-trash-btn')?.click();
-            } else if (e.key === 'Escape') {
-                closeAdminTrashModal();
-            }
-        });
-
-        $('#admin-confirm-trash-btn')?.addEventListener('click', async () => {
-            if (!pendingTrashItem) return;
-            const passInput = $('#admin-password-input');
-            const errorMsg = $('#admin-error-msg');
-            const password = passInput?.value || '';
-
-            if (!password) {
-                if (errorMsg) {
-                    errorMsg.textContent = 'Admin security password is required.';
-                    errorMsg.classList.remove('hidden');
-                }
+        // Safe Recycle Bin Trashing (Host Only, No Admin Password Required)
+        // ==========================================
+        async function promptAdminTrash({ type, filePath, fileName, deviceId, onDone }) {
+            const itemLabel = fileName || (filePath ? filePath.substring(filePath.lastIndexOf('\\') + 1) : 'this item');
+            const targetName = type === 'pc' ? 'Windows Recycle Bin' : 'phone .trash folder';
+            if (!confirm(`Move "${itemLabel}" to ${targetName}?`)) {
                 return;
             }
-
-            const btn = $('#admin-confirm-trash-btn');
-            const origText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = 'Moving to Recycle Bin...';
 
             try {
                 let url = '';
                 let body = {};
-                if (pendingTrashItem.type === 'pc') {
+                if (type === 'pc') {
                     url = '/api/pc/trash-file';
-                    body = { filePath: pendingTrashItem.filePath, adminPassword: password };
+                    body = { filePath };
                 } else {
                     url = '/api/mobile/fs/trash-file';
-                    body = { deviceId: pendingTrashItem.deviceId, path: pendingTrashItem.filePath, adminPassword: password };
+                    body = { deviceId, path: filePath };
                 }
 
                 const res = await apiFetch(url, {
@@ -10044,28 +9990,107 @@
 
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    const doneCallback = pendingTrashItem.onDone;
-                    closeAdminTrashModal();
-                    triggerNotificationAlert(`🗑️ Item safely moved to Recycle Bin.`);
-                    if (doneCallback) {
-                        doneCallback();
+                    showToast(`🗑️ Moved to ${targetName} safely`);
+                    if (onDone) {
+                        onDone();
                     } else {
-                        if (currentPhonePath) fetchPhoneFolder(currentPhonePath, false);
+                        if (type === 'pc') {
+                            if (typeof currentPCPath !== 'undefined') fetchPCFolder(currentPCPath, false);
+                        } else {
+                            if (typeof currentPhonePath !== 'undefined') fetchPhoneFolder(currentPhonePath, false);
+                        }
                     }
                 } else {
-                    if (errorMsg) {
-                        errorMsg.textContent = data.error || 'Incorrect admin password.';
-                        errorMsg.classList.remove('hidden');
-                    }
+                    showToast('⚠️ ' + (data.error || 'Failed to move item to Recycle Bin'), 'error');
                 }
             } catch (err) {
-                if (errorMsg) {
-                    errorMsg.textContent = 'Failed: ' + err.message;
-                    errorMsg.classList.remove('hidden');
+                showToast('⚠️ Failed: ' + err.message, 'error');
+            }
+        }
+
+        // ==========================================
+        // Global Mouse Back / Forward Navigation
+        // ==========================================
+        function handleGlobalGoBack() {
+            // 1. If media viewer modal is open, close it
+            const mediaModal = $('#media-preview-modal');
+            if (mediaModal && !mediaModal.classList.contains('hidden')) {
+                closeMediaModal();
+                return;
+            }
+
+            // 2. If gallery modal is open, close it
+            const galleryModal = $('#gallery-modal');
+            if (galleryModal && galleryModal.classList.contains('active')) {
+                closeGallery();
+                return;
+            }
+
+            // 3. If any overlay modal is open, close it
+            const openModal = document.querySelector('.modal-overlay.active, .modal.active');
+            if (openModal) {
+                openModal.classList.remove('active');
+                return;
+            }
+
+            // 4. In PC Explorer view: go back one folder or to dashboard
+            if (currentActivePanel === 'view-pc-explorer') {
+                const pcBackBtn = $('#pc-back-btn');
+                if (pcBackBtn && !pcBackBtn.disabled) {
+                    pcBackBtn.click();
+                } else {
+                    switchView('view-dashboard');
                 }
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = origText;
+                return;
+            }
+
+            // 5. In Phone Explorer view: go back one folder or to dashboard
+            if (currentActivePanel === 'view-phone') {
+                const phoneBackBtn = $('#phone-back-btn');
+                if (phoneBackBtn && !phoneBackBtn.disabled) {
+                    phoneBackBtn.click();
+                } else {
+                    switchView('view-dashboard');
+                }
+                return;
+            }
+
+            // 6. Any other panel: switch back to dashboard
+            if (currentActivePanel !== 'view-dashboard') {
+                switchView('view-dashboard');
+            }
+        }
+
+        function handleGlobalGoForward() {
+            if (currentActivePanel === 'view-pc-explorer') {
+                const pcFwdBtn = $('#pc-fwd-btn');
+                if (pcFwdBtn && !pcFwdBtn.disabled) {
+                    pcFwdBtn.click();
+                }
+            } else if (currentActivePanel === 'view-phone') {
+                const phoneFwdBtn = $('#phone-fwd-btn');
+                if (phoneFwdBtn && !phoneFwdBtn.disabled) {
+                    phoneFwdBtn.click();
+                }
+            }
+        }
+
+        // Electron IPC app-command listeners
+        if (typeof ipcRenderer !== 'undefined' && ipcRenderer) {
+            ipcRenderer.on('mouse-back', handleGlobalGoBack);
+            ipcRenderer.on('mouse-forward', handleGlobalGoForward);
+        }
+
+        // Web Browser / Electron window mouse buttons listener (button 3 is XButton1 / Back)
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 3) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleGlobalGoBack();
+            } else if (e.button === 4) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleGlobalGoForward();
             }
         });
 
@@ -10626,30 +10651,25 @@
             });
         });
 
-        $('#pc-trash-selected-btn')?.addEventListener('click', () => {
+        $('#pc-trash-selected-btn')?.addEventListener('click', async () => {
             if (pcSelectedPaths.size === 0) return;
             const paths = Array.from(pcSelectedPaths);
-            promptAdminTrash({
-                type: 'pc',
-                filePath: paths[0],
-                fileName: `${paths.length} selected files`,
-                onDone: async () => {
-                    const passInput = $('#admin-password-input');
-                    const pass = passInput ? passInput.value : '';
-                    for (const p of paths) {
-                        try {
-                            await apiFetch('/api/pc/trash-file', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ filePath: p, adminPassword: pass })
-                            });
-                        } catch (e) { }
-                    }
-                    pcSelectedPaths.clear();
-                    updatePCSelectionBar();
-                    fetchPCFolder(currentPCPath, false);
-                }
-            });
+            if (!confirm(`Move ${paths.length} selected item(s) to Windows Recycle Bin?`)) return;
+            let count = 0;
+            for (const p of paths) {
+                try {
+                    const res = await apiFetch('/api/pc/trash-file', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filePath: p })
+                    });
+                    if (res.ok) count++;
+                } catch (e) { }
+            }
+            showToast(`🗑️ Moved ${count} item(s) to Recycle Bin safely`);
+            pcSelectedPaths.clear();
+            updatePCSelectionBar();
+            fetchPCFolder(currentPCPath, false);
         });
 
         // Common Folders Shelf Toggle (Header card or toggle button)

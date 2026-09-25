@@ -360,21 +360,35 @@ export default function App() {
             updateNativeTransform(nextScale, panOffsetRef.current.x, panOffsetRef.current.y);
           }
           lastTouchDistanceRef.current = currentDistance;
-        } else if (touches.length === 1 && zoomScaleRef.current > 1.05) {
-          const maxPanX = (SCREEN_WIDTH * (zoomScaleRef.current - 1)) / 1.8;
-          const maxPanY = (SCREEN_HEIGHT * (zoomScaleRef.current - 1)) / 1.8;
-          let nextX = panOffsetRef.current.x + gestureState.dx * 0.25;
-          let nextY = panOffsetRef.current.y + gestureState.dy * 0.25;
-          nextX = Math.max(-maxPanX, Math.min(maxPanX, nextX));
-          nextY = Math.max(-maxPanY, Math.min(maxPanY, nextY));
-          panOffsetRef.current = { x: nextX, y: nextY };
-          // Native direct update without React re-render!
-          updateNativeTransform(zoomScaleRef.current, nextX, nextY);
+        } else if (touches.length === 1) {
+          if (zoomScaleRef.current > 1.05) {
+            const maxPanX = (SCREEN_WIDTH * (zoomScaleRef.current - 1)) / 1.8;
+            const maxPanY = (SCREEN_HEIGHT * (zoomScaleRef.current - 1)) / 1.8;
+            let nextX = panOffsetRef.current.x + gestureState.dx * 0.25;
+            let nextY = panOffsetRef.current.y + gestureState.dy * 0.25;
+            nextX = Math.max(-maxPanX, Math.min(maxPanX, nextX));
+            nextY = Math.max(-maxPanY, Math.min(maxPanY, nextY));
+            panOffsetRef.current = { x: nextX, y: nextY };
+            // Native direct update without React re-render!
+            updateNativeTransform(zoomScaleRef.current, nextX, nextY);
+          } else if (gestureState.dy > 0) {
+            // Google Photos style: slide / pull image down to dismiss!
+            const dragY = gestureState.dy;
+            const dragScale = Math.max(0.65, 1 - (dragY / SCREEN_HEIGHT) * 0.45);
+            panOffsetRef.current = { x: gestureState.dx * 0.35, y: dragY };
+            updateNativeTransform(dragScale, gestureState.dx * 0.35, dragY);
+          }
         }
       },
-      onPanResponderRelease: () => {
+      onPanResponderRelease: (evt, gestureState) => {
         lastTouchDistanceRef.current = null;
         if (zoomScaleRef.current <= 1.05) {
+          // If dragged down by > 110px or flicked down with velocity > 0.65: dismiss!
+          if (gestureState.dy > 110 || (gestureState.dy > 35 && gestureState.vy > 0.65)) {
+            setLightboxItem(null);
+            resetZoom();
+            return;
+          }
           zoomScaleRef.current = 1;
           panOffsetRef.current = { x: 0, y: 0 };
           updateNativeTransform(1, 0, 0);
@@ -1238,6 +1252,32 @@ export default function App() {
         })}
       </ScrollView>
     );
+  };
+
+  // Download PC file to local Android Downloads/Fylo folder
+  const handleDownloadPcFile = async (filePath, fileName) => {
+    if (!pairedPc) {
+      showToast('⚠️ Pair with PC first to download files');
+      return;
+    }
+    const cleanName = fileName || (filePath ? filePath.substring(filePath.lastIndexOf('\\') + 1) : 'pc_file');
+    const downloadUrl = `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(filePath)}&auth=${pcAuthToken || ''}`;
+    try {
+      showToast(`📥 Saving "${cleanName}" to Downloads/Fylo...`);
+      if (FyloModule && FyloModule.downloadFileFromUrl) {
+        await FyloModule.downloadFileFromUrl(downloadUrl, cleanName);
+        showToast(`✓ Saved "${cleanName}" to Downloads/Fylo 📥`);
+      } else {
+        const res = await apiFetch(downloadUrl);
+        if (res.ok) {
+          showToast(`✓ Received "${cleanName}"`);
+        } else {
+          showToast('⚠️ PC download failed');
+        }
+      }
+    } catch (e) {
+      showToast('⚠️ Download error: ' + (e?.message || 'Failed'));
+    }
   };
 
   // ==========================================
@@ -2230,24 +2270,35 @@ export default function App() {
                   activeOpacity={0.75}
                   style={styles.floatingTrashBtn}
                   onPress={() => {
-                    requestAdminProtectedAction('Delete Selected Phone Files', async () => {
-                      let trashedCount = 0;
-                      if (phoneSelectedPaths && phoneSelectedPaths.size > 0) {
-                        for (const path of phoneSelectedPaths) {
-                          try {
-                            if (FyloModule && FyloModule.trashFile) {
-                              await FyloModule.trashFile(path);
-                              trashedCount++;
+                    Alert.alert(
+                      'Move to Trash',
+                      `Are you sure you want to move ${phoneSelectedPaths?.size || 0} file(s) to trash?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Trash',
+                          style: 'destructive',
+                          onPress: async () => {
+                            let trashedCount = 0;
+                            if (phoneSelectedPaths && phoneSelectedPaths.size > 0) {
+                              for (const path of phoneSelectedPaths) {
+                                try {
+                                  if (FyloModule && FyloModule.trashFile) {
+                                    await FyloModule.trashFile(path);
+                                    trashedCount++;
+                                  }
+                                } catch (e) {
+                                  console.warn('Failed to trash file:', path, e);
+                                }
+                              }
                             }
-                          } catch (e) {
-                            console.warn('Failed to trash file:', path, e);
-                          }
-                        }
-                      }
-                      showToast(`Moved ${trashedCount} file(s) to .trash safely 🗑️`);
-                      setPhoneSelectedPaths(new Set());
-                      loadPhoneFolder(phoneCurrentPath);
-                    });
+                            showToast(`Moved ${trashedCount} file(s) to .trash safely 🗑️`);
+                            setPhoneSelectedPaths(new Set());
+                            loadPhoneFolder(phoneCurrentPath);
+                          },
+                        },
+                      ]
+                    );
                   }}>
                   <Text style={styles.floatingTrashBtnText}>🗑️ Trash</Text>
                 </TouchableOpacity>
@@ -2577,39 +2628,27 @@ export default function App() {
                 </ScrollView>
               )}
 
-              {/* Floating Multi-Select Bar for PC */}
+              {/* Floating Multi-Select Bar for PC (Download Only - Security Enforced) */}
               {pcMultiSelect && pcSelectedPaths.size > 0 && (
                 <View style={styles.floatingMultiSelectBar}>
                   <Text style={styles.floatingSelectCount}>{pcSelectedPaths.size} Selected</Text>
                   <TouchableOpacity
                     activeOpacity={0.75}
-                    style={styles.floatingTrashBtn}
-                    onPress={() => {
-                      requestAdminProtectedAction('Delete PC Files to Recycle Bin', async (password) => {
-                        let trashedCount = 0;
-                        if (pcSelectedPaths && pcSelectedPaths.size > 0) {
-                          for (const path of pcSelectedPaths) {
-                            try {
-                              const res = await apiFetch(`http://${pairedPc}/api/pc/trash-file`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
-                                body: JSON.stringify({ filePath: path, adminPassword: password }),
-                              }, 5000);
-                              const data = await safeJson(res);
-                              if (data && data.success) {
-                                trashedCount++;
-                              }
-                            } catch (e) {
-                              console.warn('Failed to trash PC file:', path, e);
-                            }
-                          }
+                    style={[styles.floatingTrashBtn, { backgroundColor: '#2563eb' }]}
+                    onPress={async () => {
+                      const paths = Array.from(pcSelectedPaths);
+                      showToast(`⬇️ Saving ${paths.length} file(s) to Downloads...`);
+                      for (const path of paths) {
+                        try {
+                          const fileName = path.substring(path.lastIndexOf('\\') + 1);
+                          await handleDownloadPcFile(path, fileName);
+                        } catch (e) {
+                          console.warn('Failed to download PC file:', path, e);
                         }
-                        showToast(`Moved ${trashedCount} file(s) to Windows Recycle Bin 🗑️`);
-                        setPcSelectedPaths(new Set());
-                        loadPcFolder(pcCurrentPath);
-                      });
+                      }
+                      setPcSelectedPaths(new Set());
                     }}>
-                    <Text style={styles.floatingTrashBtnText}>🗑️ Recycle Bin</Text>
+                    <Text style={styles.floatingTrashBtnText}>⬇ Save to Phone</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -2962,7 +3001,7 @@ export default function App() {
                   activeOpacity={0.75}
                   style={styles.lightboxDlBtn}
                   onPress={() => {
-                    showToast('Streaming file directly to phone 📥');
+                    handleDownloadPcFile(lightboxItem?.item?.path, lightboxItem?.item?.name);
                   }}>
                   <Text style={styles.lightboxDlBtnText}>⬇ Save to Phone</Text>
                 </TouchableOpacity>
@@ -2977,41 +3016,38 @@ export default function App() {
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.lightboxTrashBtn}
-                onPress={() => {
-                  requestAdminProtectedAction(`Delete "${lightboxItem?.item?.name || 'file'}"`, async (password) => {
-                    if (lightboxItem?.source === 'pc' && pairedPc) {
-                      const res = await apiFetch(`http://${pairedPc}/api/pc/trash-file`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
-                        body: JSON.stringify({ filePath: lightboxItem?.item?.path, adminPassword: password }),
-                      }, 5000);
-                      const data = await safeJson(res);
-                      if (data && data.success) {
-                        showToast('Moved to Windows Recycle Bin 🗑️');
-                        setLightboxItem(null);
-                        loadPcFolder(pcCurrentPath);
-                      } else {
-                        throw new Error(data?.error || 'PC rejected deletion');
-                      }
-                    } else {
-                      if (FyloModule && FyloModule.trashFile && lightboxItem?.item?.path) {
-                        try {
-                          await FyloModule.trashFile(lightboxItem.item.path);
-                          showToast('Moved to .trash safely 🗑️');
-                        } catch (err) {
-                          showToast('Trash Error: ' + (err?.message || 'Failed'));
-                        }
-                      }
-                      setLightboxItem(null);
-                      loadPhoneFolder(phoneCurrentPath);
-                    }
-                  });
-                }}>
-                <Text style={styles.lightboxTrashBtnText}>🗑️ Trash</Text>
-              </TouchableOpacity>
+              {lightboxItem?.source === 'phone' && (
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={styles.lightboxTrashBtn}
+                  onPress={() => {
+                    Alert.alert(
+                      'Move to Trash',
+                      `Are you sure you want to move "${lightboxItem?.item?.name || 'this file'}" to trash?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Trash',
+                          style: 'destructive',
+                          onPress: async () => {
+                            if (FyloModule && FyloModule.trashFile && lightboxItem?.item?.path) {
+                              try {
+                                await FyloModule.trashFile(lightboxItem.item.path);
+                                showToast('Moved to .trash safely 🗑️');
+                              } catch (err) {
+                                showToast('Trash Error: ' + (err?.message || 'Failed'));
+                              }
+                            }
+                            setLightboxItem(null);
+                            loadPhoneFolder(phoneCurrentPath);
+                          },
+                        },
+                      ]
+                    );
+                  }}>
+                  <Text style={styles.lightboxTrashBtnText}>🗑️ Trash</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Modal>

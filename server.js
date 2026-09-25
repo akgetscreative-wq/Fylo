@@ -1958,12 +1958,12 @@ app.post('/api/admin/change-password', (req, res) => {
     res.json({ success: true, message: 'Admin password updated successfully' });
 });
 
-// Safely move PC file to Windows Recycle Bin (Requires Admin Password)
+// Safely move PC file to Windows Recycle Bin (HOST ONLY, NO PASSWORD NEEDED)
 app.post('/api/pc/trash-file', async (req, res) => {
-    const { filePath, adminPassword: pass } = req.body;
-    if (pass !== adminPassword) {
-        return res.status(401).json({ error: 'Admin security password required or incorrect' });
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Remote clients are strictly read-only and cannot delete or modify host PC files.' });
     }
+    const { filePath } = req.body;
     if (!filePath || !fs.existsSync(filePath)) {
         return res.status(404).json({ error: 'File or directory not found' });
     }
@@ -1975,12 +1975,12 @@ app.post('/api/pc/trash-file', async (req, res) => {
     }
 });
 
-// Safely move Phone file to Mobile .trash Recycle Bin (Requires Admin Password)
+// Safely move Phone file to Mobile .trash Recycle Bin (HOST ONLY)
 app.post('/api/mobile/fs/trash-file', (req, res) => {
-    const { deviceId, path: filePath, adminPassword: pass } = req.body;
-    if (pass !== adminPassword) {
-        return res.status(401).json({ error: 'Admin security password required or incorrect' });
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host Only' });
     }
+    const { deviceId, path: filePath } = req.body;
     const device = mobileDevices[deviceId];
     if (!device) {
         return res.status(404).json({ error: 'Mobile device not connected' });
@@ -2050,6 +2050,15 @@ function createWindow() {
     });
 
     win.loadURL(`http://localhost:${PORT}`);
+
+    // Mouse back & forward button navigation in Windows Electron
+    win.on('app-command', (event, cmd) => {
+        if (cmd === 'browser-backward') {
+            win.webContents.send('mouse-back');
+        } else if (cmd === 'browser-forward') {
+            win.webContents.send('mouse-forward');
+        }
+    });
 
     let activeDownloads = {};
 

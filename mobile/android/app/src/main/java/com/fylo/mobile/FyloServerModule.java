@@ -24,6 +24,7 @@ import android.os.StrictMode;
 import android.content.ActivityNotFoundException;
 import android.database.Cursor;
 import android.provider.OpenableColumns;
+import android.media.MediaScannerConnection;
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
@@ -789,6 +790,66 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
             Log.e(TAG, "openVideoPlayer error: " + e.getMessage(), e);
             safePromise.reject("PLAYER_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
+    }
+
+    @ReactMethod
+    public void downloadFileFromUrl(String fileUrl, String fileName, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        new Thread(() -> {
+            try {
+                if (fileUrl == null || fileUrl.trim().isEmpty()) {
+                    safePromise.reject("INVALID_URL", "File URL is empty");
+                    return;
+                }
+                String cleanName = (fileName != null && !fileName.trim().isEmpty()) ? fileName.trim() : "downloaded_file";
+                cleanName = cleanName.replaceAll("[\\\\/:*?\"<>|]", "_");
+
+                File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                File fyloDir = new File(downloadsDir, "Fylo");
+                if (!fyloDir.exists()) fyloDir.mkdirs();
+                if (!fyloDir.canWrite()) {
+                    File ext = reactContext.getExternalFilesDir(null);
+                    fyloDir = new File(ext != null ? ext : reactContext.getFilesDir(), "Fylo");
+                    fyloDir.mkdirs();
+                }
+
+                File destFile = new File(fyloDir, cleanName);
+                if (destFile.exists() && destFile.length() > 0) {
+                    safePromise.resolve(destFile.getAbsolutePath());
+                    return;
+                }
+
+                java.net.URL url = new java.net.URL(fileUrl);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(30000);
+                conn.connect();
+
+                try (InputStream in = conn.getInputStream();
+                     FileOutputStream out = new FileOutputStream(destFile)) {
+                    byte[] buf = new byte[65536];
+                    int len;
+                    while ((len = in.read(buf)) > 0) {
+                        out.write(buf, 0, len);
+                    }
+                    out.flush();
+                }
+
+                try {
+                    MediaScannerConnection.scanFile(
+                        reactContext,
+                        new String[]{ destFile.getAbsolutePath() },
+                        null,
+                        null
+                    );
+                } catch (Throwable ignored) {}
+
+                safePromise.resolve(destFile.getAbsolutePath());
+            } catch (Throwable t) {
+                Log.e(TAG, "downloadFileFromUrl error: " + t.getMessage(), t);
+                safePromise.reject("DL_ERROR", t.getMessage() != null ? t.getMessage() : t.toString());
+            }
+        }).start();
     }
 
     public static WritableMap copySingleUri(Uri uri, Context context, File sharedDir) {
