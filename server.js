@@ -1390,32 +1390,55 @@ app.get('/api/mobile/fs/thumbnail', (req, res) => {
 
 // Direct download from phone into PC download directory (Electron Host feature)
 app.post('/api/mobile/fs/download-direct', (req, res) => {
-    const { deviceId, path: filePath } = req.body;
-    const device = mobileDevices[deviceId];
+    let { deviceId, path: filePath } = req.body;
+    let device = deviceId ? mobileDevices[deviceId] : null;
+    if (!device) {
+        // Fallback to active mobile device if single phone is linked
+        const activeDevices = Object.values(mobileDevices).filter(d => (Date.now() - d.lastActive) <= 60000);
+        if (activeDevices.length > 0) {
+            device = activeDevices[0];
+            deviceId = device.id;
+        }
+    }
     if (!device) {
         return res.status(404).json({ error: 'Mobile device not connected' });
     }
 
-    if (Date.now() - device.lastActive > 6000) {
+    if (Date.now() - device.lastActive > 20000) {
         return res.status(503).json({ error: 'Mobile device is offline' });
     }
+    device.lastActive = Date.now();
 
     const fileName = path.basename(filePath);
-    const saveDestination = path.join(downloadFolder, fileName);
+    // Sanitize filename for Windows filesystem
+    const cleanFileName = fileName.replace(/[<>:"/\\|?*]/g, '_');
+    try {
+        fs.mkdirSync(downloadFolder, { recursive: true });
+    } catch (e) {}
+    const saveDestination = path.join(downloadFolder, cleanFileName);
     const targetUrl = `http://${device.ip}:${device.port}/api/fs/file?path=${encodeURIComponent(filePath)}&auth=${secretToken}`;
 
     const fileStream = fs.createWriteStream(saveDestination);
+    let entry = null;
+
+    fileStream.on('error', (err) => {
+        console.error('[Download-Direct] File write stream error:', err);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to write file: ' + err.message });
+        }
+    });
+
     const request = http.get(targetUrl, (remoteRes) => {
         if (remoteRes.statusCode !== 200) {
-            fileStream.close();
+            try { fileStream.close(); } catch (e) {}
             fs.unlink(saveDestination, () => {});
-            return res.status(remoteRes.statusCode).json({ error: 'Failed to download file from phone' });
+            return res.status(remoteRes.statusCode).json({ error: 'Failed to download file from phone (HTTP ' + remoteRes.statusCode + ')' });
         }
 
         remoteRes.pipe(fileStream);
 
         fileStream.on('finish', () => {
-            fileStream.close();
+            try { fileStream.close(); } catch (e) {}
             try {
                 const stat = fs.existsSync(saveDestination) ? fs.statSync(saveDestination) : null;
                 const size = stat ? stat.size : 0;
@@ -1423,11 +1446,11 @@ app.post('/api/mobile/fs/download-direct', (req, res) => {
                 if (size >= 1024 * 1024 * 1024) sizeLabel = (size / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
                 else if (size >= 1024 * 1024) sizeLabel = (size / (1024 * 1024)).toFixed(1) + ' MB';
                 else if (size >= 1024) sizeLabel = (size / 1024).toFixed(1) + ' KB';
-                const ext = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
+                const ext = cleanFileName.includes('.') ? cleanFileName.split('.').pop().toLowerCase() : '';
                 const fileId = crypto.randomBytes(8).toString('hex') + Date.now().toString(36);
-                const entry = {
+                entry = {
                     id: fileId,
-                    name: fileName,
+                    name: cleanFileName,
                     size: size,
                     sizeLabel: sizeLabel,
                     ext: ext,
@@ -1438,7 +1461,7 @@ app.post('/api/mobile/fs/download-direct', (req, res) => {
                     downloadUrl: `/api/download/${fileId}`,
                     ownerSessionId: req.sessionId || 'mobile'
                 };
-                const existingIdx = fileRegistry.findIndex(x => (x.path && x.path === saveDestination) || (x.name === fileName && x.size === size));
+                const existingIdx = fileRegistry.findIndex(x => (x.path && x.path === saveDestination) || (x.name === cleanFileName && x.size === size));
                 if (existingIdx >= 0) {
                     fileRegistry[existingIdx] = entry;
                 } else {
@@ -1447,14 +1470,19 @@ app.post('/api/mobile/fs/download-direct', (req, res) => {
             } catch (err) {
                 console.warn('download-direct registry error:', err);
             }
-            res.json({ success: true, savedPath: saveDestination, fileName, entry });
+            if (!res.headersSent) {
+                res.json({ success: true, savedPath: saveDestination, fileName: cleanFileName, entry });
+            }
         });
     });
 
     request.on('error', (err) => {
-        fileStream.close();
+        console.error('[Download-Direct] Request error:', err);
+        try { fileStream.close(); } catch (e) {}
         fs.unlink(saveDestination, () => {});
-        res.status(502).json({ error: err.message });
+        if (!res.headersSent) {
+            res.status(502).json({ error: err.message });
+        }
     });
 });
 
@@ -1924,8 +1952,15 @@ app.get('/api/pc/explorer/file', (req, res) => {
 
 // Download batch of mobile files (Zip stream or direct Electron save)
 app.post('/api/mobile/fs/download-batch', async (req, res) => {
-    const { deviceId, paths } = req.body;
-    const device = mobileDevices[deviceId];
+    let { deviceId, paths } = req.body;
+    let device = deviceId ? mobileDevices[deviceId] : null;
+    if (!device) {
+        const activeDevices = Object.values(mobileDevices).filter(d => (Date.now() - d.lastActive) <= 60000);
+        if (activeDevices.length > 0) {
+            device = activeDevices[0];
+            deviceId = device.id;
+        }
+    }
     if (!device) {
         return res.status(404).json({ error: 'Mobile device not connected' });
     }

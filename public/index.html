@@ -9756,20 +9756,35 @@
             btn.innerHTML = `<span>Preparing ${paths.length} files...</span>`;
 
             try {
+                const targetPhoneId = currentPhoneId || (mobileDeviceList.find(d => d.online)?.id) || (mobileDeviceList[0]?.id);
+                if (!targetPhoneId) {
+                    showToast('⚠️ No phone connected', 'error');
+                    return;
+                }
+
                 if (isElectron) {
                     let successCount = 0;
-                    for (const p of paths) {
+                    for (let i = 0; i < paths.length; i++) {
+                        const p = paths[i];
+                        const fileName = p.split('/').pop().split('\\').pop();
+                        btn.innerHTML = `<span>Saving (${i + 1}/${paths.length}) ${escapeHtml(fileName)}...</span>`;
                         try {
                             const res = await apiFetch('/api/mobile/fs/download-direct', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ deviceId: currentPhoneId, path: p })
+                                body: JSON.stringify({ deviceId: targetPhoneId, path: p })
                             });
                             const data = await res.json();
-                            if (data.success) successCount++;
-                        } catch (e) {}
+                            if (data && data.success) {
+                                successCount++;
+                            } else {
+                                console.warn('Download error for:', p, data);
+                            }
+                        } catch (e) {
+                            console.error('Batch download item error:', e);
+                        }
                     }
-                    showToast(`✅ Saved ${successCount} of ${paths.length} file(s) to PC Downloads!`, 'download');
+                    showToast(`✅ Saved ${successCount} of ${paths.length} file(s) to Downloads!`, 'download');
                     phoneSelectedPaths.clear();
                     renderPhoneFiles();
                 } else {
@@ -9779,7 +9794,7 @@
                     const res = await apiFetch('/api/mobile/fs/download-batch', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ deviceId: currentPhoneId, paths })
+                        body: JSON.stringify({ deviceId: targetPhoneId, paths })
                     });
                     const blob = await res.blob();
                     const url = window.URL.createObjectURL(blob);
@@ -9809,28 +9824,36 @@
         }
 
         async function downloadPhoneFile(item) {
+            if (!item || !item.path) return;
+            const targetPhoneId = currentPhoneId || (mobileDeviceList.find(d => d.online)?.id) || (mobileDeviceList[0]?.id);
+            if (!targetPhoneId) {
+                showToast('⚠️ No phone connected', 'error');
+                return;
+            }
+
             if (isElectron) {
                 try {
+                    showToast(`⏳ Downloading "${item.name}"...`, 'info');
                     const res = await apiFetch('/api/mobile/fs/download-direct', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            deviceId: currentPhoneId,
+                            deviceId: targetPhoneId,
                             path: item.path
                         })
                     });
                     const result = await res.json();
-                    if (result.success) {
+                    if (result && result.success) {
                         showToast(`✅ Saved "${item.name}" to Downloads!`, 'download');
                     } else {
-                        showToast(`⚠️ Download failed: ${result.error || 'Unknown error'}`, 'error');
+                        showToast(`⚠️ Download failed: ${result?.error || 'Unknown error'}`, 'error');
                     }
                 } catch (e) {
                     showToast(`⚠️ Download failed: ${e.message}`, 'error');
                 }
             } else {
                 const link = document.createElement('a');
-                link.href = `/api/mobile/fs/file?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}&download=1`;
+                link.href = `/api/mobile/fs/file?deviceId=${encodeURIComponent(targetPhoneId)}&path=${encodeURIComponent(item.path)}&download=1`;
                 link.download = item.name;
                 document.body.appendChild(link);
                 link.click();
