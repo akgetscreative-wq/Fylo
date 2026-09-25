@@ -336,6 +336,7 @@ app.use((req, res, next) => {
     // Public / Handshake API endpoints that must be reachable by mobile apps and clients without prior session cookie
     const isPublicApi = req.path.startsWith('/api/mobile/') ||
                         req.path.startsWith('/api/pc/explorer') ||
+                        req.path === '/api/clipboard' ||
                         req.path === '/api/qrcode' ||
                         req.path === '/api/connection-info' ||
                         req.path === '/api/network-url' ||
@@ -891,14 +892,20 @@ app.get('/api/clipboard', (req, res) => {
 app.post('/api/clipboard', (req, res) => {
     clipboardText = req.body.text || "";
     const sender = devices[req.sessionId];
-    clipboardUpdatedBy = sender ? sender.name : "Host Computer";
-    if (clipboardSyncEnabled) {
-        try {
-            if (clipboardText !== clipboard.readText()) {
-                clipboard.writeText(clipboardText);
-                lastSystemClipboardText = clipboardText;
-            }
-        } catch(e) {}
+    clipboardUpdatedBy = req.body.updatedBy || (sender ? sender.name : "Host Computer");
+    
+    // Always write to host system clipboard on explicit push from phone/web
+    try {
+        if (clipboard && typeof clipboard.writeText === 'function') {
+            clipboard.writeText(clipboardText);
+            lastSystemClipboardText = clipboardText;
+        } else if (process.platform === 'win32') {
+            const { spawn } = require('child_process');
+            const clipProc = spawn('clip.exe');
+            clipProc.stdin.end(clipboardText);
+        }
+    } catch(e) {
+        console.warn("Failed to write to host clipboard:", e.message);
     }
     res.json({ success: true });
 });

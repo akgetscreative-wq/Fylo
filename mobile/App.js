@@ -26,14 +26,16 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Robust AbortController-wrapped fetch helper to prevent socket hanging and unhandled rejections
 const apiFetch = async (url, options = {}, timeoutMs = 6000) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const hasAbort = typeof AbortController !== 'undefined';
+  const controller = hasAbort ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(timeoutId);
+    const fetchOptions = controller ? { ...options, signal: controller.signal } : { ...options };
+    const res = await fetch(url, fetchOptions);
+    if (timeoutId) clearTimeout(timeoutId);
     return res;
   } catch (err) {
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
     throw err;
   }
 };
@@ -217,6 +219,15 @@ export default function App() {
 
   // Send to PC State (Replaces Sending)
   const [isSending, setIsSending] = useState(false);
+
+  // Live Shared Clipboard Sync (OFF BY DEFAULT as requested by user)
+  const [clipboardAutoSync, setClipboardAutoSync] = useState(false);
+
+  // Direct Share Device Picker Modal State
+  const [directShareModalVisible, setDirectShareModalVisible] = useState(false);
+  const [directSharePendingFiles, setDirectSharePendingFiles] = useState([]);
+  const directShareModalVisibleRef = useRef(directShareModalVisible);
+  directShareModalVisibleRef.current = directShareModalVisible;
 
   // Universal Media Lightbox State with Pinch-to-Zoom & Pan
   const [lightboxItem, setLightboxItem] = useState(null); // { item, source: 'phone' | 'pc' }
@@ -829,10 +840,14 @@ export default function App() {
         ? clean.replace(/^fylo:\/\//i, 'http://')
         : 'http://' + clean;
 
-      const parsed = new URL(urlStr);
-      host = parsed.hostname;
-      port = parsed.port || '3000';
-      token = parsed.searchParams.get('auth') || parsed.searchParams.get('token') || '';
+      if (typeof URL !== 'undefined') {
+        const parsed = new URL(urlStr);
+        host = parsed.hostname;
+        port = parsed.port || '3000';
+        token = parsed.searchParams.get('auth') || parsed.searchParams.get('token') || '';
+      } else {
+        throw new Error('URL not globally defined');
+      }
     } catch (e) {
       const withoutProto = clean.replace(/^https?:\/\//i, '').replace(/^fylo:\/\//i, '');
       const [addrPart, queryPart] = withoutProto.split('?');
