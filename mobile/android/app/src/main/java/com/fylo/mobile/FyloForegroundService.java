@@ -163,13 +163,10 @@ public class FyloForegroundService extends Service {
             Log.w(TAG, "Could not create PendingIntent: " + t.getMessage());
         }
 
-        int iconRes = 0;
-        try {
-            iconRes = getApplicationInfo().icon;
-        } catch (Throwable ignored) {}
-        if (iconRes == 0) {
-            iconRes = android.R.drawable.stat_sys_upload;
-        }
+        // Crucial: Notification small icon MUST be a standard non-adaptive flat drawable.
+        // Using getApplicationInfo().icon points to an <adaptive-icon> XML which throws
+        // BadNotificationException / RemoteServiceException crash on Android 8+!
+        int iconRes = android.R.drawable.stat_sys_upload;
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Fylo Mobile Server Active")

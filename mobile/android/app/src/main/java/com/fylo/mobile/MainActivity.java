@@ -14,7 +14,8 @@ public class MainActivity extends ReactActivity {
     protected ReactActivityDelegate createReactActivityDelegate() {
         return new DefaultReactActivityDelegate(
             this,
-            getMainComponentName()
+            getMainComponentName(),
+            false
         );
     }
 }
