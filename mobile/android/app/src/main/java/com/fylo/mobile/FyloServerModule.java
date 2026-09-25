@@ -581,8 +581,8 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
     }
 
     @Override
-    public void onCatalystInstanceDestroy() {
-        super.onCatalystInstanceDestroy();
+    public void invalidate() {
+        super.invalidate();
         if (sInstance == this) {
             sInstance = null;
         }
