@@ -96,13 +96,12 @@ function parseCookies(cookieHeader) {
 
 function isLocalHostIp(ip) {
     if (!ip) return false;
-    const cleanIp = ip.replace(/^.*:/, '').trim();
+    let cleanIp = ip.trim();
+    if (cleanIp.startsWith('::ffff:')) cleanIp = cleanIp.substring(7);
     if (cleanIp === '127.0.0.1' || cleanIp === 'localhost' || ip === '::1') return true;
     const activeIp = (getActiveIp() || '').trim();
     const baselineIp = (getLocalIp() || '').trim();
     if (cleanIp === activeIp || cleanIp === baselineIp) return true;
-    if (ip === activeIp || ip === ('::ffff:' + activeIp)) return true;
-    if (ip === baselineIp || ip === ('::ffff:' + baselineIp)) return true;
     return false;
 }
 
@@ -274,12 +273,18 @@ app.use((req, res, next) => {
                     (req.body && (req.body.sessionId || req.body['x-session-id'] || req.body.deviceId)) ||
                     '';
 
-    if (sessionId) {
-        sessionId = String(sessionId).trim();
-        req.sessionId = sessionId;
-    }
-
     const isHost = isLocalHostIp(req.ip);
+
+    if (!sessionId) {
+        if (!isHost) {
+            sessionId = 'client_' + req.ip.replace(/[^a-zA-Z0-9]/g, '_');
+            res.setHeader('Set-Cookie', `fylo_session_id=${sessionId}; Path=/; SameSite=Lax`);
+        } else {
+            sessionId = 'host_pc';
+        }
+    }
+    sessionId = String(sessionId).trim();
+    req.sessionId = sessionId;
 
     // Device registration in middleware:
     // When ANY request arrives from a non-host IP with x-session-id (or query or cookie),
@@ -1206,6 +1211,26 @@ app.get('/api/mobile/fs/list', (req, res) => {
     const { deviceId, path: dirPath } = req.query;
     const device = mobileDevices[deviceId];
     if (!device) {
+        const webDevice = devices[deviceId];
+        if (webDevice) {
+            const webFiles = fileRegistry.filter(f => f.uploadedBy === webDevice.name || f.sessionId === deviceId || f.uploadedBy === 'Mobile Companion');
+            return res.json({
+                isWebCompanion: true,
+                locked: true,
+                permissionRequired: true,
+                path: dirPath || '/storage/emulated/0',
+                message: 'Android OS isolates mobile browser storage. Tap "Send Photos & Files" on phone or launch Fylo APK.',
+                items: webFiles.map(f => ({
+                    name: f.name,
+                    path: f.path || f.name,
+                    isDir: false,
+                    isDirectory: false,
+                    size: f.size,
+                    mtime: f.timestamp || Date.now(),
+                    isUploaded: true
+                }))
+            });
+        }
         return res.status(404).json({ error: 'Mobile device not connected' });
     }
 
@@ -1762,12 +1787,12 @@ app.post('/api/mobile/fs/trash-file', (req, res) => {
 setInterval(() => {
     const now = Date.now();
     for (const id in devices) {
-        if (now - devices[id].lastActive > 35000) {
+        if (now - devices[id].lastActive > 60000) {
             delete devices[id];
         }
     }
     for (const id in mobileDevices) {
-        if (now - mobileDevices[id].lastActive > 35000) {
+        if (now - mobileDevices[id].lastActive > 60000) {
             delete mobileDevices[id];
         }
     }
