@@ -5114,7 +5114,7 @@
                     <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">👥 Connected LAN Subnet Devices</span>
                 </div>
                 <div class="card">
-                    <div class="panel-header">👥 Connected Devices</div>
+                    <div class="panel-header">👥 Connected Devices <span id="device-count" class="badge" style="margin-left: 8px; font-size: 0.8rem; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 10px;">0</span></div>
                     <p class="panel-desc">Active instances detected on local LAN subnet</p>
                     <ul id="device-list" style="padding: 0;"></ul>
 
@@ -6233,10 +6233,21 @@
             setTimeout(loadFiles, 400);
         }
 
-        let sessionId = localStorage.getItem('fylo-session-id');
+        const cookieSessionMatch = document.cookie.match(/(?:^|;\s*)fylo_session_id=([^;]+)/);
+        let sessionId = (cookieSessionMatch && cookieSessionMatch[1]) || localStorage.getItem('fylo-session-id');
         if (!sessionId) {
             sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-            localStorage.setItem('fylo-session-id', sessionId);
+        }
+        localStorage.setItem('fylo-session-id', sessionId);
+
+        async function sendHeartbeat() {
+            try {
+                await apiFetch('/api/heartbeat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId })
+                });
+            } catch (e) {}
         }
 
         const FILE_COLORS = ['#FF8FA3', '#57D9B4', '#A991FF', '#57C4F2', '#FFC24B'];
@@ -7989,31 +8000,48 @@
 
         async function loadDevices() {
             try {
-                const data = await (await apiFetch('/api/devices')).json();
+                const res = await apiFetch('/api/devices');
+                if (!res.ok) return;
+                const data = await res.json();
                 if (!data || !Array.isArray(data.devices)) return;
 
-                $('#device-count').textContent = data.devices.filter(d => d.online).length;
+                const devCountEl = $('#device-count');
+                if (devCountEl) {
+                    devCountEl.textContent = data.devices.filter(d => d.online).length;
+                }
 
                 const list = $('#device-list');
-                list.innerHTML = '';
-                for (const d of data.devices) {
-                    const li = document.createElement('li');
-                    li.className = 'device-item';
-                    li.innerHTML = `
-                        <div class="device-meta">
-                            <span class="device-dot ${d.online ? 'online' : ''}"></span>
-                            <span class="device-title">${escapeHtml(d.name)}${d.isSelf ? ' (you)' : ''}${d.isHost ? ' · host' : ''}</span>
-                        </div>
-                        ${(!d.isSelf && !d.isHost) ? `<button class="kick-btn" data-id="${d.id}">kick</button>` : ''}
-                    `;
-                    const kickBtn = li.querySelector('.kick-btn');
-                    if (kickBtn) {
-                        kickBtn.addEventListener('click', async () => {
-                            await apiFetch(`/api/devices/${encodeURIComponent(d.id)}/kick`, { method: 'POST' });
-                            loadDevices();
-                        });
+                if (list) {
+                    list.innerHTML = '';
+                    if (data.devices.length === 0) {
+                        list.innerHTML = `
+                            <li style="padding: 32px 16px; text-align: center; color: var(--text-light); font-size: 0.85rem; list-style: none;">
+                                <div style="font-size: 2rem; margin-bottom: 8px;">📡</div>
+                                <strong>No remote devices detected</strong>
+                                <p style="margin-top: 4px; opacity: 0.7;">Devices that scan the QR code or connect over LAN/Hotspot will appear here.</p>
+                            </li>
+                        `;
+                    } else {
+                        for (const d of data.devices) {
+                            const li = document.createElement('li');
+                            li.className = 'device-item';
+                            li.innerHTML = `
+                                <div class="device-meta">
+                                    <span class="device-dot ${d.online ? 'online' : ''}"></span>
+                                    <span class="device-title">${escapeHtml(d.name)}${d.isSelf ? ' (you)' : ''}${d.isHost ? ' · host' : ''}</span>
+                                </div>
+                                ${(!d.isSelf && !d.isHost) ? `<button class="kick-btn" data-id="${d.id}">kick</button>` : ''}
+                            `;
+                            const kickBtn = li.querySelector('.kick-btn');
+                            if (kickBtn) {
+                                kickBtn.addEventListener('click', async () => {
+                                    await apiFetch(`/api/devices/${encodeURIComponent(d.id)}/kick`, { method: 'POST' });
+                                    loadDevices();
+                                });
+                            }
+                            list.appendChild(li);
+                        }
                     }
-                    list.appendChild(li);
                 }
 
                 const blockedWrap = $('#blocked-wrap');
@@ -9794,6 +9822,7 @@
                         switchView('view-pc-explorer');
                     }
                 }
+                await sendHeartbeat();
                 await loadNetworkInfo();
                 await loadFiles();
                 await loadDevices();
@@ -9813,10 +9842,11 @@
                 console.error(e);
             }
 
+            setInterval(sendHeartbeat, 3000);
             setInterval(loadFiles, 4000);
-            setInterval(loadDevices, 5000);
-            setInterval(loadMobileDevices, 4000);
-            setInterval(loadDashboardData, 8000);
+            setInterval(loadDevices, 2000);
+            setInterval(loadMobileDevices, 2000);
+            setInterval(loadDashboardData, 3000);
             setInterval(loadClipboard, 4000);
             setInterval(checkStreamRequests, 1500);
         }
