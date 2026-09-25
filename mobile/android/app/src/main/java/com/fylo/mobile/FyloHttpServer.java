@@ -644,6 +644,23 @@ public class FyloHttpServer {
             return;
         }
 
+        File cacheDir = new File(context.getCacheDir(), "thumbs");
+        if (!cacheDir.exists()) cacheDir.mkdirs();
+        String cacheKey = "th_" + Math.abs(file.getAbsolutePath().hashCode()) + "_" + file.lastModified() + ".jpg";
+        File cacheFile = new File(cacheDir, cacheKey);
+        if (cacheFile.exists() && cacheFile.length() > 0) {
+            byte[] cachedBytes = new byte[(int) cacheFile.length()];
+            try (FileInputStream fis = new FileInputStream(cacheFile)) {
+                int read = fis.read(cachedBytes);
+                if (read > 0) {
+                    sendResponseHeaders(out, 200, "OK", "image/jpeg", read, null);
+                    out.write(cachedBytes, 0, read);
+                    out.flush();
+                    return;
+                }
+            } catch (Throwable ignored) {}
+        }
+
         Bitmap bitmap = null;
         try {
             String name = file.getName().toLowerCase();
@@ -657,10 +674,10 @@ public class FyloHttpServer {
                 opts.inSampleSize = Math.max(1, maxDim / 180);
                 opts.inPreferredConfig = Bitmap.Config.RGB_565; // Minimizes memory footprint
                 bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
-            } else if (name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".mov") || name.endsWith(".webm") || name.endsWith(".3gp")) {
+            } else if (name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".mov") || name.endsWith(".webm") || name.endsWith(".3gp") || name.endsWith(".avi") || name.endsWith(".ts") || name.endsWith(".flv") || name.endsWith(".wmv")) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     try {
-                        bitmap = ThumbnailUtils.createVideoThumbnail(file, new android.util.Size(256, 256), null);
+                        bitmap = ThumbnailUtils.createVideoThumbnail(file, new android.util.Size(320, 320), null);
                     } catch (Throwable ignored) {}
                 }
                 if (bitmap == null) {
@@ -669,6 +686,9 @@ public class FyloHttpServer {
                         mmr = new MediaMetadataRetriever();
                         mmr.setDataSource(file.getAbsolutePath());
                         bitmap = mmr.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                        if (bitmap == null) {
+                            bitmap = mmr.getFrameAtTime(-1);
+                        }
                     } catch (Throwable ignored) {
                     } finally {
                         if (mmr != null) {
@@ -678,7 +698,7 @@ public class FyloHttpServer {
                 }
                 if (bitmap == null) {
                     try {
-                        bitmap = ThumbnailUtils.createVideoThumbnail(file.getAbsolutePath(), MediaStore.Video.Thumbnails.MICRO_KIND);
+                        bitmap = ThumbnailUtils.createVideoThumbnail(file.getAbsolutePath(), MediaStore.Video.Thumbnails.MINI_KIND);
                     } catch (Throwable ignored) {}
                 }
             }
@@ -699,6 +719,10 @@ public class FyloHttpServer {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.JPEG, 75, baos);
             byte[] thumbBytes = baos.toByteArray();
+
+            try (FileOutputStream fos = new FileOutputStream(cacheFile)) {
+                fos.write(thumbBytes);
+            } catch (Throwable ignored) {}
 
             sendResponseHeaders(out, 200, "OK", "image/jpeg", thumbBytes.length, null);
             out.write(thumbBytes);

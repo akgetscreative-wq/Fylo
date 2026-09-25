@@ -1357,15 +1357,22 @@ app.get('/api/mobile/fs/file', (req, res) => {
     });
 });
 
-// Proxy thumbnail from mobile
+// Proxy thumbnail from mobile (Photos & Videos)
 app.get('/api/mobile/fs/thumbnail', (req, res) => {
-    const { deviceId, path: filePath } = req.query;
-    const device = mobileDevices[deviceId];
+    let { deviceId, path: filePath } = req.query;
+    let device = deviceId ? mobileDevices[deviceId] : null;
+    if (!device) {
+        const activeDevices = Object.values(mobileDevices).filter(d => (Date.now() - d.lastActive) <= 60000);
+        if (activeDevices.length > 0) {
+            device = activeDevices[0];
+            deviceId = device.id;
+        }
+    }
     if (!device) {
         return res.status(404).send('Mobile device not connected');
     }
 
-    if (Date.now() - device.lastActive > 6000) {
+    if (Date.now() - device.lastActive > 25000) {
         return res.status(503).send('Mobile device is offline');
     }
 

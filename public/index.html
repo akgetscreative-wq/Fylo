@@ -1570,6 +1570,44 @@
             display: flex;
             align-items: center;
             gap: 3px;
+            z-index: 2;
+        }
+
+        .phone-video-play-badge {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255, 255, 255, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            transition: all 0.25s ease;
+            z-index: 2;
+        }
+
+        .phone-item-card:hover .phone-video-play-badge {
+            transform: translate(-50%, -50%) scale(1.15);
+            background: #2563eb;
+            border-color: #ffffff;
+            box-shadow: 0 0 16px rgba(37, 99, 235, 0.6);
+        }
+
+        .phone-grid.list-view .phone-video-play-badge {
+            width: 18px;
+            height: 18px;
+        }
+
+        .phone-grid.list-view .phone-video-play-badge svg {
+            width: 9px !important;
+            height: 9px !important;
         }
 
         .phone-item-icon svg {
@@ -9333,12 +9371,17 @@
                             <span class="phone-media-badge">📸 Photo</span>
                         </div>`;
                 } else if (isVideo) {
+                    const thumbUrl = `/api/mobile/fs/thumbnail?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
                     previewHtml = `
-                        <div class="phone-item-preview" style="background: rgba(255, 71, 87, 0.08);">
-                            <div class="phone-item-icon" style="color: #ff4757;">
+                        <div class="phone-item-preview">
+                            <img class="phone-item-thumb" src="${thumbUrl}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="phone-item-icon" style="display:none; color: #ff4757; background: rgba(255, 71, 87, 0.08);">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                             </div>
-                            <span class="phone-media-badge" style="background: rgba(255, 71, 87, 0.7);">🎬 Video</span>
+                            <div class="phone-video-play-badge">
+                                <svg viewBox="0 0 24 24" fill="white" style="width:14px;height:14px;margin-left:2px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            </div>
+                            <span class="phone-media-badge" style="background: rgba(239, 68, 68, 0.85);">🎬 Video</span>
                         </div>`;
                 } else if (isAudio) {
                     previewHtml = `
@@ -9575,8 +9618,14 @@
                         ? `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}`
                         : `/api/mobile/fs/thumbnail?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
                     thumb.innerHTML = `<img src="${thumbUrl}" loading="lazy" onerror="this.parentElement.textContent='🖼️';">`;
-                } else if (['mp4', 'mov', 'webm'].includes(ext)) {
-                    thumb.innerHTML = `<span style="font-size: 20px;">🎬</span>`;
+                } else if (['mp4', 'mov', 'webm', 'mkv', 'avi', '3gp'].includes(ext)) {
+                    if (item.source === 'pc') {
+                        const videoUrl = `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}#t=0.5`;
+                        thumb.innerHTML = `<video src="${videoUrl}" preload="metadata" muted playsinline style="width:100%;height:100%;object-fit:cover;pointer-events:none;border-radius:6px;"></video><span style="position:absolute;bottom:2px;right:2px;font-size:10px;">🎬</span>`;
+                    } else {
+                        const thumbUrl = `/api/mobile/fs/thumbnail?deviceId=${encodeURIComponent(currentPhoneId)}&path=${encodeURIComponent(item.path)}`;
+                        thumb.innerHTML = `<img src="${thumbUrl}" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" onerror="this.parentElement.textContent='🎬';"><span style="position:absolute;bottom:2px;right:2px;font-size:10px;">🎬</span>`;
+                    }
                 } else {
                     thumb.innerHTML = `<span style="font-size: 20px;">🎵</span>`;
                 }
@@ -10528,7 +10577,18 @@
                     img.onerror = () => { img.style.display = 'none'; previewWrap.innerHTML = '<span style="font-size: 32px;">🖼️</span>'; };
                     previewWrap.appendChild(img);
                 } else if (isVideo) {
-                    previewWrap.innerHTML = `<span style="font-size: 34px;">🎬</span>`;
+                    const videoUrl = `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}#t=0.5`;
+                    previewWrap.style.position = 'relative';
+                    previewWrap.innerHTML = `
+                        <video src="${videoUrl}" preload="metadata" muted playsinline style="width:100%;height:100%;object-fit:cover;pointer-events:none;border-radius:12px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"></video>
+                        <div class="phone-item-icon" style="display:none; color: #ff4757; width:100%; height:100%; align-items:center; justify-content:center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:36px;height:36px;"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                        </div>
+                        <div class="phone-video-play-badge">
+                            <svg viewBox="0 0 24 24" fill="white" style="width:14px;height:14px;margin-left:2px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </div>
+                        <span class="phone-media-badge" style="background: rgba(239, 68, 68, 0.85);">🎬 Video</span>
+                    `;
                 } else if (isAudio) {
                     previewWrap.innerHTML = `<span style="font-size: 34px;">🎵</span>`;
                 } else {

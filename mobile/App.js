@@ -2462,7 +2462,14 @@ export default function App() {
                         />
                       ) : isVideoFile(item?.ext) ? (
                         <View style={styles.gridVideoThumbWrap}>
-                          <Text style={{ fontSize: 28 }}>🎬</Text>
+                          <SafeImage
+                            source={{
+                              uri: `http://127.0.0.1:${serverPort || 8080}/api/fs/thumbnail?path=${encodeURIComponent(item?.path || '')}`,
+                            }}
+                            style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                            resizeMode="cover"
+                            fallbackEmoji="🎬"
+                          />
                           <View style={styles.gridVideoPlayBadge}>
                             <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
                           </View>
@@ -2859,7 +2866,16 @@ export default function App() {
                             />
                           ) : isVideoFile(item?.ext) ? (
                             <View style={styles.gridVideoThumbWrap}>
-                              <Text style={{ fontSize: 28 }}>🎬</Text>
+                              <SafeImage
+                                source={{
+                                  uri: pairedPc
+                                    ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(item.path || '')}&auth=${pcAuthToken || ''}`
+                                    : undefined,
+                                }}
+                                style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                                resizeMode="cover"
+                                fallbackEmoji="🎬"
+                              />
                               <View style={styles.gridVideoPlayBadge}>
                                 <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
                               </View>
@@ -6571,26 +6587,33 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   gridVideoThumbWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
+    width: '100%',
+    height: 50,
+    borderRadius: 8,
+    marginBottom: 4,
     backgroundColor: 'rgba(37, 99, 235, 0.15)',
     borderWidth: 1,
     borderColor: 'rgba(37, 99, 235, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    overflow: 'hidden',
   },
   gridVideoPlayBadge: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
+    bottom: 3,
+    right: 3,
     width: 18,
     height: 18,
     borderRadius: 9,
     backgroundColor: '#2563eb',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    elevation: 3,
   },
   gridVideoPlayBadgeIcon: {
     color: '#ffffff',
