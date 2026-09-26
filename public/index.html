@@ -5560,6 +5560,12 @@
                                         <button type="button" class="sort-menu-item" data-sort="size-asc">
                                             <span class="sort-menu-text">📊 Size (Smallest First)</span>
                                         </button>
+                                        <button type="button" class="sort-menu-item" data-sort="type-asc">
+                                            <span class="sort-menu-text">🏷️ Type (A → Z)</span>
+                                        </button>
+                                        <button type="button" class="sort-menu-item" data-sort="type-desc">
+                                            <span class="sort-menu-text">🏷️ Type (Z → A)</span>
+                                        </button>
                                     </div>
                                 </div>
                                 <button class="btn btn-accent hidden" id="save-all-btn"
@@ -6032,6 +6038,12 @@
                                         <button type="button" class="sort-menu-item" data-sort="size-asc">
                                             <span class="sort-menu-text">📊 Size (Smallest First)</span>
                                         </button>
+                                        <button type="button" class="sort-menu-item" data-sort="type-asc">
+                                            <span class="sort-menu-text">🏷️ Type (A → Z)</span>
+                                        </button>
+                                        <button type="button" class="sort-menu-item" data-sort="type-desc">
+                                            <span class="sort-menu-text">🏷️ Type (Z → A)</span>
+                                        </button>
                                     </div>
                                     <select id="phone-sort-select" style="display: none;">
                                         <option value="date-desc" selected>📅 Newest First (Default)</option>
@@ -6040,6 +6052,8 @@
                                         <option value="name-desc">🔤 Name (Z → A)</option>
                                         <option value="size-desc">📊 Size (Largest First)</option>
                                         <option value="size-asc">📊 Size (Smallest First)</option>
+                                        <option value="type-asc">🏷️ File Type (A → Z)</option>
+                                        <option value="type-desc">🏷️ File Type (Z → A)</option>
                                     </select>
                                 </div>
                                 <button class="btn" id="phone-select-all-btn" style="padding: 6px 14px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;">Select All</button>
@@ -6168,6 +6182,12 @@
                                         <button type="button" class="sort-menu-item" data-sort="size-asc">
                                             <span class="sort-menu-text">📊 Size (Smallest First)</span>
                                         </button>
+                                        <button type="button" class="sort-menu-item" data-sort="type-asc">
+                                            <span class="sort-menu-text">🏷️ Type (A → Z)</span>
+                                        </button>
+                                        <button type="button" class="sort-menu-item" data-sort="type-desc">
+                                            <span class="sort-menu-text">🏷️ Type (Z → A)</span>
+                                        </button>
                                     </div>
                                     <select id="pc-sort-select" style="display: none;">
                                         <option value="date-desc" selected>📅 Newest First (Default)</option>
@@ -6176,6 +6196,8 @@
                                         <option value="name-desc">🔤 Name (Z → A)</option>
                                         <option value="size-desc">📊 Size (Largest First)</option>
                                         <option value="size-asc">📊 Size (Smallest First)</option>
+                                        <option value="type-asc">🏷️ File Type (A → Z)</option>
+                                        <option value="type-desc">🏷️ File Type (Z → A)</option>
                                     </select>
                                 </div>
                             <button class="btn" id="pc-select-all-btn" style="padding: 6px 14px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;">Select All</button>
@@ -6586,6 +6608,8 @@
         let downloadAbortControllers = {};
         let activeWebRTCCancels = {};
         let lastFilesJSON = '';
+        let hubSortBy = 'date';
+        let hubSortOrder = 'desc';
         let lastLabelUpdateTimes = {};
         let cancelledTransfers = new Set();
 
@@ -7698,13 +7722,13 @@
                     localStates[`path-${f.id}`] = localStorage.getItem(`fylo-path-${f.id}`) || '';
                     localStates[`time-${f.id}`] = completedTransferTimes[f.id] || '';
                 }
-                const stateCheck = JSON.stringify({ files: filesList, localStates });
+                const stateCheck = JSON.stringify({ files: filesList, localStates, hubSort: `${hubSortBy}-${hubSortOrder}` });
                 if (stateCheck === lastFilesJSON) {
                     return; // Return early, preventing any DOM clearing or box flickering!
                 }
                 lastFilesJSON = stateCheck;
 
-                const files = filesList;
+                const files = sortExplorerItems(filesList, hubSortBy, hubSortOrder);
                 const gallery = $('#gallery');
 
                 if (!Array.isArray(files)) return;
@@ -8934,19 +8958,25 @@
 
         function sortExplorerItems(items, sortBy = 'date', sortOrder = 'desc') {
             return items.sort((a, b) => {
-                // Folders ALWAYS first!
-                if (a.isDir && !b.isDir) return -1;
-                if (!a.isDir && b.isDir) return 1;
-
+                // When sorting by date (latest / oldest):
+                // If any file is more latest than a folder, that file MUST be on top!
                 if (sortBy === 'date') {
                     const timeA = Number(a.modified || a.mtime || 0);
                     const timeB = Number(b.modified || b.mtime || 0);
                     if (timeA !== timeB) {
                         return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
                     }
-                    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-                } else if (sortBy === 'name') {
-                    const cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+                    if (a.isDir && !b.isDir) return -1;
+                    if (!a.isDir && b.isDir) return 1;
+                    return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+                }
+
+                // For other sort criteria (name, size, type), keep folders on top
+                if (a.isDir && !b.isDir) return -1;
+                if (!a.isDir && b.isDir) return 1;
+
+                if (sortBy === 'name') {
+                    const cmp = (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
                     return sortOrder === 'asc' ? cmp : -cmp;
                 } else if (sortBy === 'size') {
                     const sizeA = Number(a.size || 0);
@@ -8954,7 +8984,13 @@
                     if (sizeA !== sizeB) {
                         return sortOrder === 'asc' ? sizeA - sizeB : sizeB - sizeA;
                     }
-                    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+                    return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+                } else if (sortBy === 'type') {
+                    const extA = (a.ext || (a.name || '').split('.').pop() || '').toLowerCase();
+                    const extB = (b.ext || (b.name || '').split('.').pop() || '').toLowerCase();
+                    const cmp = extA.localeCompare(extB);
+                    if (cmp !== 0) return sortOrder === 'asc' ? cmp : -cmp;
+                    return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
                 }
                 return 0;
             });
@@ -10847,7 +10883,112 @@
             }
         });
 
+        function initCustomSortDropdowns() {
+            const dropdownConfigs = [
+                {
+                    id: 'hub-sort-dropdown',
+                    btnId: 'hub-sort-btn',
+                    labelId: 'hub-sort-label',
+                    menuId: 'hub-sort-menu',
+                    selectId: null,
+                    onSelect: (by, ord, label) => {
+                        hubSortBy = by;
+                        hubSortOrder = ord;
+                        lastFilesJSON = '';
+                        loadFiles();
+                    }
+                },
+                {
+                    id: 'phone-sort-dropdown',
+                    btnId: 'phone-sort-btn',
+                    labelId: 'phone-sort-label',
+                    menuId: 'phone-sort-menu',
+                    selectId: 'phone-sort-select',
+                    onSelect: (by, ord, label) => {
+                        phoneSortBy = by;
+                        phoneSortOrder = ord;
+                        const sel = $('#phone-sort-select');
+                        if (sel) sel.value = `${by}-${ord}`;
+                        renderPhoneFiles();
+                    }
+                },
+                {
+                    id: 'pc-sort-dropdown',
+                    btnId: 'pc-sort-btn',
+                    labelId: 'pc-sort-label',
+                    menuId: 'pc-sort-menu',
+                    selectId: 'pc-sort-select',
+                    onSelect: (by, ord, label) => {
+                        pcSortBy = by;
+                        pcSortOrder = ord;
+                        const sel = $('#pc-sort-select');
+                        if (sel) sel.value = `${by}-${ord}`;
+                        renderPCFiles();
+                    }
+                }
+            ];
+
+            dropdownConfigs.forEach(cfg => {
+                const btn = document.getElementById(cfg.btnId);
+                const label = document.getElementById(cfg.labelId);
+                const menu = document.getElementById(cfg.menuId);
+                if (!btn || !menu) return;
+
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = menu.classList.contains('show');
+                    document.querySelectorAll('.sort-dropdown-menu').forEach(m => m.classList.remove('show'));
+                    document.querySelectorAll('.sort-dropdown-btn').forEach(b => {
+                        b.classList.remove('open');
+                        b.setAttribute('aria-expanded', 'false');
+                    });
+                    if (!isOpen) {
+                        menu.classList.add('show');
+                        btn.classList.add('open');
+                        btn.setAttribute('aria-expanded', 'true');
+                    }
+                });
+
+                menu.querySelectorAll('.sort-menu-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        menu.querySelectorAll('.sort-menu-item').forEach(i => i.classList.remove('active'));
+                        item.classList.add('active');
+                        const sortKey = item.getAttribute('data-sort') || 'date-desc';
+                        const [by, ord] = sortKey.split('-');
+                        let cleanText = 'Sort: Latest';
+                        if (by === 'date' && ord === 'desc') cleanText = 'Sort: Latest';
+                        else if (by === 'date' && ord === 'asc') cleanText = 'Sort: Oldest';
+                        else if (by === 'name' && ord === 'asc') cleanText = 'Sort: A → Z';
+                        else if (by === 'name' && ord === 'desc') cleanText = 'Sort: Z → A';
+                        else if (by === 'size' && ord === 'desc') cleanText = 'Sort: Largest';
+                        else if (by === 'size' && ord === 'asc') cleanText = 'Sort: Smallest';
+                        else if (by === 'type' && ord === 'asc') cleanText = 'Sort: Type A → Z';
+                        else if (by === 'type' && ord === 'desc') cleanText = 'Sort: Type Z → A';
+                        else cleanText = `Sort: ${by}`;
+
+                        if (label) label.textContent = cleanText;
+
+                        menu.classList.remove('show');
+                        btn.classList.remove('open');
+                        btn.setAttribute('aria-expanded', 'false');
+
+                        cfg.onSelect(by, ord, cleanText);
+                    });
+                });
+            });
+
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.sort-dropdown-menu').forEach(m => m.classList.remove('show'));
+                document.querySelectorAll('.sort-dropdown-btn').forEach(b => {
+                    b.classList.remove('open');
+                    b.setAttribute('aria-expanded', 'false');
+                });
+            });
+        }
+
         async function init() {
+            initCustomSortDropdowns();
             if (isElectron) {
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);

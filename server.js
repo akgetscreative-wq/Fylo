@@ -1937,11 +1937,11 @@ app.get('/api/pc/explorer/list', (req, res) => {
         }
 
         items.sort((a, b) => {
-            if (a.isDir && !b.isDir) return -1;
-            if (!a.isDir && b.isDir) return 1;
             const timeA = Number(a.modified || 0);
             const timeB = Number(b.modified || 0);
             if (timeA !== timeB) return timeB - timeA;
+            if (a.isDir && !b.isDir) return -1;
+            if (!a.isDir && b.isDir) return 1;
             return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
         });
 

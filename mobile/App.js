@@ -348,45 +348,70 @@ const SearchVectorIcon = ({ color = '#64748b' }) => (
 
 
 
-// File sorting helper (STRICT DEFAULT: LATEST-FIRST by date/mtime descending, folders always at top)
+// File sorting helper:
+// When sorting by latest/oldest, files that are more recent than folders appear at the top!
 const sortExplorerItems = (items, sortBy = 'latest') => {
   if (!Array.isArray(items)) return [];
+
+  // Date descending (latest first): newest items at the top across all files & folders
+  if (sortBy === 'latest' || sortBy === 'date-desc') {
+    return [...items].filter(Boolean).sort((a, b) => {
+      const aTime = typeof a.modified === 'number' ? a.modified : (Number(a.modified || a.mtime || 0) || 0);
+      const bTime = typeof b.modified === 'number' ? b.modified : (Number(b.modified || b.mtime || 0) || 0);
+      if (bTime !== aTime) return bTime - aTime;
+      if (a.isDir && !b.isDir) return -1;
+      if (!a.isDir && b.isDir) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }
+
+  // Date ascending (oldest first): oldest items at the top across all files & folders
+  if (sortBy === 'oldest' || sortBy === 'date-asc') {
+    return [...items].filter(Boolean).sort((a, b) => {
+      const aTime = typeof a.modified === 'number' ? a.modified : (Number(a.modified || a.mtime || 0) || 0);
+      const bTime = typeof b.modified === 'number' ? b.modified : (Number(b.modified || b.mtime || 0) || 0);
+      if (bTime !== aTime) return aTime - bTime;
+      if (a.isDir && !b.isDir) return -1;
+      if (!a.isDir && b.isDir) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }
+
+  // For name, size, type etc., group folders first then files
   const folders = [];
   const files = [];
-
   for (const item of items) {
     if (!item) continue;
-    if (item.isDir) {
-      folders.push(item);
-    } else {
-      files.push(item);
-    }
+    if (item.isDir) folders.push(item);
+    else files.push(item);
   }
 
   const comparator = (a, b) => {
-    if (sortBy === 'latest') {
-      const aTime = typeof a.modified === 'number' ? a.modified : 0;
-      const bTime = typeof b.modified === 'number' ? b.modified : 0;
-      if (bTime !== aTime) return bTime - aTime; // descending: newest first
-      return (a.name || '').localeCompare(b.name || '');
-    } else if (sortBy === 'oldest') {
-      const aTime = typeof a.modified === 'number' ? a.modified : 0;
-      const bTime = typeof b.modified === 'number' ? b.modified : 0;
-      if (bTime !== aTime) return aTime - bTime; // ascending: oldest first
-      return (a.name || '').localeCompare(b.name || '');
-    } else if (sortBy === 'name' || sortBy === 'name-asc') {
+    if (sortBy === 'name' || sortBy === 'name-asc') {
       return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
     } else if (sortBy === 'name-desc') {
       return (b.name || '').localeCompare(a.name || '', undefined, { sensitivity: 'base', numeric: true });
     } else if (sortBy === 'size' || sortBy === 'size-desc') {
       const aSize = typeof a.size === 'number' ? a.size : 0;
       const bSize = typeof b.size === 'number' ? b.size : 0;
-      if (bSize !== aSize) return bSize - aSize; // descending: largest first
+      if (bSize !== aSize) return bSize - aSize;
       return (a.name || '').localeCompare(b.name || '');
     } else if (sortBy === 'size-asc') {
       const aSize = typeof a.size === 'number' ? a.size : 0;
       const bSize = typeof b.size === 'number' ? b.size : 0;
-      if (bSize !== aSize) return aSize - bSize; // ascending: smallest first
+      if (bSize !== aSize) return aSize - bSize;
+      return (a.name || '').localeCompare(b.name || '');
+    } else if (sortBy === 'type' || sortBy === 'type-asc' || sortBy === 'ext') {
+      const extA = (a.ext || (a.name || '').split('.').pop() || '').toLowerCase();
+      const extB = (b.ext || (b.name || '').split('.').pop() || '').toLowerCase();
+      const cmp = extA.localeCompare(extB);
+      if (cmp !== 0) return cmp;
+      return (a.name || '').localeCompare(b.name || '');
+    } else if (sortBy === 'type-desc') {
+      const extA = (a.ext || (a.name || '').split('.').pop() || '').toLowerCase();
+      const extB = (b.ext || (b.name || '').split('.').pop() || '').toLowerCase();
+      const cmp = extB.localeCompare(extA);
+      if (cmp !== 0) return cmp;
       return (a.name || '').localeCompare(b.name || '');
     }
     return 0;
@@ -2146,6 +2171,8 @@ export default function App() {
       case 'name-desc': return 'Name (Z→A)';
       case 'size': return 'Size (Max)';
       case 'size-asc': return 'Size (Min)';
+      case 'type-asc': return 'Type (A→Z)';
+      case 'type-desc': return 'Type (Z→A)';
       default: return 'Latest';
     }
   };
@@ -2281,13 +2308,13 @@ export default function App() {
   // Cycle sort mode helper
   const cycleSortMode = (type) => {
     if (type === 'phone') {
-      const next = phoneSortBy === 'latest' ? 'name' : phoneSortBy === 'name' ? 'size' : 'latest';
+      const next = phoneSortBy === 'latest' ? 'name' : phoneSortBy === 'name' ? 'size' : phoneSortBy === 'size' ? 'type-asc' : 'latest';
       setPhoneSortBy(next);
-      showToast(`Sorted by: ${next === 'latest' ? 'Latest (Newest First)' : next === 'name' ? 'Name (A-Z)' : 'Size'}`);
+      showToast(`Sorted by: ${getSortLabel(next)}`);
     } else {
-      const next = pcSortBy === 'latest' ? 'name' : pcSortBy === 'name' ? 'size' : 'latest';
+      const next = pcSortBy === 'latest' ? 'name' : pcSortBy === 'name' ? 'size' : pcSortBy === 'size' ? 'type-asc' : 'latest';
       setPcSortBy(next);
-      showToast(`Sorted by: ${next === 'latest' ? 'Latest (Newest First)' : next === 'name' ? 'Name (A-Z)' : 'Size'}`);
+      showToast(`Sorted by: ${getSortLabel(next)}`);
     }
   };
 
@@ -4406,12 +4433,14 @@ export default function App() {
             </View>
 
             {[
-              { id: 'latest', label: 'Latest First (Date Newest)', sub: 'Default: newest items appear at the top' },
-              { id: 'oldest', label: 'Oldest First (Date Oldest)', sub: 'Ascending: oldest items at top' },
+              { id: 'latest', label: 'Latest First (Date Newest)', sub: 'Newest files & folders appear at the top' },
+              { id: 'oldest', label: 'Oldest First (Date Oldest)', sub: 'Oldest files & folders appear at top' },
               { id: 'name', label: 'Name (A → Z)', sub: 'Alphabetical ascending' },
               { id: 'name-desc', label: 'Name (Z → A)', sub: 'Alphabetical descending' },
               { id: 'size', label: 'Size (Largest First)', sub: 'Highest file size at top' },
               { id: 'size-asc', label: 'Size (Smallest First)', sub: 'Smallest file size at top' },
+              { id: 'type-asc', label: 'File Type (A → Z)', sub: 'Group by file extension ascending' },
+              { id: 'type-desc', label: 'File Type (Z → A)', sub: 'Group by file extension descending' },
             ].map((opt) => {
               const currentSort = sortModalTarget === 'phone' ? phoneSortBy : pcSortBy;
               const isSelected = currentSort === opt.id;
