@@ -93,7 +93,7 @@ const safeJson = async (res) => {
 };
 
 // Robust SafeImage component with onError fallback handler to prevent corrupt image crashes
-const SafeImage = ({ source, style, resizeMode, fallbackText = 'IMG' }) => {
+const SafeImage = ({ source, style, resizeMode, fallbackText, fallbackEmoji }) => {
   const [hasError, setHasError] = useState(false);
   const uri = source?.uri;
   const prevUriRef = useRef(uri);
@@ -105,10 +105,14 @@ const SafeImage = ({ source, style, resizeMode, fallbackText = 'IMG' }) => {
     }
   }, [uri]);
 
+  const displayFallback = fallbackText !== undefined ? fallbackText : (fallbackEmoji !== undefined ? fallbackEmoji : '');
+
   if (hasError || !uri) {
     return (
       <View style={[style, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-        <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748b', letterSpacing: 0.5 }}>{fallbackText}</Text>
+        {displayFallback ? (
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748b', letterSpacing: 0.5 }}>{displayFallback}</Text>
+        ) : null}
       </View>
     );
   }
@@ -122,6 +126,60 @@ const SafeImage = ({ source, style, resizeMode, fallbackText = 'IMG' }) => {
     />
   );
 };
+
+// Dedicated VideoThumbnail component that extracts native video frame thumbnails
+const VideoThumbnail = React.memo(({ path, isPc, pairedPc, pcAuthToken, serverPort }) => {
+  const [thumbUri, setThumbUri] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchThumbnail = async () => {
+      try {
+        if (FyloModule && FyloModule.getVideoThumbnail) {
+          const target = isPc
+            ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(path || '')}`
+            : (path || '');
+          const uri = await FyloModule.getVideoThumbnail(target, pcAuthToken || '');
+          if (isMounted && uri) {
+            setThumbUri(uri);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // Fallback for phone files: query local HTTP server
+      if (!isPc && isMounted && path) {
+        const httpUri = `http://127.0.0.1:${serverPort || 8080}/api/fs/thumbnail?path=${encodeURIComponent(path)}${pcAuthToken ? `&auth=${pcAuthToken}` : ''}`;
+        setThumbUri(httpUri);
+      }
+    };
+
+    fetchThumbnail();
+    return () => {
+      isMounted = false;
+    };
+  }, [path, isPc, pairedPc, pcAuthToken, serverPort]);
+
+  return (
+    <View style={styles.gridVideoThumbWrap}>
+      {thumbUri ? (
+        <SafeImage
+          source={{ uri: thumbUri }}
+          style={{ width: '100%', height: '100%', borderRadius: 8 }}
+          resizeMode="cover"
+          fallbackText=""
+        />
+      ) : (
+        <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(37, 99, 235, 0.12)' }}>
+          <Text style={{ fontSize: 18, color: '#38bdf8' }}>▶</Text>
+        </View>
+      )}
+      <View style={styles.gridVideoPlayBadge}>
+        <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
+      </View>
+    </View>
+  );
+});
 
 // Authentic Windows 11 Yellow Folder Vector Icon
 const Win11FolderIcon = ({ size = 28 }) => {
@@ -2946,22 +3004,15 @@ export default function App() {
                           source={{ uri: 'file://' + (item?.path || '') }}
                           style={styles.gridThumbnailImage}
                           resizeMode="cover"
-                          fallbackEmoji="■"
+                          fallbackText=""
                         />
                       ) : isVideoFile(item?.ext) ? (
-                        <View style={styles.gridVideoThumbWrap}>
-                          <SafeImage
-                            source={{
-                              uri: `http://127.0.0.1:${serverPort || 8080}/api/fs/thumbnail?path=${encodeURIComponent(item?.path || '')}`,
-                            }}
-                            style={{ width: '100%', height: '100%', borderRadius: 8 }}
-                            resizeMode="cover"
-                            fallbackEmoji="▶"
-                          />
-                          <View style={styles.gridVideoPlayBadge}>
-                            <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
-                          </View>
-                        </View>
+                        <VideoThumbnail
+                          path={item?.path}
+                          isPc={false}
+                          serverPort={serverPort}
+                          pcAuthToken={pcAuthToken}
+                        />
                       ) : (
                         <FileBadgeIcon ext={item?.ext} isDir={false} size={34} />
                       )}
@@ -3350,24 +3401,15 @@ export default function App() {
                               }}
                               style={styles.gridThumbnailImage}
                               resizeMode="cover"
-                              fallbackEmoji="■"
+                              fallbackText=""
                             />
                           ) : isVideoFile(item?.ext) ? (
-                            <View style={styles.gridVideoThumbWrap}>
-                              <SafeImage
-                                source={{
-                                  uri: pairedPc
-                                    ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(item.path || '')}&auth=${pcAuthToken || ''}`
-                                    : undefined,
-                                }}
-                                style={{ width: '100%', height: '100%', borderRadius: 8 }}
-                                resizeMode="cover"
-                                fallbackEmoji="▶"
-                              />
-                              <View style={styles.gridVideoPlayBadge}>
-                                <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
-                              </View>
-                            </View>
+                            <VideoThumbnail
+                              path={item.path}
+                              isPc={true}
+                              pairedPc={pairedPc}
+                              pcAuthToken={pcAuthToken}
+                            />
                           ) : (
                             <FileBadgeIcon ext={item.ext} isDir={false} size={34} />
                           )}
@@ -3851,7 +3893,7 @@ export default function App() {
                     }}
                     style={styles.lightboxImage}
                     resizeMode="contain"
-                    fallbackText="IMG"
+                    fallbackText=""
                   />
                 </View>
               ) : (

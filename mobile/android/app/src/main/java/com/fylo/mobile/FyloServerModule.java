@@ -15,6 +15,12 @@ import android.os.Environment;
 import android.os.StatFs;
 import android.provider.Settings;
 import android.util.Log;
+import android.graphics.Bitmap;
+import android.media.MediaMetadataRetriever;
+import android.media.ThumbnailUtils;
+import android.provider.MediaStore;
+import java.util.Map;
+import java.util.HashMap;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -1125,5 +1131,96 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
             }
         } catch (Throwable ignored) {}
         return "127.0.0.1";
+    }
+
+    @ReactMethod
+    public void getVideoThumbnail(String uriOrPath, String authToken, Promise promise) {
+        if (uriOrPath == null || uriOrPath.trim().isEmpty()) {
+            promise.resolve(null);
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                Context context = getReactApplicationContext();
+                File cacheDir = new File(context.getCacheDir(), "thumbs");
+                if (!cacheDir.exists()) cacheDir.mkdirs();
+
+                String cleanKey = "vt_" + Math.abs(uriOrPath.hashCode()) + ".jpg";
+                File cacheFile = new File(cacheDir, cleanKey);
+                if (cacheFile.exists() && cacheFile.length() > 0) {
+                    promise.resolve("file://" + cacheFile.getAbsolutePath());
+                    return;
+                }
+
+                Bitmap bitmap = null;
+                if (uriOrPath.startsWith("http://") || uriOrPath.startsWith("https://")) {
+                    MediaMetadataRetriever mmr = null;
+                    try {
+                        mmr = new MediaMetadataRetriever();
+                        Map<String, String> headers = new HashMap<>();
+                        if (authToken != null && !authToken.trim().isEmpty()) {
+                            headers.put("X-Auth-Token", authToken.trim());
+                        }
+                        mmr.setDataSource(uriOrPath, headers);
+                        bitmap = mmr.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                        if (bitmap == null) {
+                            bitmap = mmr.getFrameAtTime(-1);
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "Remote video thumb error for " + uriOrPath + ": " + t.getMessage());
+                    } finally {
+                        if (mmr != null) {
+                            try { mmr.release(); } catch (Throwable ignored) {}
+                        }
+                    }
+                } else {
+                    File file = new File(uriOrPath);
+                    if (file.exists()) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            try {
+                                bitmap = ThumbnailUtils.createVideoThumbnail(file, new android.util.Size(320, 320), null);
+                            } catch (Throwable ignored) {}
+                        }
+                        if (bitmap == null) {
+                            MediaMetadataRetriever mmr = null;
+                            try {
+                                mmr = new MediaMetadataRetriever();
+                                mmr.setDataSource(file.getAbsolutePath());
+                                bitmap = mmr.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                                if (bitmap == null) {
+                                    bitmap = mmr.getFrameAtTime(-1);
+                                }
+                            } catch (Throwable ignored) {
+                            } finally {
+                                if (mmr != null) {
+                                    try { mmr.release(); } catch (Throwable ignored) {}
+                                }
+                            }
+                        }
+                        if (bitmap == null) {
+                            try {
+                                bitmap = ThumbnailUtils.createVideoThumbnail(file.getAbsolutePath(), MediaStore.Video.Thumbnails.MINI_KIND);
+                            } catch (Throwable ignored) {}
+                        }
+                    }
+                }
+
+                if (bitmap != null) {
+                    try (FileOutputStream fos = new FileOutputStream(cacheFile)) {
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, fos);
+                    }
+                    if (!bitmap.isRecycled()) {
+                        bitmap.recycle();
+                    }
+                    promise.resolve("file://" + cacheFile.getAbsolutePath());
+                } else {
+                    promise.resolve(null);
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "Error in getVideoThumbnail: " + t.getMessage());
+                promise.resolve(null);
+            }
+        }).start();
     }
 }

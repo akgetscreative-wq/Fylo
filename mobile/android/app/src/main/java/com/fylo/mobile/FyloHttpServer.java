@@ -238,8 +238,10 @@ public class FyloHttpServer {
 
             Map<String, String> queryParams = parseQueryParams(query);
 
+            boolean isLoopback = socket != null && socket.getInetAddress() != null && socket.getInetAddress().isLoopbackAddress();
+
             // Authorization check
-            if (!isAuthorized(queryParams, headers)) {
+            if (!isLoopback && !isAuthorized(queryParams, headers)) {
                 sendJsonResponse(out, 401, "{\"error\":\"Unauthorized: Invalid or missing auth token\"}");
                 return;
             }
@@ -275,7 +277,7 @@ public class FyloHttpServer {
             } else if ("/api/fs/file".equals(path)) {
                 handleFile(out, queryParams, headers);
             } else if ("/api/fs/thumbnail".equals(path)) {
-                handleThumbnail(out, queryParams);
+                handleThumbnail(out, queryParams, isLoopback);
             } else if ("/api/set-readonly".equals(path) && "POST".equals(method)) {
                 handleSetReadOnly(out, bodyBytes);
             } else if ("/api/fs/trash".equals(path) && "POST".equals(method)) {
@@ -621,8 +623,8 @@ public class FyloHttpServer {
         }
     }
 
-    private void handleThumbnail(OutputStream out, Map<String, String> queryParams) throws Exception {
-        if (!allowFullPhoneAccess) {
+    private void handleThumbnail(OutputStream out, Map<String, String> queryParams, boolean isLoopback) throws Exception {
+        if (!isLoopback && !allowFullPhoneAccess) {
             sendJsonResponse(out, 403, "{\"error\":\"Full phone storage sharing is disabled by phone user.\"}");
             return;
         }
