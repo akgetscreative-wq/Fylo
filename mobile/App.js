@@ -93,7 +93,7 @@ const safeJson = async (res) => {
 };
 
 // Robust SafeImage component with onError fallback handler to prevent corrupt image crashes
-const SafeImage = ({ source, style, resizeMode, fallbackEmoji = '🖼️' }) => {
+const SafeImage = ({ source, style, resizeMode, fallbackText = 'IMG' }) => {
   const [hasError, setHasError] = useState(false);
   const uri = source?.uri;
   const prevUriRef = useRef(uri);
@@ -108,7 +108,7 @@ const SafeImage = ({ source, style, resizeMode, fallbackEmoji = '🖼️' }) => 
   if (hasError || !uri) {
     return (
       <View style={[style, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-        <Text style={{ fontSize: 24 }}>{fallbackEmoji}</Text>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748b', letterSpacing: 0.5 }}>{fallbackText}</Text>
       </View>
     );
   }
@@ -134,6 +134,98 @@ const Win11FolderIcon = ({ size = 28 }) => {
     </View>
   );
 };
+
+// Clean Vector File Badge Icon (Replaces random emojis with professional type badges)
+const FileBadgeIcon = ({ ext, isDir, size = 28 }) => {
+  if (isDir) {
+    return <Win11FolderIcon size={size} />;
+  }
+  const e = (ext || '').toLowerCase();
+  let badgeColor = '#3b82f6'; // default blue
+  let label = (e || 'FILE').toUpperCase().substring(0, 4);
+
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'bmp', 'svg'].includes(e)) {
+    badgeColor = '#0ea5e9'; // sky cyan
+    label = 'IMG';
+  } else if (['mp4', 'mkv', 'mov', 'webm', 'avi', 'flv', '3gp'].includes(e)) {
+    badgeColor = '#8b5cf6'; // violet
+    label = 'VID';
+  } else if (['mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac'].includes(e)) {
+    badgeColor = '#06b6d4'; // cyan
+    label = 'AUD';
+  } else if (e === 'pdf') {
+    badgeColor = '#ef4444'; // red
+    label = 'PDF';
+  } else if (['doc', 'docx', 'txt', 'rtf', 'md'].includes(e)) {
+    badgeColor = '#2563eb'; // blue
+    label = e === 'md' ? 'MD' : 'DOC';
+  } else if (['xls', 'xlsx', 'csv'].includes(e)) {
+    badgeColor = '#10b981'; // emerald green
+    label = 'XLS';
+  } else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(e)) {
+    badgeColor = '#f59e0b'; // amber
+    label = 'ZIP';
+  } else if (e === 'apk') {
+    badgeColor = '#10b981'; // green
+    label = 'APK';
+  } else if (['exe', 'msi', 'bat', 'cmd'].includes(e)) {
+    badgeColor = '#64748b'; // slate
+    label = 'EXE';
+  }
+
+  const scale = size / 28;
+  return (
+    <View style={{
+      width: 30 * scale,
+      height: 34 * scale,
+      borderRadius: 6 * scale,
+      backgroundColor: badgeColor + '18',
+      borderColor: badgeColor + '55',
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    }}>
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: 9 * scale,
+        height: 9 * scale,
+        backgroundColor: badgeColor + '35',
+        borderBottomLeftRadius: 5 * scale,
+        borderTopRightRadius: 5 * scale,
+      }} />
+      <Text style={{
+        fontSize: Math.max(8, 8.5 * scale),
+        fontWeight: '800',
+        color: badgeColor,
+        letterSpacing: 0.3,
+      }}>
+        {label}
+      </Text>
+    </View>
+  );
+};
+
+// Sleek 3-Line Vector Hamburger Icon
+const VectorHamburger = ({ isDark }) => (
+  <View style={{ width: 20, height: 16, justifyContent: 'space-between', paddingVertical: 1 }}>
+    <View style={{ height: 2, width: 20, borderRadius: 1, backgroundColor: isDark ? '#f1f5f9' : '#0f172a' }} />
+    <View style={{ height: 2, width: 14, borderRadius: 1, backgroundColor: '#2563eb' }} />
+    <View style={{ height: 2, width: 18, borderRadius: 1, backgroundColor: isDark ? '#f1f5f9' : '#0f172a' }} />
+  </View>
+);
+
+// Sleek Minimalist Vector Search Icon
+const SearchVectorIcon = ({ color = '#64748b' }) => (
+  <View style={{ width: 15, height: 15, marginRight: 6, position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
+    <View style={{ width: 10, height: 10, borderRadius: 5, borderWidth: 1.6, borderColor: color }} />
+    <View style={{ position: 'absolute', bottom: 1, right: 1, width: 5, height: 1.6, backgroundColor: color, transform: [{ rotate: '45deg' }] }} />
+  </View>
+);
+
+
 
 // File sorting helper (STRICT DEFAULT: LATEST-FIRST by date/mtime descending, folders always at top)
 const sortExplorerItems = (items, sortBy = 'latest') => {
@@ -1654,7 +1746,7 @@ export default function App() {
         <TouchableOpacity
           style={styles.breadcrumbItem}
           onPress={() => onSelectPath(isPc ? 'C:\\' : '/storage/emulated/0')}>
-          <Text style={styles.breadcrumbTextRoot}>{isPc ? '💻 PC' : '📱 Phone'}</Text>
+          <Text style={styles.breadcrumbTextRoot}>{isPc ? 'PC' : 'Phone'}</Text>
         </TouchableOpacity>
 
         {parts.map((part, index) => {
@@ -1927,13 +2019,13 @@ export default function App() {
 
   const getSortLabel = (mode) => {
     switch (mode) {
-      case 'latest': return '⏱️ Latest';
-      case 'oldest': return '⏱️ Oldest';
-      case 'name': return '🔤 Name (A→Z)';
-      case 'name-desc': return '🔤 Name (Z→A)';
-      case 'size': return '📊 Size (Max)';
-      case 'size-asc': return '📊 Size (Min)';
-      default: return '⏱️ Latest';
+      case 'latest': return 'Latest';
+      case 'oldest': return 'Oldest';
+      case 'name': return 'Name (A→Z)';
+      case 'name-desc': return 'Name (Z→A)';
+      case 'size': return 'Size (Max)';
+      case 'size-asc': return 'Size (Min)';
+      default: return 'Latest';
     }
   };
 
@@ -2070,11 +2162,11 @@ export default function App() {
     if (type === 'phone') {
       const next = phoneSortBy === 'latest' ? 'name' : phoneSortBy === 'name' ? 'size' : 'latest';
       setPhoneSortBy(next);
-      showToast(`Sorted by: ${next === 'latest' ? '⏱️ Latest (Newest First)' : next === 'name' ? '🔤 Name (A-Z)' : '📊 Size'}`);
+      showToast(`Sorted by: ${next === 'latest' ? 'Latest (Newest First)' : next === 'name' ? 'Name (A-Z)' : 'Size'}`);
     } else {
       const next = pcSortBy === 'latest' ? 'name' : pcSortBy === 'name' ? 'size' : 'latest';
       setPcSortBy(next);
-      showToast(`Sorted by: ${next === 'latest' ? '⏱️ Latest (Newest First)' : next === 'name' ? '🔤 Name (A-Z)' : '📊 Size'}`);
+      showToast(`Sorted by: ${next === 'latest' ? 'Latest (Newest First)' : next === 'name' ? 'Name (A-Z)' : 'Size'}`);
     }
   };
 
@@ -2112,7 +2204,7 @@ export default function App() {
               activeOpacity={0.75}
               style={[styles.hamburgerBtn, !isDarkMode && styles.hamburgerBtnLight]}
               onPress={openSidebar}>
-              <Text style={[styles.hamburgerIcon, !isDarkMode && styles.hamburgerIconLight]}>☰</Text>
+              <VectorHamburger isDark={isDarkMode} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -2125,8 +2217,8 @@ export default function App() {
               <View>
                 <Text style={[styles.brandTitle, !isDarkMode && styles.brandTitleLight]}>fylo</Text>
                 <Text style={styles.brandSub}>
-                  {currentTab === 'home' ? 'Dashboard' :
-                   currentTab === 'phone-explorer' ? 'Phone Files' :
+                  {currentTab === 'home' ? 'Command Center' :
+                   currentTab === 'phone-explorer' ? 'Phone Storage' :
                    currentTab === 'pc-explorer' ? 'PC Drives' :
                    currentTab === 'clipboard' ? 'Shared Clip' : 'Speed Hub'}
                 </Text>
@@ -2134,7 +2226,7 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* Connection Status Pill */}
+          {/* Compact Connection Status Pill */}
           <TouchableOpacity
             activeOpacity={0.75}
             style={[styles.topStatusPill, pairedPc ? (isPcReachable ? styles.topStatusPillActive : styles.topStatusPillOffline) : styles.topStatusPillIdle]}
@@ -2146,15 +2238,15 @@ export default function App() {
                 setShowPairModal(true);
               }
             }}>
-            <View style={[styles.beaconDot, { backgroundColor: pairedPc ? (isPcReachable ? '#10b981' : '#ef4444') : '#64748b' }]} />
+            <View style={[styles.beaconDot, { backgroundColor: pairedPc ? (isPcReachable ? '#10b981' : '#ef4444') : '#3b82f6' }]} />
             <Text style={styles.topStatusPillText} numberOfLines={1}>
-              {pairedPc ? (isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : 'Online') : '⚠️ PC Offline') : '⚡ Pair PC'}
+              {pairedPc ? (isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : 'Online') : 'PC Offline') : 'Connect PC'}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Floating Toast Notification (Vibrant pink pill) */}
+      {/* Floating Toast Notification */}
       {clipboardToast !== '' && (
         <View style={styles.toastWrap}>
           <Text style={styles.toastText}>{clipboardToast}</Text>
@@ -2201,7 +2293,7 @@ export default function App() {
                     </View>
                     <View>
                       <Text style={isPcReachable ? styles.beaconStatusLabel : styles.beaconStatusLabelOffline}>
-                        {isPcReachable ? 'CONNECTED TO PC' : '⚠️ PC OFFLINE'}
+                        {isPcReachable ? 'CONNECTED TO PC' : 'PC OFFLINE'}
                       </Text>
                       <Text style={styles.beaconHostTitle} numberOfLines={1}>
                         {pcHostName || 'Windows Host'}
@@ -2222,7 +2314,7 @@ export default function App() {
                     activeOpacity={0.75}
                     style={styles.heroPrimaryBtn}
                     onPress={() => setCurrentTab('pc-explorer')}>
-                    <Text style={styles.heroPrimaryBtnText}>📂 Browse PC Drives</Text>
+                    <Text style={styles.heroPrimaryBtnText}>Browse PC Drives →</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -2261,7 +2353,7 @@ export default function App() {
                     activeOpacity={0.75}
                     style={styles.heroPrimaryBtn}
                     onPress={handleStartQrScan}>
-                    <Text style={styles.heroPrimaryBtnText}>📷 Scan PC QR Code</Text>
+                    <Text style={styles.heroPrimaryBtnText}>Scan PC QR Code</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -2271,12 +2363,116 @@ export default function App() {
                       setPairModalTab('manual');
                       setShowPairModal(true);
                     }}>
-                    <Text style={styles.heroOutlineBtnText}>⌨️ Manual IP</Text>
+                    <Text style={styles.heroOutlineBtnText}>Manual IP</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
           </View>
+
+          {/* ========================================================= */}
+          {/* BENTO ACTION GRID: PRIMARY & SECONDARY ACTIONS             */}
+          {/* ========================================================= */}
+          <View style={styles.bentoActionGrid}>
+            {/* Primary Actions (Two large dominant tiles) */}
+            <View style={styles.bentoPrimaryRow}>
+              {/* Tile 1: Browse PC */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[
+                  styles.bentoPrimaryTile,
+                  styles.bentoTilePc,
+                  !isDarkMode && styles.bentoPrimaryTileLight,
+                  pairedPc && isPcReachable && styles.bentoTileConnected,
+                ]}
+                onPress={() => {
+                  if (pairedPc) {
+                    setCurrentTab('pc-explorer');
+                  } else {
+                    setShowPairModal(true);
+                  }
+                }}>
+                <View style={styles.bentoTileHeader}>
+                  <View style={styles.bentoTileBadge}>
+                    <Text style={styles.bentoTileBadgeText}>{pairedPc ? (isPcReachable ? 'Online' : 'Offline') : 'Ready'}</Text>
+                  </View>
+                  <Text style={styles.bentoTileGlyph}>⬡</Text>
+                </View>
+                <View style={styles.bentoTileBody}>
+                  <Text style={[styles.bentoTileTitle, !isDarkMode && styles.bentoTileTitleLight]}>Browse PC</Text>
+                  <Text style={styles.bentoTileSub} numberOfLines={1}>
+                    {pairedPc ? (isPcReachable ? `${pcHostName || 'Windows'} drives` : 'PC unreachable') : 'Pair to explore drives'}
+                  </Text>
+                </View>
+                <View style={styles.bentoTileArrowRow}>
+                  <Text style={styles.bentoTileArrow}>Open PC Drives →</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Tile 2: Browse Phone */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[
+                  styles.bentoPrimaryTile,
+                  styles.bentoTilePhone,
+                  !isDarkMode && styles.bentoPrimaryTileLight,
+                ]}
+                onPress={() => setCurrentTab('phone-explorer')}>
+                <View style={styles.bentoTileHeader}>
+                  <View style={[styles.bentoTileBadge, { backgroundColor: 'rgba(14, 165, 233, 0.15)', borderColor: 'rgba(14, 165, 233, 0.3)' }]}>
+                    <Text style={[styles.bentoTileBadgeText, { color: '#0ea5e9' }]}>{storageStats.freeGB} Free</Text>
+                  </View>
+                  <Text style={[styles.bentoTileGlyph, { color: '#0ea5e9' }]}>▫</Text>
+                </View>
+                <View style={styles.bentoTileBody}>
+                  <Text style={[styles.bentoTileTitle, !isDarkMode && styles.bentoTileTitleLight]}>Browse Phone</Text>
+                  <Text style={styles.bentoTileSub} numberOfLines={1}>
+                    Storage, DCIM & files
+                  </Text>
+                </View>
+                <View style={styles.bentoTileArrowRow}>
+                  <Text style={[styles.bentoTileArrow, { color: '#0ea5e9' }]}>Open Phone Files →</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Secondary Actions (Three compact tiles) */}
+            <View style={styles.bentoSecondaryRow}>
+              {/* Tile 3: ShareHub */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.bentoSecondaryTile, !isDarkMode && styles.bentoSecondaryTileLight]}
+                onPress={() => {
+                  fetchSharedHubFiles();
+                  showToast('ShareHub synchronized');
+                }}>
+                <Text style={styles.bentoSecGlyph}>⇄</Text>
+                <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>ShareHub</Text>
+                <Text style={styles.bentoSecSub}>{sharedHubFiles.length} shared</Text>
+              </TouchableOpacity>
+
+              {/* Tile 4: Clipboard */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.bentoSecondaryTile, !isDarkMode && styles.bentoSecondaryTileLight]}
+                onPress={() => setCurrentTab('clipboard')}>
+                <Text style={styles.bentoSecGlyph}>⎘</Text>
+                <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>Clipboard</Text>
+                <Text style={styles.bentoSecSub}>{pcClipboardText ? 'Live Synced' : 'Ready'}</Text>
+              </TouchableOpacity>
+
+              {/* Tile 5: Transfers */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.bentoSecondaryTile, !isDarkMode && styles.bentoSecondaryTileLight]}
+                onPress={() => setCurrentTab('transfer')}>
+                <Text style={styles.bentoSecGlyph}>⚡</Text>
+                <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>Transfers</Text>
+                <Text style={styles.bentoSecSub}>Diagnostics</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
 
           {/* ========================================================= */}
           {/* FAST SHARE & DIRECT NATIVE ANDROID FILE PICKER            */}
@@ -2285,7 +2481,7 @@ export default function App() {
             <View style={styles.quickShareHeaderRow}>
               <View style={styles.quickShareHeaderLeft}>
                 <View style={styles.quickShareIconWrap}>
-                  <Text style={styles.quickShareIconEmoji}>📤</Text>
+                  <Text style={[styles.quickShareIconEmoji, { color: '#3b82f6', fontSize: 18 }]}>↑</Text>
                 </View>
                 <View>
                   <Text style={[styles.quickShareCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Send Files to PC</Text>
@@ -2308,18 +2504,18 @@ export default function App() {
               style={[styles.quickShareSendBtn, isSending && { opacity: 0.6 }]}
               onPress={handlePickAndSendToPc}>
               <Text style={styles.quickShareSendBtnText}>
-                {isSending ? 'Sending to PC...' : '📤 Send Files to PC'}
+                {isSending ? 'Sending to PC...' : 'Send Files to PC →'}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* ========================================================= */}
-          {/* ⚡ SHARE HUB: ACTIVE SHARED FILES ON MOBILE HOMEPAGE     */}
+          {/* SHARE HUB: ACTIVE SHARED FILES ON MOBILE HOMEPAGE          */}
           {/* ========================================================= */}
           <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>⚡ Share Hub</Text>
+                <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Share Hub</Text>
                 <Text style={styles.bentoCardSubtitle}>
                   {pairedPc ? 'Active shared files from PC & Mobile' : 'Pair with PC to browse shared files'}
                 </Text>
@@ -2331,9 +2527,9 @@ export default function App() {
                     style={styles.shareHubRefreshBtn}
                     onPress={() => {
                       fetchSharedHubFiles();
-                      showToast('🔄 Refreshing Share Hub...');
+                      showToast('Refreshing Share Hub...');
                     }}>
-                    <Text style={{ fontSize: 13, color: '#38bdf8' }}>🔄</Text>
+                    <Text style={{ fontSize: 14, color: '#38bdf8' }}>↻</Text>
                   </TouchableOpacity>
                 )}
                 <View style={styles.shareHubCountBadge}>
@@ -2352,7 +2548,7 @@ export default function App() {
                   style={styles.shareHubSaveAllBtn}
                   onPress={handleDownloadAllSharedHubFiles}>
                   <Text style={styles.shareHubSaveAllBtnText}>
-                    ⬇️ Save All From PC ({sharedHubFiles.filter((f) => f.direction === 'received').length})
+                    Save All From PC ({sharedHubFiles.filter((f) => f.direction === 'received').length}) ↓
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -2360,7 +2556,7 @@ export default function App() {
 
             {sharedHubFiles.length === 0 ? (
               <View style={styles.shareHubEmpty}>
-                <Text style={{ fontSize: 28, opacity: 0.7 }}>📦</Text>
+                <Text style={{ fontSize: 24, color: '#60a5fa' }}>⬡</Text>
                 <Text style={[styles.shareHubEmptyTitle, !isDarkMode && styles.shareHubEmptyTitleLight]}>
                   No files shared yet
                 </Text>
@@ -2381,13 +2577,13 @@ export default function App() {
                       activeOpacity={0.7}
                       style={[styles.shareHubRow, !isDarkMode && styles.shareHubRowLight]}
                       onPress={() => handleSharedHubItemPress(f)}>
-                      <Text style={{ fontSize: 22 }}>{getFileIcon((f.name || '').split('.').pop(), false)}</Text>
+                      <FileBadgeIcon ext={(f.name || '').split('.').pop()} isDir={false} size={24} />
                       <View style={{ flex: 1, minWidth: 0, marginHorizontal: 8 }}>
                         <Text style={[styles.shareHubFileName, !isDarkMode && styles.shareHubFileNameLight]} numberOfLines={1}>
                           {f.name}
                         </Text>
                         <Text style={styles.shareHubFileMeta}>
-                          {f.size ? formatFileSize(f.size) : (f.sizeLabel || 'Ready')} • {isReceived ? '📥 From PC' : '📤 Sent to PC'}
+                          {f.size ? formatFileSize(f.size) : (f.sizeLabel || 'Ready')} • {isReceived ? 'From PC' : 'Sent to PC'}
                         </Text>
                       </View>
                       {isReceived ? (
@@ -2400,7 +2596,7 @@ export default function App() {
                             activeOpacity={0.8}
                             style={styles.shareHubActionBtn}
                             onPress={() => handleDownloadSharedHubFile(f)}>
-                            <Text style={styles.shareHubActionBtnText}>📥 Save</Text>
+                            <Text style={styles.shareHubActionBtnText}>Save</Text>
                           </TouchableOpacity>
                         )
                       ) : (
@@ -2425,9 +2621,9 @@ export default function App() {
                         style={styles.shareHubClearBtn}
                         onPress={() => {
                           fetchSharedHubFiles();
-                          showToast('✓ Share Hub synchronized');
+                          showToast('Share Hub synchronized');
                         }}>
-                        <Text style={[styles.shareHubClearBtnText, { color: '#38bdf8' }]}>Sync with PC 🔄</Text>
+                        <Text style={[styles.shareHubClearBtnText, { color: '#38bdf8' }]}>Sync with PC ↻</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -2440,7 +2636,7 @@ export default function App() {
           <View style={styles.bentoCard}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>📊 Device Internal Storage</Text>
+                <Text style={styles.bentoCardTitle}>Internal Storage</Text>
                 <Text style={styles.bentoCardSubtitle}>Real-time flash memory status</Text>
               </View>
               <View style={styles.storagePercentChip}>
@@ -2483,7 +2679,7 @@ export default function App() {
           <View style={styles.bentoCard}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>📋 LAN Shared Clipboard</Text>
+                <Text style={styles.bentoCardTitle}>Shared Clipboard</Text>
                 <Text style={styles.bentoCardSubtitle}>
                   {pairedPc
                     ? `Synced with PC (${pcClipboardUpdatedBy || 'Host Computer'})`
@@ -2512,7 +2708,7 @@ export default function App() {
                 style={[styles.clipboardActionBtn, styles.clipboardActionBtnPrimary]}
                 onPress={handleCopyPcClipboardToPhone}>
                 <Text style={styles.clipboardActionBtnPrimaryText}>
-                  📋 Copy to Phone
+                  Copy to Phone
                 </Text>
               </TouchableOpacity>
 
@@ -2531,7 +2727,7 @@ export default function App() {
           <View style={styles.bentoCard}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>📡 Background File Server</Text>
+                <Text style={styles.bentoCardTitle}>Local File Server</Text>
                 <Text style={styles.bentoCardSubtitle}>
                   Port {serverPort} • {readOnlyMode ? 'Safe Read-Only' : 'Read/Write Access'}
                 </Text>
@@ -2552,7 +2748,7 @@ export default function App() {
                 ]}
                 onPress={handleToggleServer}>
                 <Text style={styles.serverToggleBtnText}>
-                  {serverRunning ? '⏹ Stop Server' : '▶ Start Server'}
+                  {serverRunning ? 'Stop Server' : 'Start Server'}
                 </Text>
               </TouchableOpacity>
 
@@ -2612,7 +2808,7 @@ export default function App() {
           {/* Search, Sort & Multi-Select Bar */}
           <View style={styles.searchRow}>
             <View style={styles.searchInputWrap}>
-              <Text style={styles.searchIcon}>🔍</Text>
+              <SearchVectorIcon />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search phone files..."
@@ -2661,11 +2857,11 @@ export default function App() {
             contentContainerStyle={{ gap: 6, paddingHorizontal: 2 }}>
             {[
               { id: 'all', label: 'All Files' },
-              { id: 'photos', label: '📸 Photos' },
-              { id: 'videos', label: '🎬 Videos' },
-              { id: 'audio', label: '🎵 Audio' },
-              { id: 'docs', label: '📄 Docs' },
-              { id: 'folders', label: '📁 Folders' },
+              { id: 'photos', label: 'Photos' },
+              { id: 'videos', label: 'Videos' },
+              { id: 'audio', label: 'Audio' },
+              { id: 'docs', label: 'Documents' },
+              { id: 'folders', label: 'Folders' },
             ].map((f) => (
               <TouchableOpacity
                 key={f.id}
@@ -2687,8 +2883,8 @@ export default function App() {
             </View>
           ) : filteredPhoneItems.length === 0 ? (
             <View style={styles.centerLoading}>
-              <Text style={styles.emptyFolderIcon}>📂</Text>
-              <Text style={styles.emptyFolderText}>Folder is empty</Text>
+              <Win11FolderIcon size={46} />
+              <Text style={[styles.emptyFolderText, { marginTop: 12 }]}>Folder is empty</Text>
             </View>
           ) : phoneViewMode === 'grid' ? (
             // 3-Column Responsive Grid View with Real Thumbnails
@@ -2750,7 +2946,7 @@ export default function App() {
                           source={{ uri: 'file://' + (item?.path || '') }}
                           style={styles.gridThumbnailImage}
                           resizeMode="cover"
-                          fallbackEmoji={getFileIcon(item?.ext, false)}
+                          fallbackEmoji="■"
                         />
                       ) : isVideoFile(item?.ext) ? (
                         <View style={styles.gridVideoThumbWrap}>
@@ -2760,14 +2956,14 @@ export default function App() {
                             }}
                             style={{ width: '100%', height: '100%', borderRadius: 8 }}
                             resizeMode="cover"
-                            fallbackEmoji="🎬"
+                            fallbackEmoji="▶"
                           />
                           <View style={styles.gridVideoPlayBadge}>
                             <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
                           </View>
                         </View>
                       ) : (
-                        <Text style={styles.gridFileIconEmoji}>{getFileIcon(item?.ext, false)}</Text>
+                        <FileBadgeIcon ext={item?.ext} isDir={false} size={34} />
                       )}
 
                       <Text style={styles.gridFileName} numberOfLines={1}>
@@ -2814,7 +3010,7 @@ export default function App() {
                     {item.isDir ? (
                       <Win11FolderIcon size={26} />
                     ) : (
-                      <Text style={styles.listRowEmoji}>{getFileIcon(item.ext, false)}</Text>
+                      <FileBadgeIcon ext={item.ext} isDir={false} size={24} />
                     )}
 
                     <View style={styles.listRowContent}>
@@ -2826,7 +3022,7 @@ export default function App() {
                       </Text>
                     </View>
 
-                    <Text style={styles.listRowChevron}>{item.isDir ? '›' : '👁'}</Text>
+                    <Text style={styles.listRowChevron}>›</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -2846,7 +3042,7 @@ export default function App() {
                     activeOpacity={0.75}
                     style={styles.floatingSendBtn}
                     onPress={() => handleSendFilesToPc(phoneSelectedPaths)}>
-                    <Text style={styles.floatingSendBtnText}>📤 Send to PC</Text>
+                    <Text style={styles.floatingSendBtnText}>Send to PC →</Text>
                   </TouchableOpacity>
                 )}
 
@@ -2884,7 +3080,7 @@ export default function App() {
                       ]
                     );
                   }}>
-                  <Text style={styles.floatingTrashBtnText}>🗑️ Trash</Text>
+                  <Text style={styles.floatingTrashBtnText}>Trash</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -2907,7 +3103,7 @@ export default function App() {
         <View style={styles.explorerContainer}>
           {!pairedPc ? (
             <View style={styles.centerLoading}>
-              <Text style={{ fontSize: 44, marginBottom: 12 }}>💻</Text>
+              <Text style={{ fontSize: 40, color: '#3b82f6', marginBottom: 12 }}>⬡</Text>
               <Text style={styles.pcEmptyTitle}>PC Remote Explorer</Text>
               <Text style={styles.pcEmptyDesc}>
                 Browse, stream, and manage your Windows PC drives and folders directly from your phone.
@@ -2916,7 +3112,7 @@ export default function App() {
                 activeOpacity={0.75}
                 style={styles.pcConnectPromptBtn}
                 onPress={() => setShowPairModal(true)}>
-                <Text style={styles.pcConnectPromptBtnText}>⚡ Pair with PC Now</Text>
+                <Text style={styles.pcConnectPromptBtnText}>Pair with PC Now →</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -2938,7 +3134,7 @@ export default function App() {
                           pcCurrentPath === d?.path && styles.pcDrivePillActive,
                         ]}
                         onPress={() => d?.path && loadPcFolder(d.path)}>
-                        <Text style={styles.pcDrivePillIcon}>💽</Text>
+                        <Text style={[styles.pcDrivePillIcon, { color: '#60a5fa', fontWeight: '800' }]}>⛁</Text>
                         <Text style={[styles.pcDrivePillText, pcCurrentPath === d?.path && styles.pcDrivePillTextActive]}>
                           {d?.name || d?.path || 'Drive'}
                         </Text>
@@ -2950,7 +3146,7 @@ export default function App() {
                         activeOpacity={0.75}
                         style={[styles.pcDrivePill, pcCurrentPath.startsWith('C:') && styles.pcDrivePillActive]}
                         onPress={() => loadPcFolder('C:\\')}>
-                        <Text style={styles.pcDrivePillIcon}>💽</Text>
+                        <Text style={[styles.pcDrivePillIcon, { color: '#60a5fa', fontWeight: '800' }]}>⛁</Text>
                         <Text style={[styles.pcDrivePillText, pcCurrentPath.startsWith('C:') && styles.pcDrivePillTextActive]}>
                           Drive (C:)
                         </Text>
@@ -2959,7 +3155,7 @@ export default function App() {
                         activeOpacity={0.75}
                         style={[styles.pcDrivePill, pcCurrentPath.startsWith('D:') && styles.pcDrivePillActive]}
                         onPress={() => loadPcFolder('D:\\')}>
-                        <Text style={styles.pcDrivePillIcon}>💽</Text>
+                        <Text style={[styles.pcDrivePillIcon, { color: '#60a5fa', fontWeight: '800' }]}>⛁</Text>
                         <Text style={[styles.pcDrivePillText, pcCurrentPath.startsWith('D:') && styles.pcDrivePillTextActive]}>
                           Drive (D:)
                         </Text>
@@ -2971,12 +3167,12 @@ export default function App() {
 
                   {/* Windows Folder Shortcuts */}
                   {[
-                    { name: 'Downloads', icon: '📥', path: 'Downloads' },
-                    { name: 'Desktop', icon: '🖥️', path: 'Desktop' },
-                    { name: 'Pictures', icon: '🖼️', path: 'Pictures' },
-                    { name: 'Screenshots', icon: '📸', path: 'Screenshots' },
-                    { name: 'Docs', icon: '📄', path: 'Documents' },
-                    { name: 'Videos', icon: '🎬', path: 'Videos' },
+                    { name: 'Downloads', path: 'Downloads' },
+                    { name: 'Desktop', path: 'Desktop' },
+                    { name: 'Pictures', path: 'Pictures' },
+                    { name: 'Screenshots', path: 'Screenshots' },
+                    { name: 'Documents', path: 'Documents' },
+                    { name: 'Videos', path: 'Videos' },
                   ].map((sc, i) => (
                     <TouchableOpacity
                       key={'pcsc-' + i}
@@ -2991,7 +3187,7 @@ export default function App() {
                         loadPcFolder(match?.path || sc.path);
                       }}>
                       <Text style={styles.pcShortcutPillText}>
-                        {sc.icon} {sc.name}
+                        {sc.name}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -3033,7 +3229,7 @@ export default function App() {
               {/* Search, Sort & Multi-Select Bar */}
               <View style={styles.searchRow}>
                 <View style={styles.searchInputWrap}>
-                  <Text style={styles.searchIcon}>🔍</Text>
+                  <SearchVectorIcon />
                   <TextInput
                     style={styles.searchInput}
                     placeholder="Search PC files..."
@@ -3082,11 +3278,11 @@ export default function App() {
                 contentContainerStyle={{ gap: 6, paddingHorizontal: 2 }}>
                 {[
                   { id: 'all', label: 'All Files' },
-                  { id: 'photos', label: '📸 Photos' },
-                  { id: 'videos', label: '🎬 Videos' },
-                  { id: 'audio', label: '🎵 Audio' },
-                  { id: 'docs', label: '📄 Docs' },
-                  { id: 'folders', label: '📁 Folders' },
+                  { id: 'photos', label: 'Photos' },
+                  { id: 'videos', label: 'Videos' },
+                  { id: 'audio', label: 'Audio' },
+                  { id: 'docs', label: 'Documents' },
+                  { id: 'folders', label: 'Folders' },
                 ].map((f) => (
                   <TouchableOpacity
                     key={f.id}
@@ -3108,8 +3304,8 @@ export default function App() {
                 </View>
               ) : filteredPcItems.length === 0 ? (
                 <View style={styles.centerLoading}>
-                  <Text style={styles.emptyFolderIcon}>📂</Text>
-                  <Text style={styles.emptyFolderText}>Folder is empty</Text>
+                  <Win11FolderIcon size={46} />
+                  <Text style={[styles.emptyFolderText, { marginTop: 12 }]}>Folder is empty</Text>
                 </View>
               ) : pcViewMode === 'grid' ? (
                 <ScrollView
@@ -3154,7 +3350,7 @@ export default function App() {
                               }}
                               style={styles.gridThumbnailImage}
                               resizeMode="cover"
-                              fallbackEmoji={getFileIcon(item?.ext, false)}
+                              fallbackEmoji="■"
                             />
                           ) : isVideoFile(item?.ext) ? (
                             <View style={styles.gridVideoThumbWrap}>
@@ -3166,14 +3362,14 @@ export default function App() {
                                 }}
                                 style={{ width: '100%', height: '100%', borderRadius: 8 }}
                                 resizeMode="cover"
-                                fallbackEmoji="🎬"
+                                fallbackEmoji="▶"
                               />
                               <View style={styles.gridVideoPlayBadge}>
                                 <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
                               </View>
                             </View>
                           ) : (
-                            <Text style={styles.gridFileIconEmoji}>{getFileIcon(item.ext, false)}</Text>
+                            <FileBadgeIcon ext={item.ext} isDir={false} size={34} />
                           )}
                           <Text style={styles.gridFileName} numberOfLines={1}>
                             {item.name}
@@ -3218,7 +3414,7 @@ export default function App() {
                         {item.isDir ? (
                           <Win11FolderIcon size={26} />
                         ) : (
-                          <Text style={styles.listRowEmoji}>{getFileIcon(item.ext, false)}</Text>
+                          <FileBadgeIcon ext={item.ext} isDir={false} size={24} />
                         )}
                         <View style={styles.listRowContent}>
                           <Text style={styles.listRowName} numberOfLines={1}>
@@ -3228,7 +3424,7 @@ export default function App() {
                             {item.isDir ? 'Folder' : formatFileSize(item.size)}
                           </Text>
                         </View>
-                        <Text style={styles.listRowChevron}>{item.isDir ? '›' : '👁'}</Text>
+                        <Text style={styles.listRowChevron}>›</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -3255,7 +3451,7 @@ export default function App() {
                       }
                       setPcSelectedPaths(new Set());
                     }}>
-                    <Text style={styles.floatingTrashBtnText}>⬇ Save to Phone</Text>
+                    <Text style={styles.floatingTrashBtnText}>Save to Phone ↓</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -3305,7 +3501,7 @@ export default function App() {
           <View style={styles.bentoCard}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>💻 PC Clipboard (Received)</Text>
+                <Text style={styles.bentoCardTitle}>PC Clipboard (Received)</Text>
                 <Text style={styles.bentoCardSubtitle}>
                   {pcClipboardUpdatedBy ? `Last synced from: ${pcClipboardUpdatedBy}` : 'Waiting for sync...'}
                 </Text>
@@ -3323,14 +3519,14 @@ export default function App() {
                 activeOpacity={0.75}
                 style={styles.heroPrimaryBtn}
                 onPress={handleCopyPcClipboardToPhone}>
-                <Text style={styles.heroPrimaryBtnText}>📋 Copy to Phone Clipboard</Text>
+                <Text style={styles.heroPrimaryBtnText}>Copy to Phone Clipboard</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Card 2: Send Text to PC Clipboard */}
           <View style={styles.bentoCard}>
-            <Text style={styles.bentoCardTitle}>📱 Push to PC Clipboard (Send)</Text>
+            <Text style={styles.bentoCardTitle}>Push to PC Clipboard (Send)</Text>
             <Text style={styles.bentoCardSubtitle}>
               Type or paste text below to immediately set Windows PC clipboard
             </Text>
@@ -3351,7 +3547,7 @@ export default function App() {
                 style={[styles.heroPrimaryBtn, !pairedPc && { opacity: 0.5 }]}
                 disabled={!pairedPc}
                 onPress={() => handlePushClipboardToPc()}>
-                <Text style={styles.heroPrimaryBtnText}>⚡ Push to PC Clipboard</Text>
+                <Text style={styles.heroPrimaryBtnText}>Push to PC Clipboard →</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -3393,7 +3589,7 @@ export default function App() {
           <View style={styles.bentoCardHero}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>⚡ Latency & Network Diagnostics</Text>
+                <Text style={styles.bentoCardTitle}>Latency & Network Diagnostics</Text>
                 <Text style={styles.bentoCardSubtitle}>Measure direct connection ping & speed</Text>
               </View>
               <View style={styles.speedRatingBadge}>
@@ -3405,7 +3601,7 @@ export default function App() {
               activeOpacity={0.75}
               style={styles.runDiagHeroBtn}
               onPress={runNetworkDiagnostic}>
-              <Text style={styles.runDiagHeroBtnText}>⚡ Run 1-Tap Speed & Latency Test</Text>
+              <Text style={styles.runDiagHeroBtnText}>Run Speed & Latency Test →</Text>
             </TouchableOpacity>
 
             {diagMessage !== '' && (
@@ -3421,7 +3617,7 @@ export default function App() {
 
           {/* High-Speed Transfer Guide */}
           <View style={styles.bentoCard}>
-            <Text style={styles.bentoCardTitle}>🚀 Maximum Wi-Fi Speed Guide</Text>
+            <Text style={styles.bentoCardTitle}>Maximum Wi-Fi Speed Guide</Text>
             <Text style={styles.bentoCardSubtitle}>How to achieve up to 50+ MB/s transfers</Text>
 
             <View style={styles.stepRow}>
@@ -3463,7 +3659,7 @@ export default function App() {
 
           {/* Server Connection Logs */}
           <View style={styles.bentoCard}>
-            <Text style={styles.bentoCardTitle}>📜 Real-Time Connection Logs</Text>
+            <Text style={styles.bentoCardTitle}>Real-Time Connection Logs</Text>
             <Text style={styles.bentoCardSubtitle}>Last 30 network & server events</Text>
 
             <ScrollView style={{ maxHeight: 180, marginTop: 8 }} nestedScrollEnabled>
@@ -3509,7 +3705,7 @@ export default function App() {
                   )}
                 </View>
                 <Text style={styles.lightboxMeta}>
-                  {lightboxItem?.source === 'pc' ? '💻 Windows PC' : '📱 Local Phone'} • {formatFileSize(lightboxItem?.item?.size)}
+                  {lightboxItem?.source === 'pc' ? 'Windows PC' : 'Local Phone'} • {formatFileSize(lightboxItem?.item?.size)}
                 </Text>
               </View>
 
@@ -3582,7 +3778,7 @@ export default function App() {
                     />
                   ) : (
                     <View style={styles.lightboxNonImgContainer}>
-                      <Text style={{ fontSize: 48 }}>🎬</Text>
+                      <Text style={{ fontSize: 44, color: '#8b5cf6' }}>▶</Text>
                       <Text style={styles.lightboxNonImgTitle}>{lightboxItem?.item?.name}</Text>
                     </View>
                   )}
@@ -3599,21 +3795,21 @@ export default function App() {
                       activeOpacity={0.75}
                       style={styles.lightboxHudBtn}
                       onPress={() => setVideoPaused(!videoPaused)}>
-                      <Text style={styles.lightboxHudBtnText}>{videoPaused ? '▶' : '⏸'}</Text>
+                      <Text style={styles.lightboxHudBtnText}>{videoPaused ? '▶' : '❙❙'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       activeOpacity={0.75}
                       style={styles.lightboxHudBtn}
                       onPress={() => setVideoMuted(!videoMuted)}>
-                      <Text style={styles.lightboxHudBtnText}>{videoMuted ? '🔇' : '🔊'}</Text>
+                      <Text style={[styles.lightboxHudBtnText, { fontSize: 13, fontWeight: '800' }]}>{videoMuted ? '⊘' : '◖'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       activeOpacity={0.75}
                       style={styles.lightboxHudBtn}
                       onPress={() => setVideoRepeat(!videoRepeat)}>
-                      <Text style={[styles.lightboxHudBtnText, videoRepeat && { color: '#60cdff' }]}>🔁</Text>
+                      <Text style={[styles.lightboxHudBtnText, videoRepeat && { color: '#60cdff' }]}>↻</Text>
                     </TouchableOpacity>
 
                     <View style={styles.lightboxHudDurationWrap}>
@@ -3655,12 +3851,12 @@ export default function App() {
                     }}
                     style={styles.lightboxImage}
                     resizeMode="contain"
-                    fallbackEmoji="🖼️"
+                    fallbackText="IMG"
                   />
                 </View>
               ) : (
                 <View style={styles.lightboxNonImgContainer}>
-                  <Text style={{ fontSize: 64 }}>{getFileIcon(lightboxItem?.item?.ext, false)}</Text>
+                  <FileBadgeIcon ext={lightboxItem?.item?.ext} isDir={false} size={64} />
                   <Text style={styles.lightboxNonImgTitle}>{lightboxItem?.item?.name || 'File'}</Text>
                   <Text style={styles.lightboxNonImgMeta}>{formatFileSize(lightboxItem?.item?.size)}</Text>
                 </View>
@@ -3694,7 +3890,7 @@ export default function App() {
                       handleDownloadPcFile(lightboxItem?.item?.path, lightboxItem?.item?.name);
                     }
                   }}>
-                  <Text style={styles.lightboxDlBtnText}>⬇ Save to Phone</Text>
+                  <Text style={styles.lightboxDlBtnText}>Save to Phone ↓</Text>
                 </TouchableOpacity>
               )}
 
@@ -3703,7 +3899,7 @@ export default function App() {
                   activeOpacity={0.75}
                   style={styles.lightboxSendBtn}
                   onPress={() => handleSendFilesToPc([lightboxItem?.item?.path])}>
-                  <Text style={styles.lightboxSendBtnText}>📤 Send to PC</Text>
+                  <Text style={styles.lightboxSendBtnText}>Send to PC →</Text>
                 </TouchableOpacity>
               )}
 
@@ -3724,7 +3920,7 @@ export default function App() {
                             if (FyloModule && FyloModule.trashFile && lightboxItem?.item?.path) {
                               try {
                                 await FyloModule.trashFile(lightboxItem.item.path);
-                                showToast('Moved to .trash safely 🗑️');
+                                showToast('Moved to .trash safely');
                               } catch (err) {
                                 showToast('Trash Error: ' + (err?.message || 'Failed'));
                               }
@@ -3736,7 +3932,7 @@ export default function App() {
                       ]
                     );
                   }}>
-                  <Text style={styles.lightboxTrashBtnText}>🗑️ Trash</Text>
+                  <Text style={styles.lightboxTrashBtnText}>Trash</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -3792,10 +3988,10 @@ export default function App() {
                   {pairedPc ? (isPcReachable ? `Linked to ${pcHostName || 'PC'}` : `${pcHostName || 'PC'} (Offline)`) : 'Not Paired to PC'}
                 </Text>
                 <Text style={styles.drawerConnSub}>
-                  {pairedPc ? (isPcReachable ? `${pairedPc} • ${pingLatency !== null ? `${pingLatency} ms latency` : 'Connected'}` : `${pairedPc} • ⚠️ PC Unreachable`) : 'Tap to scan QR or connect via IP'}
+                  {pairedPc ? (isPcReachable ? `${pairedPc} • ${pingLatency !== null ? `${pingLatency} ms latency` : 'Connected'}` : `${pairedPc} • PC Unreachable`) : 'Tap to scan QR or connect via IP'}
                 </Text>
               </View>
-              <Text style={{ color: '#60a5fa', fontSize: 16 }}>{pairedPc ? '⚙️' : '⚡'}</Text>
+              <Text style={{ color: '#60a5fa', fontSize: 16 }}>{pairedPc ? '⚙' : '⚡'}</Text>
             </TouchableOpacity>
 
             {/* Navigation Section Items */}
@@ -3807,10 +4003,10 @@ export default function App() {
                   setCurrentTab('home');
                   closeSidebar();
                 }}>
-                <Text style={styles.drawerNavIcon}>🏠</Text>
+                <Text style={styles.drawerNavIcon}>⌂</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.drawerNavLabel, currentTab === 'home' && styles.drawerNavLabelActive]}>
-                    Dashboard & Fast Share
+                    Command Center
                   </Text>
                   <Text style={styles.drawerNavSub}>Instant transfer & device storage</Text>
                 </View>
@@ -3823,7 +4019,7 @@ export default function App() {
                   setCurrentTab('pc-explorer');
                   closeSidebar();
                 }}>
-                <Text style={styles.drawerNavIcon}>💻</Text>
+                <Text style={styles.drawerNavIcon}>⬡</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.drawerNavLabel, currentTab === 'pc-explorer' && styles.drawerNavLabelActive]}>
                     PC Drives Explorer
@@ -3839,7 +4035,7 @@ export default function App() {
                   setCurrentTab('phone-explorer');
                   closeSidebar();
                 }}>
-                <Text style={styles.drawerNavIcon}>📱</Text>
+                <Text style={styles.drawerNavIcon}>▣</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.drawerNavLabel, currentTab === 'phone-explorer' && styles.drawerNavLabelActive]}>
                     Phone Storage & Gallery
@@ -3855,7 +4051,7 @@ export default function App() {
                   setCurrentTab('clipboard');
                   closeSidebar();
                 }}>
-                <Text style={styles.drawerNavIcon}>📋</Text>
+                <Text style={styles.drawerNavIcon}>⎘</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.drawerNavLabel, currentTab === 'clipboard' && styles.drawerNavLabelActive]}>
                     LAN Shared Clipboard
@@ -3887,7 +4083,7 @@ export default function App() {
                   closeSidebar();
                   setShowSettingsModal(true);
                 }}>
-                <Text style={styles.drawerNavIcon}>⚙️</Text>
+                <Text style={styles.drawerNavIcon}>⚙</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.drawerNavLabel}>App Settings</Text>
                   <Text style={styles.drawerNavSub}>Storage sharing & preferences</Text>
@@ -3899,9 +4095,9 @@ export default function App() {
             <View style={[styles.drawerSettingRow, !isDarkMode && styles.drawerSettingRowLight]}>
               <View style={{ flex: 1, paddingRight: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                  <Text style={{ fontSize: 18 }}>📱</Text>
+                  <Text style={{ fontSize: 16, color: '#3b82f6' }}>▣</Text>
                   <Text style={[styles.drawerThemeText, !isDarkMode && styles.drawerThemeTextLight]}>
-                    Allow Full Phone Storage Access
+                    Allow Full Storage
                   </Text>
                 </View>
                 <Text style={styles.drawerSettingSub}>
@@ -3919,7 +4115,7 @@ export default function App() {
             {/* Live Clipboard Sync Toggle in Sidebar (ON by Default) */}
             <View style={[styles.drawerThemeRow, !isDarkMode && styles.drawerThemeRowLight]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Text style={{ fontSize: 20 }}>📋</Text>
+                <Text style={{ fontSize: 16, color: '#38bdf8' }}>⎘</Text>
                 <Text style={[styles.drawerThemeText, !isDarkMode && styles.drawerThemeTextLight]}>
                   Live Clipboard Sync
                 </Text>
@@ -3928,7 +4124,7 @@ export default function App() {
                 value={clipboardAutoSync}
                 onValueChange={(val) => {
                   setClipboardAutoSync(val);
-                  showToast(val ? '🔄 Live Clipboard Sync Enabled' : '⏸️ Live Clipboard Sync Disabled');
+                  showToast(val ? 'Live Clipboard Sync Enabled' : 'Live Clipboard Sync Disabled');
                 }}
                 trackColor={{ false: '#94a3b8', true: '#2563eb' }}
                 thumbColor={clipboardAutoSync ? '#60a5fa' : '#ffffff'}
@@ -3938,7 +4134,7 @@ export default function App() {
             {/* Light / Dark Mode Toggle in Sidebar */}
             <View style={[styles.drawerThemeRow, !isDarkMode && styles.drawerThemeRowLight]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Text style={{ fontSize: 20 }}>{isDarkMode ? '🌙' : '☀️'}</Text>
+                <Text style={{ fontSize: 16, color: isDarkMode ? '#60a5fa' : '#f59e0b' }}>{isDarkMode ? '☾' : '☀'}</Text>
                 <Text style={[styles.drawerThemeText, !isDarkMode && styles.drawerThemeTextLight]}>
                   {isDarkMode ? 'Dark Mode' : 'Light Mode'}
                 </Text>
@@ -4014,16 +4210,16 @@ export default function App() {
                 onPress={async () => {
                   setDirectShareModalVisible(false);
                   if (pairedPc) {
-                    showToast(`🚀 Sending ${directSharePendingFiles.length} file(s) to ${pcHostName || 'PC'} Downloads...`);
+                    showToast(`Sending ${directSharePendingFiles.length} file(s) to ${pcHostName || 'PC'} Downloads...`);
                     const paths = directSharePendingFiles.map((f) => (typeof f === 'string' ? f : f.path)).filter(Boolean);
                     await handleSendFilesToPc(paths);
                   } else {
-                    showToast('⚡ Please pair with PC first');
+                    showToast('Please pair with PC first');
                     setShowPairModal(true);
                   }
                 }}>
                 <View style={styles.directShareIconWrap}>
-                  <Text style={styles.directShareIconEmoji}>💻</Text>
+                  <Text style={[styles.directShareIconEmoji, { fontSize: 20, color: '#38bdf8' }]}>⬡</Text>
                   {pairedPc && <View style={styles.directShareOnlineDot} />}
                 </View>
                 <View style={{ flex: 1 }}>
@@ -4035,7 +4231,7 @@ export default function App() {
                   </Text>
                 </View>
                 <Text style={styles.directShareActionText}>
-                  {pairedPc ? 'Send ➔' : 'Pair ⚡'}
+                  {pairedPc ? 'Send →' : 'Pair →'}
                 </Text>
               </TouchableOpacity>
 
@@ -4048,7 +4244,7 @@ export default function App() {
                   setShowPairModal(true);
                 }}>
                 <View style={styles.directShareIconWrap}>
-                  <Text style={styles.directShareIconEmoji}>📱</Text>
+                  <Text style={[styles.directShareIconEmoji, { fontSize: 20, color: '#60a5fa' }]}>▣</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.directShareDeviceName, !isDarkMode && styles.directShareDeviceNameLight]}>
@@ -4058,102 +4254,7 @@ export default function App() {
                     Connect via IP or QR Code
                   </Text>
                 </View>
-                <Text style={styles.directShareActionText}>Connect ➔</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.directShareCancelBtn}
-              onPress={() => setDirectShareModalVisible(false)}>
-              <Text style={styles.directShareCancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ========================================================= */}
-      {/* DIRECT SHARE DEVICE PICKER MODAL (INSTANT ICONS & NAMES) */}
-      {/* ========================================================= */}
-      <Modal visible={directShareModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalDismissArea}
-            activeOpacity={1}
-            onPress={() => setDirectShareModalVisible(false)}
-          />
-          <View style={[styles.directShareCard, !isDarkMode && styles.directShareCardLight]}>
-            <View style={styles.directShareHeader}>
-              <View>
-                <Text style={[styles.directShareTitle, !isDarkMode && styles.directShareTitleLight]}>
-                  Share to Device
-                </Text>
-                <Text style={styles.directShareSub}>
-                  {directSharePendingFiles.length} file{directSharePendingFiles.length === 1 ? '' : 's'} selected to transfer
-                </Text>
-              </View>
-              <TouchableOpacity activeOpacity={0.75} onPress={() => setDirectShareModalVisible(false)}>
-                <Text style={styles.modalCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.directShareDeviceList}>
-              {/* Primary Connected PC Device */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[
-                  styles.directShareDeviceBtn,
-                  pairedPc && styles.directShareDeviceBtnActive,
-                  !isDarkMode && styles.directShareDeviceBtnLight,
-                ]}
-                onPress={async () => {
-                  setDirectShareModalVisible(false);
-                  if (pairedPc) {
-                    showToast(`🚀 Sending ${directSharePendingFiles.length} file(s) to ${pcHostName || 'PC'} Downloads...`);
-                    const paths = directSharePendingFiles.map((f) => (typeof f === 'string' ? f : f.path)).filter(Boolean);
-                    await handleSendFilesToPc(paths);
-                  } else {
-                    showToast('⚡ Please pair with PC first');
-                    setShowPairModal(true);
-                  }
-                }}>
-                <View style={styles.directShareIconWrap}>
-                  <Text style={styles.directShareIconEmoji}>💻</Text>
-                  {pairedPc && <View style={styles.directShareOnlineDot} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.directShareDeviceName, !isDarkMode && styles.directShareDeviceNameLight]}>
-                    {pcHostName || 'Windows PC'}
-                  </Text>
-                  <Text style={styles.directShareDeviceMeta}>
-                    {pairedPc ? 'Downloads folder • Online' : 'Tap to Pair PC & Send'}
-                  </Text>
-                </View>
-                <Text style={styles.directShareActionText}>
-                  {pairedPc ? 'Send ➔' : 'Pair ⚡'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Nearby LAN / Other Device Option */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[styles.directShareDeviceBtn, !isDarkMode && styles.directShareDeviceBtnLight]}
-                onPress={() => {
-                  setDirectShareModalVisible(false);
-                  setShowPairModal(true);
-                }}>
-                <View style={styles.directShareIconWrap}>
-                  <Text style={styles.directShareIconEmoji}>📱</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.directShareDeviceName, !isDarkMode && styles.directShareDeviceNameLight]}>
-                    Nearby Phone / Peer
-                  </Text>
-                  <Text style={styles.directShareDeviceMeta}>
-                    Connect via IP or QR Code
-                  </Text>
-                </View>
-                <Text style={styles.directShareActionText}>Connect ➔</Text>
+                <Text style={styles.directShareActionText}>Connect →</Text>
               </TouchableOpacity>
             </View>
 
@@ -4188,12 +4289,12 @@ export default function App() {
             </View>
 
             {[
-              { id: 'latest', label: '⏱️ Latest First (Date Newest)', sub: 'Default: newest items appear at the top' },
-              { id: 'oldest', label: '⏱️ Oldest First (Date Oldest)', sub: 'Ascending: oldest items at top' },
-              { id: 'name', label: '🔤 Name (A → Z)', sub: 'Alphabetical ascending' },
-              { id: 'name-desc', label: '🔤 Name (Z → A)', sub: 'Alphabetical descending' },
-              { id: 'size', label: '📊 Size (Largest First)', sub: 'Highest file size at top' },
-              { id: 'size-asc', label: '📊 Size (Smallest First)', sub: 'Smallest file size at top' },
+              { id: 'latest', label: 'Latest First (Date Newest)', sub: 'Default: newest items appear at the top' },
+              { id: 'oldest', label: 'Oldest First (Date Oldest)', sub: 'Ascending: oldest items at top' },
+              { id: 'name', label: 'Name (A → Z)', sub: 'Alphabetical ascending' },
+              { id: 'name-desc', label: 'Name (Z → A)', sub: 'Alphabetical descending' },
+              { id: 'size', label: 'Size (Largest First)', sub: 'Highest file size at top' },
+              { id: 'size-asc', label: 'Size (Smallest First)', sub: 'Smallest file size at top' },
             ].map((opt) => {
               const currentSort = sortModalTarget === 'phone' ? phoneSortBy : pcSortBy;
               const isSelected = currentSort === opt.id;
@@ -4244,7 +4345,7 @@ export default function App() {
                 style={[styles.modalSubTab, pairModalTab === 'qr' && styles.modalSubTabActive]}
                 onPress={() => setPairModalTab('qr')}>
                 <Text style={[styles.modalSubTabText, pairModalTab === 'qr' && styles.modalSubTabTextActive]}>
-                  📷 Scan PC QR
+                  Scan PC QR
                 </Text>
               </TouchableOpacity>
 
@@ -4253,7 +4354,7 @@ export default function App() {
                 style={[styles.modalSubTab, pairModalTab === 'manual' && styles.modalSubTabActive]}
                 onPress={() => setPairModalTab('manual')}>
                 <Text style={[styles.modalSubTabText, pairModalTab === 'manual' && styles.modalSubTabTextActive]}>
-                  ⌨️ Manual IP
+                  Manual IP
                 </Text>
               </TouchableOpacity>
             </View>
@@ -4264,7 +4365,7 @@ export default function App() {
                   activeOpacity={0.8}
                   style={styles.qrViewfinderBox}
                   onPress={handleStartQrScan}>
-                  <Text style={styles.qrViewfinderIcon}>📸</Text>
+                  <Text style={[styles.qrViewfinderIcon, { color: '#3b82f6', fontSize: 32 }]}>⬡</Text>
                   <Text style={styles.qrScanBtnTitle}>Open Camera Scanner</Text>
                   <Text style={styles.qrViewfinderInstruction}>
                     Tap to open your camera and scan the QR code displayed on your PC screen in Fylo
@@ -4304,7 +4405,7 @@ export default function App() {
                       showToast('Could not read clipboard');
                     }
                   }}>
-                  <Text style={styles.hotspotPresetBtnText}>📋 Paste from Clipboard & Connect</Text>
+                  <Text style={styles.hotspotPresetBtnText}>Paste from Clipboard & Connect</Text>
                 </TouchableOpacity>
 
                 <View style={styles.modalBtnRow}>
@@ -4352,13 +4453,13 @@ export default function App() {
                     activeOpacity={0.75}
                     style={[styles.hotspotPresetBtn, { flex: 1 }]}
                     onPress={() => setManualPcIp('192.168.137.1:3000')}>
-                    <Text style={styles.hotspotPresetBtnText}>🔥 PC Hotspot (137.1)</Text>
+                    <Text style={styles.hotspotPresetBtnText}>PC Hotspot (137.1)</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     activeOpacity={0.75}
                     style={[styles.hotspotPresetBtn, { flex: 1 }]}
                     onPress={() => setManualPcIp('192.168.43.1:3000')}>
-                    <Text style={styles.hotspotPresetBtnText}>📱 Phone Hotspot (43.1)</Text>
+                    <Text style={styles.hotspotPresetBtnText}>Phone Hotspot (43.1)</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -4389,7 +4490,7 @@ export default function App() {
       <Modal visible={adminModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>🛡️ Admin Security Protection</Text>
+            <Text style={styles.modalTitle}>Admin Security Protection</Text>
             <Text style={styles.modalSubtitle}>
               {adminActionTitle || 'This action requires the Admin Security Password.'}
             </Text>
@@ -4433,7 +4534,7 @@ export default function App() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>⚡ Network & Ping Diagnostics</Text>
+              <Text style={styles.modalTitle}>Network & Ping Diagnostics</Text>
               <TouchableOpacity activeOpacity={0.75} onPress={() => setDiagVisible(false)}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
@@ -4478,7 +4579,7 @@ export default function App() {
           <View style={[styles.storagePromptCard, !isDarkMode && styles.storagePromptCardLight]}>
             <View style={styles.storagePromptHeader}>
               <View style={styles.storagePromptIconWrap}>
-                <Text style={{ fontSize: 26 }}>📱</Text>
+                <Text style={{ fontSize: 22, color: '#3b82f6' }}>⬡</Text>
               </View>
               <Text style={[styles.storagePromptTitle, !isDarkMode && styles.storagePromptTitleLight]}>
                 Share Full Phone Storage?
@@ -4491,7 +4592,7 @@ export default function App() {
 
             <View style={styles.storagePromptBadgeRow}>
               <View style={styles.storagePromptBadge}>
-                <Text style={styles.storagePromptBadgeText}>📦 ShareHub Always Available</Text>
+                <Text style={styles.storagePromptBadgeText}>ShareHub Always Available</Text>
               </View>
             </View>
 
@@ -4530,7 +4631,7 @@ export default function App() {
           <View style={[styles.settingsModalCard, !isDarkMode && styles.settingsModalCardLight]}>
             <View style={styles.modalHeaderRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ fontSize: 20 }}>⚙️</Text>
+                <Text style={{ fontSize: 18, color: '#3b82f6' }}>⚙</Text>
                 <Text style={[styles.modalTitle, !isDarkMode && styles.sortModalTitleLight]}>
                   App Settings
                 </Text>
@@ -4552,7 +4653,7 @@ export default function App() {
                   </Text>
                   <View style={{ marginTop: 6 }}>
                     <Text style={{ fontSize: 10.5, fontWeight: '700', color: allowFullPhoneAccess !== false ? '#10b981' : '#f59e0b' }}>
-                      {allowFullPhoneAccess !== false ? '✅ Full Storage Browsing Enabled' : '🛡️ ShareHub Only (Storage Browsing Blocked)'}
+                      {allowFullPhoneAccess !== false ? 'Full Storage Browsing Enabled' : 'ShareHub Only (Storage Browsing Blocked)'}
                     </Text>
                   </View>
                 </View>
@@ -4596,7 +4697,7 @@ export default function App() {
                   value={clipboardAutoSync}
                   onValueChange={(val) => {
                     setClipboardAutoSync(val);
-                    showToast(val ? '🔄 Live Clipboard Sync Enabled' : '⏸️ Live Clipboard Sync Disabled');
+                    showToast(val ? 'Live Clipboard Sync Enabled' : 'Live Clipboard Sync Disabled');
                   }}
                   trackColor={{ false: '#94a3b8', true: '#2563eb' }}
                   thumbColor={clipboardAutoSync ? '#60a5fa' : '#ffffff'}
@@ -4940,6 +5041,125 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     lineHeight: 16,
     marginVertical: 4,
+  },
+
+  /* Bento Action Grid */
+  bentoActionGrid: {
+    marginBottom: 10,
+    gap: 10,
+  },
+  bentoPrimaryRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  bentoPrimaryTile: {
+    flex: 1,
+    minHeight: 115,
+    borderRadius: 14,
+    padding: 13,
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+  },
+  bentoTilePc: {
+    backgroundColor: '#0c1a36',
+    borderColor: 'rgba(37, 99, 235, 0.45)',
+  },
+  bentoTilePhone: {
+    backgroundColor: '#0a1d33',
+    borderColor: 'rgba(14, 165, 233, 0.4)',
+  },
+  bentoTileConnected: {
+    borderColor: '#3b82f6',
+  },
+  bentoPrimaryTileLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: 'rgba(37, 99, 235, 0.25)',
+  },
+  bentoTileHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bentoTileBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(37, 99, 235, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+  },
+  bentoTileBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#60a5fa',
+  },
+  bentoTileGlyph: {
+    fontSize: 18,
+    color: '#3b82f6',
+  },
+  bentoTileBody: {
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  bentoTileTitle: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    color: '#f8fafc',
+    letterSpacing: 0.2,
+  },
+  bentoTileTitleLight: {
+    color: '#0f172a',
+  },
+  bentoTileSub: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  bentoTileArrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bentoTileArrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#60a5fa',
+  },
+  bentoSecondaryRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  bentoSecondaryTile: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+    borderColor: 'rgba(148, 163, 184, 0.15)',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bentoSecondaryTileLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: 'rgba(15, 23, 42, 0.1)',
+  },
+  bentoSecGlyph: {
+    fontSize: 16,
+    color: '#38bdf8',
+    marginBottom: 3,
+  },
+  bentoSecTitle: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#f1f5f9',
+  },
+  bentoSecTitleLight: {
+    color: '#0f172a',
+  },
+  bentoSecSub: {
+    fontSize: 9.5,
+    color: '#64748b',
+    marginTop: 1,
   },
 
   /* ALWAYS-PRESENT QUICK SHARE BENTO CARD */
