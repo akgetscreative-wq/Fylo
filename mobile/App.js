@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -68,8 +68,8 @@ const AsyncStorage = {
 
 // Robust AbortController-wrapped fetch helper to prevent socket hanging and unhandled rejections
 const apiFetch = async (url, options = {}, timeoutMs = 6000) => {
-  const hasAbort = typeof AbortController !== 'undefined';
-  const controller = hasAbort ? new AbortController() : null;
+  const AC = typeof global !== 'undefined' && global.AbortController ? global.AbortController : null;
+  const controller = AC ? new AC() : null;
   const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
     const fetchOptions = controller ? { ...options, signal: controller.signal } : { ...options };
