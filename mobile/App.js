@@ -193,68 +193,386 @@ const Win11FolderIcon = ({ size = 28 }) => {
   );
 };
 
-// Vector Illustrations for Bento Dashboard (Pure React Native views matching design)
-const HeroDeskIllustration = React.memo(() => (
-  <View style={styles.heroDeskIllustWrap} pointerEvents="none">
-    {/* Potted desk plant */}
-    <View style={styles.heroDeskPlant}>
-      <View style={{ flexDirection: 'row', gap: 1.5, marginBottom: -1 }}>
-        <View style={[styles.heroPlantLeaf, { transform: [{ rotate: '-25deg' }] }]} />
-        <View style={[styles.heroPlantLeaf, { height: 11, backgroundColor: '#059669' }]} />
-        <View style={[styles.heroPlantLeaf, { transform: [{ rotate: '25deg' }] }]} />
-      </View>
-      <View style={styles.heroPlantPot} />
-    </View>
+// =========================================================
+// ALPINE NATURE & SCENIC VECTOR ARTWORK (Image 2 & 3 Vision)
+// Pure React Native Views: Zero external image assets, zero bloat, sharp scaling
+// =========================================================
 
-    {/* Modern Monitor setup */}
-    <View style={styles.heroMonitorCol}>
-      <View style={styles.heroMonitorScreen}>
-        <View style={styles.heroMonitorGlass}>
-          <View style={styles.heroMonitorGlowWave} />
-          {/* Windows 11 4-square logo */}
-          <View style={styles.winGridMini}>
-            <View style={styles.winGridTile} />
-            <View style={styles.winGridTile} />
-            <View style={styles.winGridTile} />
-            <View style={styles.winGridTile} />
+// 1. Scalable Vector Conifer Pine Tree
+const PineTree = React.memo(({ scale = 1, color = '#1A5C4A', trunkColor = '#5C4033', style }) => (
+  <View style={[{ alignItems: 'center', width: 22 * scale }, style]} pointerEvents="none">
+    <View style={{
+      width: 0, height: 0,
+      borderLeftWidth: 6 * scale,
+      borderRightWidth: 6 * scale,
+      borderBottomWidth: 10 * scale,
+      borderLeftColor: 'transparent',
+      borderRightColor: 'transparent',
+      borderBottomColor: color,
+    }} />
+    <View style={{
+      width: 0, height: 0,
+      borderLeftWidth: 8 * scale,
+      borderRightWidth: 8 * scale,
+      borderBottomWidth: 12 * scale,
+      borderLeftColor: 'transparent',
+      borderRightColor: 'transparent',
+      borderBottomColor: color,
+      marginTop: -5 * scale,
+    }} />
+    <View style={{
+      width: 0, height: 0,
+      borderLeftWidth: 10 * scale,
+      borderRightWidth: 10 * scale,
+      borderBottomWidth: 14 * scale,
+      borderLeftColor: 'transparent',
+      borderRightColor: 'transparent',
+      borderBottomColor: color,
+      marginTop: -6 * scale,
+    }} />
+    <View style={{ width: 3 * scale, height: 4 * scale, backgroundColor: trunkColor }} />
+  </View>
+));
+
+// 2. Flying Bird Silhouette
+const FlyingBird = React.memo(({ scale = 1, style, color = '#3D5A54' }) => (
+  <View style={[{ flexDirection: 'row', alignItems: 'flex-end', height: 6 * scale }, style]} pointerEvents="none">
+    <View style={{
+      width: 6 * scale, height: 4 * scale,
+      borderTopWidth: 1.5 * scale,
+      borderRightWidth: 1.5 * scale,
+      borderColor: color,
+      borderTopRightRadius: 5 * scale,
+      transform: [{ rotate: '-15deg' }]
+    }} />
+    <View style={{
+      width: 6 * scale, height: 4 * scale,
+      borderTopWidth: 1.5 * scale,
+      borderLeftWidth: 1.5 * scale,
+      borderColor: color,
+      borderTopLeftRadius: 5 * scale,
+      transform: [{ rotate: '15deg' }],
+      marginLeft: -1
+    }} />
+  </View>
+));
+
+// 3. Alpine Sunrise Landscape for Hero Card (Matching Image 3)
+const AlpineSunriseLandscape = React.memo(({ isDark = false }) => {
+  const sunColor = isDark ? '#E2E8F0' : '#F59E0B';
+  const sunGlow = isDark ? 'rgba(226, 232, 240, 0.15)' : 'rgba(245, 158, 11, 0.22)';
+  const mountainFar = isDark ? '#1E293B' : '#7CB3A9';
+  const mountainMid = isDark ? '#132A26' : '#457B70';
+  const mountainNear = isDark ? '#0D201D' : '#2D5E54';
+  const pineGreen = isDark ? '#081715' : '#1A4D43';
+
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {/* Sky subtle gradient / warm wash */}
+      <View style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 95,
+        backgroundColor: isDark ? 'transparent' : 'rgba(254, 243, 199, 0.45)',
+        borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      }} />
+
+      {/* Radiant Sunrise Sun */}
+      <View style={{
+        position: 'absolute', top: 12, right: 88,
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: sunGlow,
+        alignItems: 'center', justifyContent: 'center'
+      }}>
+        <View style={{
+          width: 24, height: 24, borderRadius: 12,
+          backgroundColor: sunColor,
+          shadowColor: sunColor, shadowOpacity: 0.6, shadowRadius: 8, elevation: 4
+        }} />
+      </View>
+
+      {/* Birds soaring in sky */}
+      <FlyingBird scale={0.9} color={isDark ? '#64748b' : '#6B8E87'} style={{ position: 'absolute', top: 20, right: 148 }} />
+      <FlyingBird scale={0.7} color={isDark ? '#475569' : '#88A9A3'} style={{ position: 'absolute', top: 30, right: 172 }} />
+      <FlyingBird scale={0.6} color={isDark ? '#334155' : '#99B7B1'} style={{ position: 'absolute', top: 24, right: 194 }} />
+
+      {/* Mountain Ridge 1 (Far peaks) */}
+      <View style={{
+        position: 'absolute', top: 28, right: 0, width: 220, height: 80,
+        backgroundColor: mountainFar,
+        borderTopLeftRadius: 100, borderTopRightRadius: 60,
+        transform: [{ rotate: '-8deg' }, { scaleX: 1.2 }],
+        opacity: 0.75
+      }} />
+
+      {/* Mountain Ridge 2 (Mid ridge) */}
+      <View style={{
+        position: 'absolute', top: 44, right: -20, width: 260, height: 90,
+        backgroundColor: mountainMid,
+        borderTopLeftRadius: 130, borderTopRightRadius: 90,
+        transform: [{ rotate: '4deg' }],
+        opacity: 0.85
+      }} />
+
+      {/* Mountain Ridge 3 (Near ridge / hill) */}
+      <View style={{
+        position: 'absolute', top: 62, left: -20, right: -20, height: 100,
+        backgroundColor: mountainNear,
+        borderTopLeftRadius: 160, borderTopRightRadius: 140,
+        transform: [{ rotate: '-2deg' }]
+      }} />
+
+      {/* Pine Tree Forest Along the Right Ridge */}
+      <View style={{ position: 'absolute', top: 38, right: 14, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
+        <PineTree scale={0.7} color={pineGreen} />
+        <PineTree scale={0.95} color={pineGreen} />
+        <PineTree scale={0.75} color={pineGreen} />
+        <PineTree scale={1.15} color={pineGreen} />
+        <PineTree scale={0.85} color={pineGreen} />
+        <PineTree scale={0.65} color={pineGreen} />
+      </View>
+
+      {/* Soft Bottom Mist Veil */}
+      <View style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 50,
+        backgroundColor: isDark ? 'rgba(13, 32, 29, 0.4)' : 'rgba(247, 246, 242, 0.55)',
+        borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+      }} />
+    </View>
+  );
+});
+
+// Backward-compatible alias
+const HeroDeskIllustration = AlpineSunriseLandscape;
+
+// 4. Meadow Monitor Scene for "Browse PC" (Matching Image 3)
+const MeadowMonitorScene = React.memo(({ isDark = false }) => {
+  const hillFar = isDark ? '#132A26' : '#A7D7C5';
+  const hillNear = isDark ? '#0D201D' : '#68A89A';
+  const pineGreen = isDark ? '#081715' : '#1A4D43';
+
+  return (
+    <View style={{ width: 85, height: 75, position: 'relative', overflow: 'hidden', borderRadius: 14 }} pointerEvents="none">
+      {/* Meadow Hills */}
+      <View style={{
+        position: 'absolute', bottom: -10, left: -20, width: 120, height: 55,
+        backgroundColor: hillFar,
+        borderRadius: 50, transform: [{ rotate: '-12deg' }], opacity: 0.6
+      }} />
+      <View style={{
+        position: 'absolute', bottom: -18, right: -15, width: 110, height: 55,
+        backgroundColor: hillNear,
+        borderRadius: 50, transform: [{ rotate: '10deg' }]
+      }} />
+
+      {/* Small Pine Conifers */}
+      <View style={{ position: 'absolute', bottom: 12, left: 4, flexDirection: 'row', alignItems: 'flex-end', gap: 1 }}>
+        <PineTree scale={0.55} color={pineGreen} />
+        <PineTree scale={0.7} color={pineGreen} />
+      </View>
+
+      {/* Desktop PC Monitor Standing in Meadow */}
+      <View style={{ position: 'absolute', top: 6, right: 8, alignItems: 'center' }}>
+        <View style={{
+          width: 52, height: 36, borderRadius: 5,
+          backgroundColor: isDark ? '#0F172A' : '#1A4D43',
+          padding: 2, borderWidth: 1.2, borderColor: isDark ? '#334155' : '#457B70',
+          shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3, elevation: 3
+        }}>
+          <View style={{
+            flex: 1, borderRadius: 3.5, backgroundColor: isDark ? '#1E293B' : '#E6F4F1',
+            alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+          }}>
+            {/* Screen wallpaper landscape preview */}
+            <View style={{
+              position: 'absolute', bottom: -5, left: -5, right: -5, height: 16,
+              backgroundColor: isDark ? '#064E3B' : '#68A89A', borderRadius: 8
+            }} />
+            <View style={{
+              width: 12, height: 12, borderRadius: 6,
+              backgroundColor: isDark ? '#10B981' : '#1A4D43', opacity: 0.85
+            }} />
           </View>
         </View>
+        <View style={{ width: 6, height: 7, backgroundColor: isDark ? '#334155' : '#457B70' }} />
+        <View style={{ width: 22, height: 2.5, borderRadius: 1.5, backgroundColor: isDark ? '#475569' : '#2D5E54' }} />
       </View>
-      <View style={styles.heroMonitorStand} />
-      <View style={styles.heroMonitorBase} />
     </View>
-  </View>
-));
+  );
+});
 
-const PcMonitorIllustration = React.memo(() => (
-  <View style={styles.pcIllustWrap} pointerEvents="none">
-    <View style={styles.pcIllustScreen}>
-      <View style={styles.pcIllustGlass}>
-        <View style={styles.pcIllustWave} />
-        <View style={styles.winGridStandard}>
-          <View style={styles.winGridTileStandard} />
-          <View style={styles.winGridTileStandard} />
-          <View style={styles.winGridTileStandard} />
-          <View style={styles.winGridTileStandard} />
+// Backward-compatible alias
+const PcMonitorIllustration = MeadowMonitorScene;
+
+// 5. Golden Ridge Phone Scene for "Browse Phone" (Matching Image 3)
+const RidgePhoneScene = React.memo(({ isDark = false }) => {
+  const duneFar = isDark ? '#271F15' : '#FDE68A';
+  const duneNear = isDark ? '#382A18' : '#F59E0B';
+  const pineAmber = isDark ? '#1F170D' : '#B45309';
+
+  return (
+    <View style={{ width: 85, height: 75, position: 'relative', overflow: 'hidden', borderRadius: 14 }} pointerEvents="none">
+      {/* Amber Dunes / Alpine Ridge */}
+      <View style={{
+        position: 'absolute', bottom: -12, left: -15, width: 110, height: 50,
+        backgroundColor: duneFar,
+        borderRadius: 45, transform: [{ rotate: '-8deg' }], opacity: 0.7
+      }} />
+      <View style={{
+        position: 'absolute', bottom: -16, right: -15, width: 115, height: 52,
+        backgroundColor: duneNear,
+        borderRadius: 45, transform: [{ rotate: '12deg' }]
+      }} />
+
+      {/* Pine Trees along Ridge */}
+      <View style={{ position: 'absolute', bottom: 10, left: 6, flexDirection: 'row', alignItems: 'flex-end', gap: 1 }}>
+        <PineTree scale={0.5} color={pineAmber} />
+        <PineTree scale={0.65} color={pineAmber} />
+        <PineTree scale={0.45} color={pineAmber} />
+      </View>
+
+      {/* Modern Bezel-less Smartphone Standing on Ridge */}
+      <View style={{
+        position: 'absolute', top: 4, right: 12,
+        width: 32, height: 56, borderRadius: 7,
+        backgroundColor: isDark ? '#0F172A' : '#78350F',
+        padding: 1.5, borderWidth: 1, borderColor: isDark ? '#334155' : '#D97706',
+        shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 3, elevation: 3
+      }}>
+        <View style={{
+          flex: 1, borderRadius: 5, backgroundColor: isDark ? '#1E293B' : '#FEF3C7',
+          overflow: 'hidden', position: 'relative'
+        }}>
+          {/* Wallpaper with warm mountain ridge */}
+          <View style={{
+            position: 'absolute', bottom: -6, left: -5, right: -5, height: 24,
+            backgroundColor: isDark ? '#78350F' : '#F59E0B', borderRadius: 10
+          }} />
+          <View style={{
+            position: 'absolute', top: 6, right: 5, width: 10, height: 10,
+            borderRadius: 5, backgroundColor: isDark ? '#D97706' : '#FBBF24', opacity: 0.9
+          }} />
         </View>
       </View>
     </View>
-    <View style={styles.pcIllustStand} />
-    <View style={styles.pcIllustBase} />
-  </View>
-));
+  );
+});
 
-const PhoneIllustration = React.memo(() => (
-  <View style={styles.phoneIllustWrap} pointerEvents="none">
-    <View style={styles.phoneIllustBody}>
-      <View style={styles.phoneIllustScreen}>
-        <View style={styles.phoneIllustWave1} />
-        <View style={styles.phoneIllustWave2} />
-        <View style={styles.phoneIllustNotch} />
-      </View>
+// Backward-compatible alias
+const PhoneIllustration = RidgePhoneScene;
+
+// 6. Send Files Background Landscape (Matching Image 3)
+const SendFilesLandscape = React.memo(({ isDark = false }) => (
+  <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+    <View style={{
+      position: 'absolute', bottom: -10, left: -20, right: -20, height: 45,
+      backgroundColor: isDark ? 'rgba(19, 42, 38, 0.5)' : '#D1FAE5',
+      borderRadius: 40, transform: [{ rotate: '-1.5deg' }], opacity: 0.65
+    }} />
+    <View style={{ position: 'absolute', bottom: 12, right: 30, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
+      <PineTree scale={0.6} color={isDark ? '#0D201D' : '#1A4D43'} />
+      <PineTree scale={0.8} color={isDark ? '#0D201D' : '#1A4D43'} />
+      <PineTree scale={0.5} color={isDark ? '#0D201D' : '#1A4D43'} />
     </View>
   </View>
 ));
+
+// 7. Bottom Canvas Framing (Trees and hills framing the screen bottom)
+const BottomCanvasLandscape = React.memo(({ isDark = false }) => (
+  <View style={{ height: 42, marginTop: 12, position: 'relative', overflow: 'hidden' }} pointerEvents="none">
+    <View style={{
+      position: 'absolute', bottom: -20, left: -30, width: 220, height: 60,
+      backgroundColor: isDark ? '#0D201D' : '#A7D7C5',
+      borderRadius: 70, opacity: 0.45
+    }} />
+    <View style={{
+      position: 'absolute', bottom: -24, right: -30, width: 220, height: 60,
+      backgroundColor: isDark ? '#132A26' : '#68A89A',
+      borderRadius: 70, opacity: 0.45
+    }} />
+    <View style={{ position: 'absolute', bottom: 2, right: 16, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
+      <PineTree scale={0.65} color={isDark ? '#081715' : '#1A4D43'} />
+      <PineTree scale={0.85} color={isDark ? '#081715' : '#1A4D43'} />
+      <PineTree scale={0.55} color={isDark ? '#081715' : '#1A4D43'} />
+    </View>
+    <View style={{ position: 'absolute', bottom: 2, left: 16, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
+      <PineTree scale={0.6} color={isDark ? '#081715' : '#1A4D43'} />
+      <PineTree scale={0.8} color={isDark ? '#081715' : '#1A4D43'} />
+    </View>
+  </View>
+));
+
+// 8. Floating Bottom Navigation Bar (Modern floating capsule tabs)
+const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = false, pairedPc = null }) => {
+  const tabs = [
+    { id: 'home', label: 'Home', icon: '⌂' },
+    { id: 'pc-explorer', label: 'PC Drives', icon: '💻' },
+    { id: 'phone-explorer', label: 'Phone', icon: '📱' },
+    { id: 'clipboard', label: 'Clipboard', icon: '📋' },
+    { id: 'transfer', label: 'Transfers', icon: '⚡' },
+  ];
+
+  return (
+    <View style={{
+      position: 'absolute',
+      bottom: 16,
+      left: 16,
+      right: 16,
+      backgroundColor: isDark ? 'rgba(12, 20, 24, 0.94)' : 'rgba(247, 246, 242, 0.95)',
+      borderRadius: 36,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+      paddingVertical: 6,
+      paddingHorizontal: 6,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(16, 185, 129, 0.22)' : 'rgba(26, 92, 74, 0.14)',
+      shadowColor: isDark ? '#000' : '#1A5C4A',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: isDark ? 0.4 : 0.16,
+      shadowRadius: 12,
+      elevation: 8,
+      zIndex: 1000,
+    }}>
+      {tabs.map((t) => {
+        const isActive = currentTab === t.id;
+        return (
+          <TouchableOpacity
+            key={t.id}
+            activeOpacity={0.75}
+            onPress={() => setCurrentTab(t.id)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 7,
+              paddingHorizontal: isActive ? 12 : 8,
+              borderRadius: 24,
+              backgroundColor: isActive
+                ? (isDark ? 'rgba(16, 185, 129, 0.22)' : '#1A5C4A')
+                : 'transparent',
+            }}>
+            <Text style={{
+              fontSize: 16,
+              color: isActive
+                ? (isDark ? '#34D399' : '#FFFFFF')
+                : (isDark ? '#64748B' : '#6B7280'),
+              marginRight: isActive ? 4 : 0,
+            }}>
+              {t.icon}
+            </Text>
+            {isActive && (
+              <Text style={{
+                fontSize: 12,
+                fontWeight: '700',
+                color: isDark ? '#34D399' : '#FFFFFF',
+              }}>
+                {t.label}
+              </Text>
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+});
 
 // Clean Vector File Badge Icon (Replaces random emojis with professional type badges)
 const FileBadgeIcon = ({ ext, isDir, size = 28 }) => {
@@ -2430,11 +2748,13 @@ export default function App() {
             </View>
           )}
 
-          {/* 1. HERO CONNECTION STATUS CARD */}
+          {/* 1. HERO CONNECTION STATUS CARD (Alpine Sunrise Landscape) */}
           <View style={[styles.bentoCardHero, !isDarkMode && styles.bentoCardHeroLight]}>
+            <AlpineSunriseLandscape isDark={isDarkMode} />
+
             {pairedPc ? (
               // Connected State
-              <View>
+              <View style={{ zIndex: 2 }}>
                 <View style={styles.heroTopRow}>
                   {/* Left: Device Icon Badge & Host Details */}
                   <View style={styles.heroLeftGroup}>
@@ -2449,20 +2769,17 @@ export default function App() {
                       <Text style={[styles.heroHostTitle, !isDarkMode && styles.heroHostTitleLight]} numberOfLines={1}>
                         {pcHostName || 'Windows Host'}
                       </Text>
-                      <Text style={styles.heroIpSub}>{pairedPc}</Text>
+                      <Text style={[styles.heroIpSub, !isDarkMode && styles.heroIpSubLight]}>{pairedPc}</Text>
                     </View>
                   </View>
 
-                  {/* Right: Latency Pill + Desk Illustration */}
+                  {/* Right: Latency Pill */}
                   <View style={styles.heroRightGroup}>
                     <View style={[styles.heroLatencyPill, !isDarkMode && styles.heroLatencyPillLight]}>
                       <View style={[styles.beaconDot, { backgroundColor: '#22c55e', width: 6, height: 6, borderRadius: 3, marginRight: 4 }]} />
                       <Text style={[styles.heroLatencyText, !isDarkMode && styles.heroLatencyTextLight]}>
                         {isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : '22 ms') : 'Offline'}
                       </Text>
-                    </View>
-                    <View style={{ marginTop: 4 }}>
-                      <HeroDeskIllustration />
                     </View>
                   </View>
                 </View>
@@ -2471,9 +2788,11 @@ export default function App() {
                 <View style={styles.heroBtnRow}>
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    style={styles.heroPrimaryBtn}
+                    style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
                     onPress={() => setCurrentTab('pc-explorer')}>
-                    <Text style={{ fontSize: 16, marginRight: 6 }}>📁</Text>
+                    <View style={{ marginRight: 6 }}>
+                      <Win11FolderIcon size={20} />
+                    </View>
                     <Text style={styles.heroPrimaryBtnText}>Browse PC Drives →</Text>
                   </TouchableOpacity>
 
@@ -2489,23 +2808,20 @@ export default function App() {
               </View>
             ) : (
               // Ready to Pair State
-              <View>
+              <View style={{ zIndex: 2 }}>
                 <View style={styles.heroTopRow}>
                   <View style={styles.heroLeftGroup}>
-                    <View style={[styles.heroDeviceBadge, !isDarkMode && styles.heroDeviceBadgeLight, { backgroundColor: isDarkMode ? 'rgba(37,99,235,0.2)' : '#dbeafe' }]}>
+                    <View style={[styles.heroDeviceBadge, !isDarkMode && styles.heroDeviceBadgeLight, { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.2)' : '#d1fae5' }]}>
                       <Text style={{ fontSize: 24 }}>⚡</Text>
-                      <View style={[styles.heroOnlineDot, !isDarkMode && styles.heroOnlineDotLight, { backgroundColor: '#3b82f6' }]} />
+                      <View style={[styles.heroOnlineDot, !isDarkMode && styles.heroOnlineDotLight, { backgroundColor: '#10b981' }]} />
                     </View>
                     <View style={{ flex: 1, justifyContent: 'center' }}>
-                      <Text style={[styles.heroConnectedLabel, { color: '#3b82f6' }]}>READY TO PAIR</Text>
+                      <Text style={[styles.heroConnectedLabel, !isDarkMode && styles.heroConnectedLabelLight]}>READY TO PAIR</Text>
                       <Text style={[styles.heroHostTitle, !isDarkMode && styles.heroHostTitleLight]} numberOfLines={1}>
                         Fast Wireless Sync
                       </Text>
-                      <Text style={styles.heroIpSub}>Wi-Fi or Hotspot • {deviceIp}</Text>
+                      <Text style={[styles.heroIpSub, !isDarkMode && styles.heroIpSubLight]}>Wi-Fi or Hotspot • {deviceIp}</Text>
                     </View>
-                  </View>
-                  <View style={styles.heroRightGroup}>
-                    <HeroDeskIllustration />
                   </View>
                 </View>
 
@@ -2516,7 +2832,7 @@ export default function App() {
                 <View style={styles.heroBtnRow}>
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    style={styles.heroPrimaryBtn}
+                    style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
                     onPress={handleStartQrScan}>
                     <Text style={styles.heroPrimaryBtnText}>Scan PC QR Code</Text>
                   </TouchableOpacity>
@@ -2537,9 +2853,9 @@ export default function App() {
             )}
           </View>
 
-          {/* 2. BENTO PRIMARY TILES (Browse PC & Browse Phone) */}
+          {/* 2. BENTO PRIMARY TILES (Browse PC & Browse Phone with Alpine Meadow & Ridge) */}
           <View style={styles.bentoPrimaryRow}>
-            {/* Card 1: Browse PC */}
+            {/* Card 1: Browse PC (Meadow Monitor Scene) */}
             <TouchableOpacity
               activeOpacity={0.8}
               style={[styles.bentoPrimaryCard, !isDarkMode && styles.bentoPrimaryCardLight]}
@@ -2564,24 +2880,25 @@ export default function App() {
                     {pairedPc ? (isPcReachable ? `${pcHostName || 'Windows'} drives` : 'PC unreachable') : 'Pair to explore drives'}
                   </Text>
                 </View>
-                <PcMonitorIllustration />
+                <MeadowMonitorScene isDark={isDarkMode} />
               </View>
 
               <View style={styles.bentoCardBottomRow}>
-                <Text style={[styles.bentoActionLink, { color: '#2563eb' }]}>Open PC Drives →</Text>
-                <View style={[styles.circleArrowBtn, { backgroundColor: isDarkMode ? 'rgba(37, 99, 235, 0.25)' : '#dbeafe' }]}>
-                  <Text style={{ color: '#2563eb', fontSize: 13, fontWeight: '900' }}>→</Text>
+                <Text style={[styles.bentoActionLink, { color: !isDarkMode ? '#1A5C4A' : '#34D399' }]}>Open PC Drives →</Text>
+                <View style={[styles.circleArrowBtn, { backgroundColor: !isDarkMode ? '#D1FAE5' : 'rgba(16, 185, 129, 0.25)' }]}>
+                  <Text style={{ color: !isDarkMode ? '#065F46' : '#34D399', fontSize: 13, fontWeight: '900' }}>→</Text>
                 </View>
               </View>
             </TouchableOpacity>
 
-            {/* Card 2: Browse Phone */}
+            {/* Card 2: Browse Phone (Golden Ridge Phone Scene) */}
             <TouchableOpacity
               activeOpacity={0.8}
               style={[styles.bentoPrimaryCard, !isDarkMode && styles.bentoPrimaryCardLight]}
               onPress={() => setCurrentTab('phone-explorer')}>
-              <View style={[styles.bentoPillGreen, !isDarkMode && styles.bentoPillGreenLight]}>
-                <Text style={[styles.bentoPillGreenText, !isDarkMode && styles.bentoPillGreenTextLight]}>
+              <View style={[styles.bentoPillAmber, !isDarkMode && styles.bentoPillAmberLight]}>
+                <View style={[styles.beaconDot, { backgroundColor: '#F59E0B', width: 6, height: 6, borderRadius: 3, marginRight: 4 }]} />
+                <Text style={[styles.bentoPillAmberText, !isDarkMode && styles.bentoPillAmberTextLight]}>
                   {storageStats.freeGB} Free
                 </Text>
               </View>
@@ -2593,72 +2910,83 @@ export default function App() {
                     Storage, DCIM & files
                   </Text>
                 </View>
-                <PhoneIllustration />
+                <RidgePhoneScene isDark={isDarkMode} />
               </View>
 
               <View style={styles.bentoCardBottomRow}>
-                <Text style={[styles.bentoActionLink, { color: isDarkMode ? '#4ade80' : '#16a34a' }]}>Open Phone Files →</Text>
-                <View style={[styles.circleArrowBtn, { backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : '#dcfce7' }]}>
-                  <Text style={{ color: isDarkMode ? '#4ade80' : '#16a34a', fontSize: 13, fontWeight: '900' }}>→</Text>
+                <Text style={[styles.bentoActionLink, { color: !isDarkMode ? '#D97706' : '#FBBF24' }]}>Open Phone Files →</Text>
+                <View style={[styles.circleArrowBtn, { backgroundColor: !isDarkMode ? '#FEF3C7' : 'rgba(245, 158, 11, 0.25)' }]}>
+                  <Text style={{ color: !isDarkMode ? '#B45309' : '#FBBF24', fontSize: 13, fontWeight: '900' }}>→</Text>
                 </View>
               </View>
             </TouchableOpacity>
           </View>
 
-          {/* 3. SECONDARY ACTION CARDS (ShareHub, Clipboard, Transfers) */}
+          {/* 3. SECONDARY ACTION CARDS (ShareHub, Clipboard, Transfers with soft pastel tones) */}
           <View style={styles.bentoSecondaryRow}>
             {/* ShareHub */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[styles.bentoSecCard, { backgroundColor: isDarkMode ? '#111c33' : '#eff6ff' }]}
+              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#111c33' : '#F3E8FF' }]}
               onPress={() => {
                 fetchSharedHubFiles();
                 showToast('ShareHub synchronized');
               }}>
-              <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(37, 99, 235, 0.25)' : '#dbeafe' }]}>
-                <Text style={{ color: '#2563eb', fontSize: 18, fontWeight: '800' }}>⇄</Text>
+              <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(124, 58, 237, 0.25)' : '#EDE9FE' }]}>
+                <Text style={{ color: '#7C3AED', fontSize: 18, fontWeight: '800' }}>⇄</Text>
               </View>
               <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>ShareHub</Text>
               <Text style={[styles.bentoSecSub, !isDarkMode && styles.bentoSecSubLight]}>
                 {sharedHubFiles.length} shared
               </Text>
+              <View style={[styles.secChevronCircle, !isDarkMode && styles.secChevronCircleLight]}>
+                <Text style={styles.secChevronText}>›</Text>
+              </View>
             </TouchableOpacity>
 
             {/* Clipboard */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[styles.bentoSecCard, { backgroundColor: isDarkMode ? '#1e1b14' : '#fffbeb' }]}
+              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#1e1b14' : '#FEF3C7' }]}
               onPress={() => setCurrentTab('clipboard')}>
-              <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.25)' : '#fef3c7' }]}>
+              <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A' }]}>
                 <Text style={{ fontSize: 18 }}>📋</Text>
               </View>
               <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>Clipboard</Text>
               <Text style={[styles.bentoSecSub, !isDarkMode && styles.bentoSecSubLight]}>
                 {pcClipboardText ? 'Live Synced' : 'Ready'}
               </Text>
+              <View style={[styles.secChevronCircle, !isDarkMode && styles.secChevronCircleLight]}>
+                <Text style={styles.secChevronText}>›</Text>
+              </View>
             </TouchableOpacity>
 
             {/* Transfers */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[styles.bentoSecCard, { backgroundColor: isDarkMode ? '#22121c' : '#fff1f2' }]}
+              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#22121c' : '#FFE4E6' }]}
               onPress={() => setCurrentTab('transfer')}>
-              <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(225, 29, 72, 0.25)' : '#ffe4e6' }]}>
-                <Text style={{ color: '#e11d48', fontSize: 18 }}>⚡</Text>
+              <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(225, 29, 72, 0.25)' : '#FECDD3' }]}>
+                <Text style={{ color: '#E11D48', fontSize: 18 }}>⚡</Text>
               </View>
               <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>Transfers</Text>
               <Text style={[styles.bentoSecSub, !isDarkMode && styles.bentoSecSubLight]}>
                 Diagnostics
               </Text>
+              <View style={[styles.secChevronCircle, !isDarkMode && styles.secChevronCircleLight]}>
+                <Text style={styles.secChevronText}>›</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
-          {/* 4. SEND FILES TO PC CARD */}
-          <View style={[styles.sectionCard, !isDarkMode && styles.sectionCardLight]}>
-            <View style={styles.sectionHeaderRow}>
+          {/* 4. SEND FILES TO PC CARD (Meadow Landscape & Forest Emerald Button) */}
+          <View style={[styles.sectionCard, !isDarkMode && styles.sectionCardLight, { overflow: 'hidden' }]}>
+            <SendFilesLandscape isDark={isDarkMode} />
+
+            <View style={[styles.sectionHeaderRow, { zIndex: 2 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                <View style={styles.sendBadgeCircle}>
-                  <Text style={{ color: '#ffffff', fontSize: 20, fontWeight: '900' }}>↑</Text>
+                <View style={[styles.sendBadgeCircle, !isDarkMode && styles.sendBadgeCircleLight]}>
+                  <Text style={{ color: '#ffffff', fontSize: 18 }}>✈</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.sectionTitle, !isDarkMode && styles.sectionTitleLight]}>Send Files to PC</Text>
@@ -2677,7 +3005,7 @@ export default function App() {
             <TouchableOpacity
               activeOpacity={0.8}
               disabled={isSending}
-              style={[styles.sendFilesBigBtn, isSending && { opacity: 0.6 }]}
+              style={[styles.sendFilesBigBtn, !isDarkMode && styles.sendFilesBigBtnLight, isSending && { opacity: 0.6 }, { zIndex: 2 }]}
               onPress={handlePickAndSendToPc}>
               <Text style={styles.sendFilesBigBtnText}>
                 {isSending ? 'Sending to PC...' : '➤  Send Files to PC →'}
@@ -2923,6 +3251,9 @@ export default function App() {
               </View>
             </View>
           </View>
+
+          {/* Bottom Canvas Landscape Framing */}
+          <BottomCanvasLandscape isDark={isDarkMode} />
         </ScrollView>
         </View>
       )}
@@ -3162,6 +3493,22 @@ export default function App() {
                     }}>
                     {item.isDir ? (
                       <Win11FolderIcon size={26} />
+                    ) : isImageFile(item?.ext) ? (
+                      <SafeImage
+                        source={{ uri: 'file://' + (item?.path || '') }}
+                        style={{ width: 34, height: 34, borderRadius: 6, marginRight: 10 }}
+                        resizeMode="cover"
+                        fallbackText=""
+                      />
+                    ) : isVideoFile(item?.ext) ? (
+                      <View style={{ width: 34, height: 34, borderRadius: 6, overflow: 'hidden', marginRight: 10 }}>
+                        <VideoThumbnail
+                          path={item?.path}
+                          isPc={false}
+                          serverPort={serverPort}
+                          pcAuthToken={pcAuthToken}
+                        />
+                      </View>
                     ) : (
                       <FileBadgeIcon ext={item.ext} isDir={false} size={24} />
                     )}
@@ -3557,6 +3904,23 @@ export default function App() {
                         }}>
                         {item.isDir ? (
                           <Win11FolderIcon size={26} />
+                        ) : isImageFile(item?.ext) ? (
+                          <SafeImage
+                            source={{ uri: `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(item?.path || '')}${pcAuthToken ? `&auth=${pcAuthToken}` : ''}` }}
+                            style={{ width: 34, height: 34, borderRadius: 6, marginRight: 10 }}
+                            resizeMode="cover"
+                            fallbackText=""
+                          />
+                        ) : isVideoFile(item?.ext) ? (
+                          <View style={{ width: 34, height: 34, borderRadius: 6, overflow: 'hidden', marginRight: 10 }}>
+                            <VideoThumbnail
+                              path={item?.path}
+                              isPc={true}
+                              pairedPc={pairedPc}
+                              pcAuthToken={pcAuthToken}
+                              serverPort={serverPort}
+                            />
+                          </View>
                         ) : (
                           <FileBadgeIcon ext={item.ext} isDir={false} size={24} />
                         )}
@@ -3819,6 +4183,18 @@ export default function App() {
             </ScrollView>
           </View>
         </ScrollView>
+      )}
+
+      {/* ========================================================= */}
+      {/* FLOATING NATURE-INSPIRED BOTTOM NAVIGATION BAR             */}
+      {/* ========================================================= */}
+      {!lightboxItem && !sidebarOpen && (
+        <FloatingBottomTabBar
+          currentTab={currentTab}
+          setCurrentTab={setCurrentTab}
+          isDark={isDarkMode}
+          pairedPc={pairedPc}
+        />
       )}
 
       {/* ========================================================= */}
@@ -4888,10 +5264,10 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#080c14',
+    backgroundColor: '#0A1014',
   },
   containerLight: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#F7F6F2',
   },
 
   /* Top Header & Horizontal Pill Navigation */
@@ -4901,11 +5277,11 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-    backgroundColor: '#080c14',
+    backgroundColor: '#0A1014',
   },
   topHeaderLight: {
     backgroundColor: 'transparent',
-    borderBottomColor: 'rgba(226, 232, 240, 0.8)',
+    borderBottomColor: 'rgba(26, 92, 74, 0.12)',
   },
   brandRow: {
     flexDirection: 'row',
@@ -4929,7 +5305,7 @@ const styles = StyleSheet.create({
   },
   hamburgerBtnLight: {
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
+    borderColor: '#e5e4de',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -4945,10 +5321,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#15534c',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563eb',
+    shadowColor: '#15534c',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
     shadowRadius: 6,
@@ -4988,11 +5364,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topLatencyPillLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
+    backgroundColor: '#D1FAE5',
+    borderColor: '#A7F3D0',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 5,
     elevation: 2,
   },
@@ -5008,7 +5384,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   topLatencyTextLight: {
-    color: '#0f172a',
+    color: '#065F46',
   },
   topStatusPill: {
     flexDirection: 'row',
@@ -5310,7 +5686,7 @@ const styles = StyleSheet.create({
   /* Bento Dashboard General */
   bentoScroll: {
     padding: 14,
-    paddingBottom: 64,
+    paddingBottom: 100,
   },
   bentoCardHero: {
     backgroundColor: '#111827',
@@ -5319,14 +5695,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(37, 99, 235, 0.25)',
     marginBottom: 12,
+    position: 'relative',
+    overflow: 'hidden',
   },
   bentoCardHeroLight: {
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
+    borderColor: 'rgba(26, 92, 74, 0.14)',
+    shadowColor: '#1A5C4A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
     elevation: 3,
   },
   heroTopRow: {
@@ -5351,7 +5729,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   heroDeviceBadgeLight: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: '#d1fae5',
   },
   heroOnlineDot: {
     position: 'absolute',
@@ -5374,7 +5752,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   heroConnectedLabelLight: {
-    color: '#16a34a',
+    color: '#1A5C4A',
   },
   heroHostTitle: {
     fontSize: 20,
@@ -5390,6 +5768,9 @@ const styles = StyleSheet.create({
     color: '#64748b',
     marginTop: 1,
   },
+  heroIpSubLight: {
+    color: '#64748b',
+  },
   heroRightGroup: {
     alignItems: 'flex-end',
     marginLeft: 8,
@@ -5404,7 +5785,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   heroLatencyPillLight: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: '#d1fae5',
   },
   heroLatencyText: {
     fontSize: 11,
@@ -5412,7 +5793,7 @@ const styles = StyleSheet.create({
     color: '#4ade80',
   },
   heroLatencyTextLight: {
-    color: '#16a34a',
+    color: '#065F46',
   },
   heroBtnRow: {
     flexDirection: 'row',
@@ -5433,6 +5814,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  heroPrimaryBtnLight: {
+    backgroundColor: '#1A5C4A',
+    shadowColor: '#1A5C4A',
+  },
   heroPrimaryBtnText: {
     color: '#ffffff',
     fontSize: 13.5,
@@ -5450,8 +5835,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroSecondaryBtnLight: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
+    backgroundColor: '#FAF9F5',
+    borderColor: '#e5e4de',
   },
   heroSecondaryBtnText: {
     color: '#cbd5e1',
@@ -5486,13 +5871,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(37, 99, 235, 0.25)',
     justifyContent: 'space-between',
+    position: 'relative',
+    overflow: 'hidden',
   },
   bentoPrimaryCardLight: {
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    borderColor: 'rgba(26, 92, 74, 0.12)',
+    shadowColor: '#1A5C4A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -5506,7 +5893,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   bentoPillGreenLight: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: '#d1fae5',
   },
   bentoPillGreenText: {
     fontSize: 11,
@@ -5514,7 +5901,27 @@ const styles = StyleSheet.create({
     color: '#4ade80',
   },
   bentoPillGreenTextLight: {
-    color: '#16a34a',
+    color: '#065F46',
+  },
+  bentoPillAmber: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  bentoPillAmberLight: {
+    backgroundColor: '#FEF3C7',
+  },
+  bentoPillAmberText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#F59E0B',
+  },
+  bentoPillAmberTextLight: {
+    color: '#B45309',
   },
   bentoCardMiddleRow: {
     flexDirection: 'row',
@@ -5570,6 +5977,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  bentoSecCardLight: {
+    borderWidth: 1,
+    borderColor: 'rgba(26, 92, 74, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
   bentoSecIconCircle: {
     width: 40,
     height: 40,
@@ -5594,6 +6010,23 @@ const styles = StyleSheet.create({
   bentoSecSubLight: {
     color: '#64748b',
   },
+  secChevronCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+  },
+  secChevronCircleLight: {
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+  },
+  secChevronText: {
+    fontSize: 13,
+    color: '#94a3b8',
+    fontWeight: '900',
+  },
 
   /* Section Cards (Send Files, Share Hub, Internal Storage, etc.) */
   sectionCard: {
@@ -5603,13 +6036,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
     marginBottom: 12,
+    position: 'relative',
   },
   sectionCardLight: {
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
+    borderColor: 'rgba(26, 92, 74, 0.12)',
+    shadowColor: '#1A5C4A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -5636,21 +6070,21 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   sectionChipPill: {
-    backgroundColor: 'rgba(2, 132, 199, 0.2)',
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   sectionChipPillLight: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: '#D1FAE5',
   },
   sectionChipText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#38bdf8',
+    color: '#34D399',
   },
   sectionChipTextLight: {
-    color: '#0284c7',
+    color: '#065F46',
   },
 
   /* Send Files Elements */
@@ -5658,23 +6092,30 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#1A5C4A',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sendBadgeCircleLight: {
+    backgroundColor: '#2D6A4F',
+  },
   sendFilesBigBtn: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#1A5C4A',
     height: 48,
     borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
-    shadowColor: '#2563eb',
+    shadowColor: '#1A5C4A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 4,
+  },
+  sendFilesBigBtnLight: {
+    backgroundColor: '#1A5C4A',
+    shadowColor: '#1A5C4A',
   },
   sendFilesBigBtnText: {
     color: '#ffffff',
@@ -5693,12 +6134,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   shareHubRefreshBtnLight: {
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
+    borderColor: '#e5e4de',
+    backgroundColor: '#FAF9F5',
   },
   shareHubDashedBox: {
     borderWidth: 1.5,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: 'rgba(26, 92, 74, 0.25)',
     borderStyle: 'dashed',
     borderRadius: 16,
     padding: 24,
@@ -5707,7 +6148,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   shareHubDashedBoxLight: {
-    borderColor: '#bfdbfe',
+    borderColor: 'rgba(26, 92, 74, 0.25)',
+    backgroundColor: 'rgba(250, 249, 245, 0.6)',
   },
   shareHubEmptyCircle: {
     width: 48,
@@ -5718,7 +6160,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   shareHubEmptyCircleLight: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#D1FAE5',
   },
   shareHubEmptyTitle: {
     fontSize: 14,
@@ -5750,12 +6192,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   storageTrackBarLight: {
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#E5E4DE',
   },
   storageFillBar: {
     height: '100%',
     borderRadius: 6,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#10B981',
   },
   storageLegendText: {
     fontSize: 11,
@@ -6311,7 +6753,7 @@ const styles = StyleSheet.create({
 
   /* Responsive Photo / File Grid */
   gridContentContainer: {
-    paddingBottom: 70,
+    paddingBottom: 100,
   },
   responsiveGridWrap: {
     flexDirection: 'row',
@@ -6381,7 +6823,7 @@ const styles = StyleSheet.create({
 
   /* List View */
   listContentContainer: {
-    paddingBottom: 70,
+    paddingBottom: 100,
   },
   listRow: {
     flexDirection: 'row',
