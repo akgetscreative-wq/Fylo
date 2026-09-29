@@ -3048,7 +3048,7 @@ export default function App() {
     <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
       <StatusBar
         barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={isDarkMode ? "#000000" : "#F4F8F6"}
+        backgroundColor={isDarkMode ? "#000000" : "#F7F6F2"}
       />
 
       {/* ========================================================= */}
@@ -3116,9 +3116,8 @@ export default function App() {
       {/* TAB 1: STREAMLINED BENTO HOME DASHBOARD (Matching Image 2) */}
       {/* ========================================================= */}
       {currentTab === 'home' && (
-        <View style={{ flex: 1 }} {...homePanResponder.panHandlers}>
-          <ScrollView
-            contentContainerStyle={styles.bentoScroll}
+        <View style={{ flex: 1, backgroundColor: isDarkMode ? '#000000' : '#F7F6F2' }} {...homePanResponder.panHandlers}>
+          <ScrollView contentContainerStyle={[styles.bentoScroll, isDarkMode ? styles.bentoScrollDark : styles.bentoScrollLight]}
             showsVerticalScrollIndicator={false}>
 
           {/* Storage Permission Banner if Missing */}
@@ -3561,11 +3560,11 @@ export default function App() {
           </View>
 
           {/* 3. LAN SHARED CLIPBOARD PREVIEW CARD */}
-          <View style={styles.bentoCard}>
+          <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>Shared Clipboard</Text>
-                <Text style={styles.bentoCardSubtitle}>
+                <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Shared Clipboard</Text>
+                <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]}>
                   {pairedPc
                     ? `Synced with PC (${pcClipboardUpdatedBy || 'Host Computer'})`
                     : 'Pair with PC to share clipboard wirelessly'}
@@ -3609,11 +3608,11 @@ export default function App() {
           </View>
 
           {/* 5. BACKGROUND SERVER CONTROLS CARD */}
-          <View style={styles.bentoCard}>
+          <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>Local File Server</Text>
-                <Text style={styles.bentoCardSubtitle}>
+                <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Local File Server</Text>
+                <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]}>
                   Port {serverPort} • {readOnlyMode ? 'Safe Read-Only' : 'Read/Write Access'}
                 </Text>
               </View>
@@ -4707,12 +4706,11 @@ export default function App() {
       {/* TAB 4: DEDICATED LAN SHARED CLIPBOARD HUB                 */}
       {/* ========================================================= */}
       {currentTab === 'clipboard' && (
-        <ScrollView
-          contentContainerStyle={styles.bentoScroll}
+        <ScrollView contentContainerStyle={[styles.bentoScroll, isDarkMode ? styles.bentoScrollDark : styles.bentoScrollLight]}
           showsVerticalScrollIndicator={false}>
 
           {/* Sync Beacon Status */}
-          <View style={styles.bentoCardHero}>
+          <View style={[styles.bentoCardHero, !isDarkMode && styles.bentoCardHeroLight]}>
             <View style={styles.beaconHeaderRow}>
               <View style={styles.beaconRowLeft}>
                 <View style={pairedPc ? styles.beaconGlowConnected : styles.beaconGlowIdle}>
@@ -4824,16 +4822,15 @@ export default function App() {
       {/* TAB 5: TRANSFER & NETWORK SPEED OPTIMIZER                 */}
       {/* ========================================================= */}
       {currentTab === 'transfer' && (
-        <ScrollView
-          contentContainerStyle={styles.bentoScroll}
+        <ScrollView contentContainerStyle={[styles.bentoScroll, isDarkMode ? styles.bentoScrollDark : styles.bentoScrollLight]}
           showsVerticalScrollIndicator={false}>
 
           {/* Diagnostic Speed Test Card */}
-          <View style={styles.bentoCardHero}>
+          <View style={[styles.bentoCardHero, !isDarkMode && styles.bentoCardHeroLight]}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>Latency & Network Diagnostics</Text>
-                <Text style={styles.bentoCardSubtitle}>Measure direct connection ping & speed</Text>
+                <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Latency & Network Diagnostics</Text>
+                <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]}>Measure direct connection ping & speed</Text>
               </View>
               <View style={styles.speedRatingBadge}>
                 <Text style={styles.speedRatingText}>High Speed</Text>
@@ -4859,9 +4856,9 @@ export default function App() {
           </View>
 
           {/* High-Speed Transfer Guide */}
-          <View style={styles.bentoCard}>
-            <Text style={styles.bentoCardTitle}>Maximum Wi-Fi Speed Guide</Text>
-            <Text style={styles.bentoCardSubtitle}>How to achieve up to 50+ MB/s transfers</Text>
+          <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
+            <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Maximum Wi-Fi Speed Guide</Text>
+            <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]}>How to achieve up to 50+ MB/s transfers</Text>
 
             <View style={styles.stepRow}>
               <View style={styles.stepBadge}>
@@ -6372,7 +6369,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   topHeaderLight: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#F7F6F2',
     borderBottomColor: 'rgba(26, 92, 74, 0.12)',
   },
   brandRow: {
@@ -6779,9 +6776,14 @@ const styles = StyleSheet.create({
 
   /* Bento Dashboard General */
   bentoScroll: {
-    backgroundColor: '#000000',
     padding: 14,
     paddingBottom: 100,
+  },
+  bentoScrollDark: {
+    backgroundColor: '#000000',
+  },
+  bentoScrollLight: {
+    backgroundColor: '#F7F6F2',
   },
   bentoCardHero: {
     backgroundColor: '#0A0A0A',
@@ -9410,11 +9412,11 @@ const styles = StyleSheet.create({
 
   /* Light Theme Overrides */
   containerLight: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#F7F6F2',
   },
   topHeaderLight: {
-    backgroundColor: '#ffffff',
-    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#F7F6F2',
+    borderBottomColor: 'rgba(26, 92, 74, 0.12)',
   },
   brandTitleLight: {
     color: '#0f172a',
