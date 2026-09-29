@@ -13,85 +13,65 @@
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
         :root[data-theme="light"] {
-            --bg: #f4f8f6;
-            --sidebar-bg: rgba(255, 255, 255, 0.85);
-            --card-bg: rgba(255, 255, 255, 0.92);
-            --text: #11261f;
-            --text-light: #52796f;
-            --border: rgba(26, 92, 74, 0.14);
-            --accent: #1A5C4A;
-            --accent-hover: #134436;
-            --accent-bg: rgba(26, 92, 74, 0.09);
-            --accent-rgb: 26, 92, 74;
+            --bg: #f5f6fa;
+            --sidebar-bg: rgba(255, 255, 255, 0.45);
+            --card-bg: rgba(255, 255, 255, 0.75);
+            --text: #2f3542;
+            --text-light: #747d8c;
+            --border: rgba(255, 255, 255, 0.5);
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-bg: rgba(37, 99, 235, 0.1);
 
-            --mint: rgba(16, 185, 129, 0.1);
-            --mint-border: rgba(16, 185, 129, 0.28);
-            --peach: rgba(245, 158, 11, 0.1);
-            --peach-border: rgba(245, 158, 11, 0.3);
-            --sky: rgba(56, 189, 248, 0.12);
-            --sky-border: rgba(56, 189, 248, 0.32);
-            --lavender: rgba(26, 92, 74, 0.1);
-            --lavender-border: rgba(26, 92, 74, 0.25);
-            --gold: #f59e0b;
-            --gold-bg: rgba(245, 158, 11, 0.12);
+            --mint: rgba(14, 165, 233, 0.08);
+            --mint-border: rgba(14, 165, 233, 0.3);
+            --peach: rgba(59, 130, 246, 0.08);
+            --peach-border: rgba(59, 130, 246, 0.3);
+            --sky: rgba(56, 189, 248, 0.1);
+            --sky-border: rgba(56, 189, 248, 0.3);
+            --lavender: rgba(37, 99, 235, 0.1);
+            --lavender-border: rgba(37, 99, 235, 0.3);
             --danger: rgba(239, 68, 68, 0.1);
             --danger-text: #ef4444;
-            --save-green: #10b981;
-            --save-green-hover: #059669;
-            --glass-shadow: 0 10px 30px -5px rgba(26, 92, 74, 0.08), 0 0 0 1px rgba(26, 92, 74, 0.06);
-            --inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
-            --blob-1: rgba(26, 92, 74, 0.06);
-            --blob-2: rgba(16, 185, 129, 0.06);
-            --blob-3: rgba(245, 158, 11, 0.05);
-            --blob-4: rgba(255, 255, 255, 0.85);
-
-            --alp-sky-top: #d1fae5;
-            --alp-sky-bot: #f4f8f6;
-            --alp-mtn-back: #10b981;
-            --alp-mtn-mid: #1a5c4a;
-            --alp-mtn-front: #064e3b;
-            --alp-pine: #1a5c4a;
+            --save-green: #2563eb;
+            --save-green-hover: #1d4ed8;
+            --glass-shadow: 0 8px 32px 0 rgba(37, 99, 235, 0.12);
+            --inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+            --blob-1: rgba(37, 99, 235, 0.04);
+            --blob-2: rgba(255, 255, 255, 0.6);
+            --blob-3: rgba(14, 165, 233, 0.03);
+            --blob-4: rgba(255, 255, 255, 0.8);
         }
 
         :root[data-theme="dark"] {
-            --bg: #0b1512;
-            --sidebar-bg: rgba(14, 28, 24, 0.82);
-            --card-bg: rgba(17, 34, 29, 0.85);
-            --text: #f0fdf4;
-            --text-light: #84a99c;
-            --border: rgba(16, 185, 129, 0.18);
-            --accent: #10b981;
-            --accent-hover: #34d399;
-            --accent-bg: rgba(16, 185, 129, 0.16);
-            --accent-rgb: 16, 185, 129;
+            --bg: #090a0f;
+            --sidebar-bg: rgba(15, 18, 28, 0.6);
+            --card-bg: rgba(20, 24, 38, 0.65);
+            --text: #f1f2f6;
+            --text-light: #a4b0be;
+            --border: rgba(255, 255, 255, 0.05);
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --accent-bg: rgba(59, 130, 246, 0.15);
 
-            --mint: rgba(16, 185, 129, 0.12);
-            --mint-border: rgba(16, 185, 129, 0.28);
-            --peach: rgba(245, 158, 11, 0.12);
-            --peach-border: rgba(245, 158, 11, 0.28);
-            --sky: rgba(56, 189, 248, 0.1);
-            --sky-border: rgba(56, 189, 248, 0.25);
-            --lavender: rgba(16, 185, 129, 0.08);
-            --lavender-border: rgba(16, 185, 129, 0.2);
-            --gold: #fbbf24;
-            --gold-bg: rgba(251, 191, 36, 0.14);
-            --danger: rgba(239, 68, 68, 0.1);
+            --mint: rgba(14, 165, 233, 0.06);
+            --mint-border: rgba(14, 165, 233, 0.2);
+            --peach: rgba(59, 130, 246, 0.06);
+            --peach-border: rgba(59, 130, 246, 0.2);
+            --sky: rgba(56, 189, 248, 0.06);
+            --sky-border: rgba(56, 189, 248, 0.2);
+            --lavender: rgba(37, 99, 235, 0.06);
+            --lavender-border: rgba(37, 99, 235, 0.2);
+            --danger: rgba(239, 68, 68, 0.08);
             --danger-text: #ef4444;
-            --save-green: #10b981;
-            --save-green-hover: #34d399;
-            --glass-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(16, 185, 129, 0.15);
+            --save-green: #3b82f6;
+            --save-green-hover: #2563eb;
+            --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35);
             --inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-            --blob-1: rgba(16, 185, 129, 0.07);
-            --blob-2: rgba(26, 92, 74, 0.15);
-            --blob-3: rgba(245, 158, 11, 0.05);
-            --blob-4: rgba(11, 21, 18, 0.85);
-
-            --alp-sky-top: #064e3b;
-            --alp-sky-bot: #0b1512;
-            --alp-mtn-back: #059669;
-            --alp-mtn-mid: #10b981;
-            --alp-mtn-front: #064e3b;
-            --alp-pine: #34d399;
+            --blob-1: rgba(37, 99, 235, 0.03);
+            --blob-2: rgba(0, 0, 0, 0.35);
+            --blob-3: rgba(14, 165, 233, 0.02);
+            --blob-4: rgba(0, 0, 0, 0.25);
         }
 
         * {
@@ -3251,177 +3231,14 @@
             margin: 0 0 16px;
             max-width: 230px;
             line-height: 1.4;
+        }
+
         .drop-hero-btn-row {
             display: flex;
             flex-direction: column;
             gap: 8px;
             width: 100%;
             max-width: 210px;
-        }
-
-        /* --------------------------------------------------------------------------
-           ALPINE NATURE COMMAND CENTER STYLES & ANIMATIONS
-           -------------------------------------------------------------------------- */
-        .alpine-hero-banner {
-            position: relative;
-            width: 100%;
-            border-radius: 24px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            background: var(--card-bg);
-            box-shadow: var(--glass-shadow);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            min-height: 145px;
-        }
-
-        .alpine-scene-svg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        @keyframes alpineSunPulse {
-            0%, 100% { transform: scale(1); opacity: 0.85; }
-            50% { transform: scale(1.08); opacity: 1; }
-        }
-
-        @keyframes alpineBirdFly {
-            0% { transform: translateY(0px) translateX(0px); }
-            50% { transform: translateY(-5px) translateX(8px); }
-            100% { transform: translateY(0px) translateX(0px); }
-        }
-
-        @keyframes alpineMistDrift {
-            0% { transform: translateX(0px); opacity: 0.3; }
-            50% { transform: translateX(18px); opacity: 0.55; }
-            100% { transform: translateX(0px); opacity: 0.3; }
-        }
-
-        .alpine-sun-glow {
-            animation: alpineSunPulse 6s ease-in-out infinite;
-            transform-origin: 600px 90px;
-        }
-
-        .alpine-bird-1 { animation: alpineBirdFly 7s ease-in-out infinite; }
-        .alpine-bird-2 { animation: alpineBirdFly 9s ease-in-out infinite 1.5s; }
-        .alpine-bird-3 { animation: alpineBirdFly 8s ease-in-out infinite 3s; }
-
-        .alpine-banner-content {
-            position: relative;
-            z-index: 2;
-            padding: 22px 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            width: 100%;
-            background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.15) 0%, rgba(0, 0, 0, 0.02) 65%);
-        }
-
-        .alpine-banner-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--border);
-            padding: 4px 12px;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 800;
-            color: var(--accent);
-            width: fit-content;
-        }
-
-        :root[data-theme="dark"] .alpine-banner-badge {
-            background: rgba(16, 185, 129, 0.12);
-        }
-
-        .alpine-badge-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--save-green);
-            box-shadow: 0 0 6px var(--save-green);
-        }
-
-        .alpine-banner-title {
-            font-size: 1.45rem;
-            font-weight: 900;
-            color: var(--text);
-            letter-spacing: -0.5px;
-            margin: 2px 0 0;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-
-        .alpine-banner-subtitle {
-            font-size: 0.83rem;
-            color: var(--text-light);
-            font-weight: 600;
-            margin-bottom: 8px;
-            max-width: 680px;
-        }
-
-        .alpine-banner-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 4px;
-        }
-
-        .alpine-banner-btn {
-            padding: 8px 18px !important;
-            border-radius: 12px !important;
-            font-size: 0.82rem !important;
-            font-weight: 800 !important;
-            box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.3) !important;
-        }
-
-        .alpine-banner-btn-secondary {
-            padding: 8px 16px !important;
-            border-radius: 12px !important;
-            font-size: 0.82rem !important;
-            font-weight: 700 !important;
-            background: rgba(255, 255, 255, 0.4) !important;
-            border: 1px solid var(--border) !important;
-            color: var(--text) !important;
-        }
-
-        :root[data-theme="dark"] .alpine-banner-btn-secondary {
-            background: rgba(255, 255, 255, 0.06) !important;
-        }
-
-        /* --------------------------------------------------------------------------
-           RICH DOCUMENT BADGE STYLES (MATCHING USER IMAGES 2 & 3)
-           -------------------------------------------------------------------------- */
-        .rich-doc-svg {
-            display: inline-block;
-            vertical-align: middle;
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .phone-item-card:hover .rich-doc-svg {
-            transform: scale(1.08) translateY(-2px);
-        }
-
-        .phone-item-preview.has-doc-badge {
-            background: transparent !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .phone-grid.list-view .phone-item-preview.has-doc-badge {
-            width: 32px !important;
-            height: 36px !important;
-            background: transparent !important;
         }
 
         /* Explorer Sorting Controls & Submenu Button */
@@ -5507,77 +5324,6 @@
                     </div>
                 </div>
 
-                <!-- Alpine Command Center Hero Banner -->
-                <div class="alpine-hero-banner">
-                    <svg class="alpine-scene-svg" viewBox="0 0 1200 220" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <linearGradient id="alpSkyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stop-color="var(--alp-sky-top, #d1fae5)" stop-opacity="0.45"/>
-                                <stop offset="100%" stop-color="var(--alp-sky-bot, #f4f8f6)" stop-opacity="0.08"/>
-                            </linearGradient>
-                            <linearGradient id="alpMtnBack" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stop-color="var(--alp-mtn-back, #10b981)" stop-opacity="0.25"/>
-                                <stop offset="100%" stop-color="var(--alp-mtn-back, #10b981)" stop-opacity="0.04"/>
-                            </linearGradient>
-                            <linearGradient id="alpMtnMid" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stop-color="var(--alp-mtn-mid, #1a5c4a)" stop-opacity="0.35"/>
-                                <stop offset="100%" stop-color="var(--alp-mtn-mid, #1a5c4a)" stop-opacity="0.08"/>
-                            </linearGradient>
-                            <linearGradient id="alpMtnFront" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stop-color="var(--alp-mtn-front, #064e3b)" stop-opacity="0.45"/>
-                                <stop offset="100%" stop-color="var(--alp-mtn-front, #064e3b)" stop-opacity="0.12"/>
-                            </linearGradient>
-                            <radialGradient id="alpSunGlow" cx="50%" cy="50%" r="50%">
-                                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.85"/>
-                                <stop offset="40%" stop-color="#f59e0b" stop-opacity="0.35"/>
-                                <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
-                            </radialGradient>
-                        </defs>
-                        <rect width="1200" height="220" fill="url(#alpSkyGrad)"/>
-                        <!-- Golden Sun with Glow Halo -->
-                        <circle cx="780" cy="80" r="75" fill="url(#alpSunGlow)" class="alpine-sun-glow"/>
-                        <circle cx="780" cy="80" r="26" fill="#f59e0b" class="alpine-sun-disc"/>
-                        <!-- Soaring Birds -->
-                        <path d="M520 48 Q526 42 532 47 Q538 42 544 48 Q538 45 532 47 Q526 45 520 48 Z" fill="var(--text-light)" opacity="0.65" class="alpine-bird-1"/>
-                        <path d="M560 58 Q565 52 570 56 Q575 52 580 58 Q575 55 570 57 Q565 55 560 58 Z" fill="var(--text-light)" opacity="0.5" class="alpine-bird-2"/>
-                        <path d="M890 42 Q896 36 902 41 Q908 36 914 42 Q908 39 902 41 Q896 39 890 42 Z" fill="var(--text-light)" opacity="0.6" class="alpine-bird-3"/>
-                        <!-- Mountain Ridges (Layered) -->
-                        <path d="M0 220 L0 140 L160 85 L340 150 L520 70 L700 155 L880 75 L1060 145 L1200 95 L1200 220 Z" fill="url(#alpMtnBack)"/>
-                        <path d="M0 220 L0 160 L140 120 L280 170 L460 105 L620 180 L800 115 L980 185 L1120 135 L1200 165 L1200 220 Z" fill="url(#alpMtnMid)"/>
-                        <path d="M0 220 L0 185 L180 145 L380 200 L560 150 L760 205 L960 155 L1160 195 L1200 190 L1200 220 Z" fill="url(#alpMtnFront)"/>
-                        <!-- Conifer Pines -->
-                        <g fill="var(--alp-pine)" opacity="0.8">
-                            <polygon points="175,145 180,126 185,145"/><polygon points="177,134 180,118 183,134"/>
-                            <polygon points="210,155 215,138 220,155"/><polygon points="212,144 215,130 218,144"/>
-                            <polygon points="555,150 560,132 565,150"/><polygon points="557,138 560,122 563,138"/>
-                            <polygon points="580,158 584,142 588,158"/>
-                            <polygon points="955,155 960,136 965,155"/><polygon points="957,142 960,128 963,142"/>
-                            <polygon points="985,165 989,150 993,165"/>
-                        </g>
-                    </svg>
-                    <div class="alpine-banner-content">
-                        <div class="alpine-banner-badge">
-                            <span>🌲</span>
-                            <span>Alpine Nature Command Center</span>
-                            <span class="alpine-badge-dot"></span>
-                            <span>Direct LAN • Real-Time</span>
-                        </div>
-                        <h2 class="alpine-banner-title">Fylo Alpine Command Center</h2>
-                        <p class="alpine-banner-subtitle">High-speed peer-to-peer sharing, Windows storage drives, and instant phone synchronization with zero cloud lag.</p>
-                        <div class="alpine-banner-actions">
-                            <button class="btn btn-accent alpine-banner-btn" onclick="$('#file-input').click()">
-                                <span>📤 Share Files to LAN</span>
-                            </button>
-                            <button class="btn alpine-banner-btn-secondary" onclick="switchView('view-pc-explorer')">
-                                <span>💻 Browse PC Drives →</span>
-                            </button>
-                            <button class="btn alpine-banner-btn-secondary" onclick="showQRModal()">
-                                <span>📱 Link Android Phone</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Bento Grid (Landscape-optimized, clean cards, real data only) -->
                 <div class="dash-bento-grid">
                     <!-- 1. HERO DROP ZONE: Drag & Drop files anywhere to share instantly -->
@@ -5673,8 +5419,8 @@
                                     <span class="chip-name">Desktop</span>
                                 </button>
                                 <button class="quick-chip-btn" data-folder="Documents" title="Open Documents">
-                                    <span class="chip-emoji" style="display:inline-flex;align-items:center;justify-content:center;">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" style="width:16px;height:16px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                                    <span class="chip-emoji" style="display:inline-flex; align-items:center;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" style="width:18px;height:18px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                                     </span>
                                     <span class="chip-name">Documents</span>
                                 </button>
@@ -6165,8 +5911,8 @@
                                 </div>
                             </div>
                             <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Documents">
-                                <div class="common-folder-icon" style="background: rgba(37, 99, 235, 0.15); color: #2563eb; display:flex; align-items:center; justify-content:center;">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" style="width:22px;height:22px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                                <div class="common-folder-icon" style="background: rgba(37, 99, 235, 0.12); color: #2563eb; display:flex; align-items:center; justify-content:center;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" style="width:20px;height:20px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                                 </div>
                                 <div class="common-folder-info">
                                     <div class="common-folder-title">Documents</div>
@@ -6266,7 +6012,7 @@
                                 <button class="filter-btn" data-filter="images">📸 Photos (<span id="phone-count-photos">0</span>)</button>
                                 <button class="filter-btn" data-filter="videos">🎬 Videos (<span id="phone-count-videos">0</span>)</button>
                                 <button class="filter-btn" data-filter="audio">🎵 Audio (<span id="phone-count-audio">0</span>)</button>
-                                <button class="filter-btn" data-filter="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline-block;vertical-align:-1px;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Docs (<span id="phone-count-docs">0</span>)</button>
+                                <button class="filter-btn" data-filter="docs">📄 Docs (<span id="phone-count-docs">0</span>)</button>
                                 <button class="filter-btn" data-filter="folders">📁 Folders</button>
                             </div>
                             <div style="display: flex; align-items: center; gap: 10px;">
@@ -6410,7 +6156,7 @@
                             <button class="filter-btn" data-pc-filter="images">📸 Photos (<span id="pc-count-photos">0</span>)</button>
                             <button class="filter-btn" data-pc-filter="videos">🎬 Videos (<span id="pc-count-videos">0</span>)</button>
                             <button class="filter-btn" data-pc-filter="audio">🎵 Audio (<span id="pc-count-audio">0</span>)</button>
-                            <button class="filter-btn" data-pc-filter="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline-block;vertical-align:-1px;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Docs (<span id="pc-count-docs">0</span>)</button>
+                            <button class="filter-btn" data-pc-filter="docs">📄 Docs (<span id="pc-count-docs">0</span>)</button>
                             <button class="filter-btn" data-pc-filter="folders">📁 Folders</button>
                         </div>
                         <div style="display: flex; align-items: center; gap: 10px;">
@@ -7368,11 +7114,11 @@
                                 row.style.cursor = 'pointer';
                                 
                                 const ext = (file.name || '').split('.').pop().toLowerCase();
-                                const docBadge = renderDocumentBadgeSvg(ext, 26);
+                                const icon = typeof getFileIcon === 'function' ? getFileIcon(ext) : '📄';
                                 const isDownloaded = localStorage.getItem(`fylo-downloaded-${file.id}`) === 'true';
 
                                 row.innerHTML = `
-                                    <div style="flex-shrink: 0; display:flex; align-items:center; justify-content:center;">${docBadge}</div>
+                                    <span style="font-size: 1.3rem; flex-shrink: 0;">${icon}</span>
                                     <div class="queue-file-meta" style="flex: 1; min-width: 0;">
                                         <div class="queue-file-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; font-size: 0.86rem;" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
                                         <div class="queue-file-size" style="font-size: 0.73rem; color: var(--text-light); margin-top: 2px;">${formatBytes(file.size || 0)}</div>
@@ -7957,39 +7703,39 @@
             });
         }
 
-        function getFileBadgeConfig(ext) {
-            const e = (ext || '').toLowerCase().trim().replace(/^\./, '');
+                function getFileBadgeConfig(ext) {
+            const e = (ext || '').toLowerCase().replace(/^\./, '');
             if (e === 'pdf') {
-                return { label: 'PDF', color: '#ef4444', fold: '#dc2626', bg: 'rgba(239, 68, 68, 0.1)', border: '#ef4444', lines: 'rgba(239, 68, 68, 0.45)' };
+                return { label: 'PDF', color: '#ef4444', fold: '#b91c1c', bg: 'rgba(239, 68, 68, 0.12)', border: '#ef4444', lines: 'rgba(239, 68, 68, 0.45)' };
             }
             if (['doc', 'docx', 'rtf', 'odt'].includes(e)) {
-                return { label: e === 'docx' ? 'DOCX' : 'DOC', color: '#2563eb', fold: '#1d4ed8', bg: 'rgba(37, 99, 235, 0.1)', border: '#2563eb', lines: 'rgba(37, 99, 235, 0.45)' };
+                return { label: e === 'docx' ? 'DOCX' : 'DOC', color: '#2563eb', fold: '#1d4ed8', bg: 'rgba(37, 99, 235, 0.12)', border: '#2563eb', lines: 'rgba(37, 99, 235, 0.45)' };
             }
             if (['xls', 'xlsx', 'csv', 'ods'].includes(e)) {
-                return { label: e === 'csv' ? 'CSV' : (e === 'xlsx' ? 'XLSX' : 'XLS'), color: '#10b981', fold: '#059669', bg: 'rgba(16, 185, 129, 0.1)', border: '#10b981', lines: 'rgba(16, 185, 129, 0.45)' };
+                return { label: e === 'csv' ? 'CSV' : (e === 'xlsx' ? 'XLSX' : 'XLS'), color: '#10b981', fold: '#059669', bg: 'rgba(16, 185, 129, 0.12)', border: '#10b981', lines: 'rgba(16, 185, 129, 0.45)' };
             }
             if (['ppt', 'pptx', 'odp', 'key'].includes(e)) {
-                return { label: e === 'pptx' ? 'PPTX' : 'PPT', color: '#ea580c', fold: '#c2410c', bg: 'rgba(234, 88, 12, 0.1)', border: '#ea580c', lines: 'rgba(234, 88, 12, 0.45)' };
+                return { label: e === 'pptx' ? 'PPTX' : 'PPT', color: '#ea580c', fold: '#c2410c', bg: 'rgba(234, 88, 12, 0.12)', border: '#ea580c', lines: 'rgba(234, 88, 12, 0.45)' };
             }
             if (['txt', 'log', 'ini', 'cfg', 'conf', 'env'].includes(e)) {
-                return { label: 'TXT', color: '#f59e0b', fold: '#d97706', bg: 'rgba(245, 158, 11, 0.12)', border: '#f59e0b', lines: 'rgba(245, 158, 11, 0.45)' };
+                return { label: 'TXT', color: '#f59e0b', fold: '#d97706', bg: 'rgba(245, 158, 11, 0.14)', border: '#f59e0b', lines: 'rgba(245, 158, 11, 0.45)' };
             }
             if (['md', 'markdown'].includes(e)) {
-                return { label: 'MD', color: '#6366f1', fold: '#4f46e5', bg: 'rgba(99, 102, 241, 0.1)', border: '#6366f1', lines: 'rgba(99, 102, 241, 0.45)' };
+                return { label: 'MD', color: '#6366f1', fold: '#4f46e5', bg: 'rgba(99, 102, 241, 0.12)', border: '#6366f1', lines: 'rgba(99, 102, 241, 0.45)' };
             }
             if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'].includes(e)) {
-                return { label: (e || 'ZIP').toUpperCase().slice(0, 4), color: '#a855f7', fold: '#9333ea', bg: 'rgba(168, 85, 247, 0.1)', border: '#a855f7', lines: 'rgba(168, 85, 247, 0.45)' };
+                return { label: (e || 'ZIP').toUpperCase().slice(0, 4), color: '#a855f7', fold: '#9333ea', bg: 'rgba(168, 85, 247, 0.12)', border: '#a855f7', lines: 'rgba(168, 85, 247, 0.45)' };
             }
             if (e === 'apk') {
-                return { label: 'APK', color: '#22c55e', fold: '#16a34a', bg: 'rgba(34, 197, 94, 0.12)', border: '#22c55e', lines: 'rgba(34, 197, 94, 0.45)' };
+                return { label: 'APK', color: '#22c55e', fold: '#16a34a', bg: 'rgba(34, 197, 94, 0.14)', border: '#22c55e', lines: 'rgba(34, 197, 94, 0.45)' };
             }
             if (['exe', 'msi', 'bat', 'cmd', 'ps1'].includes(e)) {
-                return { label: 'EXE', color: '#64748b', fold: '#475569', bg: 'rgba(100, 116, 139, 0.1)', border: '#64748b', lines: 'rgba(100, 116, 139, 0.45)' };
+                return { label: 'EXE', color: '#64748b', fold: '#475569', bg: 'rgba(100, 116, 139, 0.12)', border: '#64748b', lines: 'rgba(100, 116, 139, 0.45)' };
             }
             if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'c', 'cpp', 'cs', 'go', 'rs', 'php', 'rb', 'html', 'css', 'json', 'xml', 'sql'].includes(e)) {
-                return { label: e.toUpperCase().slice(0, 4), color: '#0ea5e9', fold: '#0284c7', bg: 'rgba(14, 165, 233, 0.1)', border: '#0ea5e9', lines: 'rgba(14, 165, 233, 0.45)' };
+                return { label: e.toUpperCase().slice(0, 4), color: '#0ea5e9', fold: '#0284c7', bg: 'rgba(14, 165, 233, 0.12)', border: '#0ea5e9', lines: 'rgba(14, 165, 233, 0.45)' };
             }
-            return { label: (e ? e.toUpperCase().slice(0, 4) : 'FILE'), color: '#3b82f6', fold: '#2563eb', bg: 'rgba(59, 130, 246, 0.1)', border: '#3b82f6', lines: 'rgba(59, 130, 246, 0.45)' };
+            return { label: (e ? e.toUpperCase().slice(0, 4) : 'DOC'), color: '#3b82f6', fold: '#2563eb', bg: 'rgba(59, 130, 246, 0.12)', border: '#3b82f6', lines: 'rgba(59, 130, 246, 0.45)' };
         }
 
         function renderDocumentBadgeSvg(ext, size = 52) {
@@ -8012,7 +7758,7 @@
             </svg>`;
         }
 
-        function iconLabel(ext, type) {
+function iconLabel(ext, type) {
             if (type === 'folder') return '📁';
             const map = { pdf: 'PDF', doc: 'DOC', docx: 'DOC', zip: 'ZIP', rar: 'RAR', mp4: 'VID', mov: 'VID', mp3: 'AUD', wav: 'AUD', png: 'IMG', jpg: 'IMG', jpeg: 'IMG', gif: 'IMG', apk: 'APK', txt: 'TXT' };
             const look = ext || '';
@@ -9317,6 +9063,23 @@
         let galleryMediaList = [];
         let galleryCurrentIdx = 0;
         let galleryZoom = 1;
+        let galleryPanX = 0;
+        let galleryPanY = 0;
+
+        function applyGalleryTransform(instant = false) {
+            const container = $('#gallery-media-container');
+            if (!container) return;
+            container.style.transition = instant ? 'none' : 'transform 0.16s cubic-bezier(0.16, 1, 0.3, 1)';
+            container.style.transform = `translate(${galleryPanX}px, ${galleryPanY}px) scale(${galleryZoom})`;
+            container.style.cursor = galleryZoom > 1.05 ? 'grab' : 'default';
+        }
+
+        function resetGalleryZoom() {
+            galleryZoom = 1;
+            galleryPanX = 0;
+            galleryPanY = 0;
+            applyGalleryTransform(true);
+        }
 
         async function loadMobileDevices() {
             try {
@@ -9767,10 +9530,9 @@
                         </div>`;
                 } else {
                     const badgeCfg = getFileBadgeConfig(ext);
-                    const docSvg = renderDocumentBadgeSvg(ext, phoneViewMode === 'list' ? 26 : 52);
                     previewHtml = `
-                        <div class="phone-item-preview has-doc-badge" style="background: ${badgeCfg.bg};">
-                            ${docSvg}
+                        <div class="phone-item-preview has-doc-badge" style="background: ${badgeCfg.bg}; display: flex; align-items: center; justify-content: center;">
+                            ${renderDocumentBadgeSvg(ext, phoneViewMode === 'list' ? 26 : 52)}
                         </div>`;
                 }
 
@@ -9921,8 +9683,7 @@
             if (nameEl) nameEl.textContent = item.name;
             if (counterEl) counterEl.textContent = `${galleryCurrentIdx + 1} / ${galleryMediaList.length}`;
 
-            galleryZoom = 1;
-            stage.style.transform = `scale(1)`;
+            resetGalleryZoom();
             stage.innerHTML = '';
 
             const streamUrl = (item.source === 'pc')
@@ -10028,6 +9789,7 @@
             const modal = $('#gallery-lightbox');
             if (!modal) return;
             modal.classList.remove('active');
+            resetGalleryZoom();
             const stage = $('#gallery-media-container');
             if (stage) stage.innerHTML = '';
         }
@@ -10038,15 +9800,127 @@
         $('#gallery-close-btn')?.addEventListener('click', closeGallery);
 
         $('#gallery-zoom-in')?.addEventListener('click', () => {
-            galleryZoom = Math.min(3, galleryZoom + 0.3);
-            const container = $('#gallery-media-container');
-            if (container) container.style.transform = `scale(${galleryZoom})`;
+            galleryZoom = Math.min(50, galleryZoom < 3 ? galleryZoom + 0.5 : galleryZoom * 1.5);
+            applyGalleryTransform(false);
         });
 
         $('#gallery-zoom-out')?.addEventListener('click', () => {
-            galleryZoom = Math.max(0.6, galleryZoom - 0.3);
-            const container = $('#gallery-media-container');
-            if (container) container.style.transform = `scale(${galleryZoom})`;
+            galleryZoom = Math.max(0.5, galleryZoom > 3 ? galleryZoom / 1.5 : galleryZoom - 0.5);
+            if (galleryZoom <= 1.05) {
+                galleryPanX = 0;
+                galleryPanY = 0;
+            }
+            applyGalleryTransform(false);
+        });
+
+        // Touchpad / Wheel Pinch-to-Zoom (Ctrl + Wheel or Trackpad Pinch) & Pan
+        const galleryLightboxEl = $('#gallery-lightbox');
+        const galleryMediaEl = $('#gallery-media-container');
+        galleryLightboxEl?.addEventListener('wheel', (e) => {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                const factor = Math.exp(-e.deltaY * 0.01);
+                galleryZoom = Math.min(50, Math.max(0.5, galleryZoom * factor));
+                if (galleryZoom <= 1.05) {
+                    galleryPanX = 0;
+                    galleryPanY = 0;
+                }
+                applyGalleryTransform(true);
+            } else if (galleryZoom > 1.05) {
+                e.preventDefault();
+                galleryPanX -= e.deltaX;
+                galleryPanY -= e.deltaY;
+                applyGalleryTransform(true);
+            }
+        }, { passive: false });
+
+        // Touchscreen Multi-touch Pinch-to-Zoom
+        let touchStartDist = 0;
+        let touchStartZoom = 1;
+        let touchStartMidX = 0;
+        let touchStartMidY = 0;
+        let initialPanX = 0;
+        let initialPanY = 0;
+
+        galleryMediaEl?.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                touchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                touchStartZoom = galleryZoom;
+                touchStartMidX = (t1.clientX + t2.clientX) / 2;
+                touchStartMidY = (t1.clientY + t2.clientY) / 2;
+                initialPanX = galleryPanX;
+                initialPanY = galleryPanY;
+            }
+        }, { passive: false });
+
+        galleryMediaEl?.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && touchStartDist > 0) {
+                e.preventDefault();
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                const scale = currentDist / touchStartDist;
+                galleryZoom = Math.min(50, Math.max(0.5, touchStartZoom * scale));
+                const currentMidX = (t1.clientX + t2.clientX) / 2;
+                const currentMidY = (t1.clientY + t2.clientY) / 2;
+                galleryPanX = initialPanX + (currentMidX - touchStartMidX);
+                galleryPanY = initialPanY + (currentMidY - touchStartMidY);
+                applyGalleryTransform(true);
+            }
+        }, { passive: false });
+
+        galleryMediaEl?.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                touchStartDist = 0;
+                if (galleryZoom < 1) resetGalleryZoom();
+            }
+        });
+
+        // Mouse Pan Dragging when Zoomed
+        let isDraggingMedia = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let startPanX = 0;
+        let startPanY = 0;
+
+        galleryMediaEl?.addEventListener('mousedown', (e) => {
+            if (galleryZoom > 1.05 && e.button === 0) {
+                isDraggingMedia = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                startPanX = galleryPanX;
+                startPanY = galleryPanY;
+                galleryMediaEl.style.cursor = 'grabbing';
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDraggingMedia) {
+                galleryPanX = startPanX + (e.clientX - dragStartX);
+                galleryPanY = startPanY + (e.clientY - dragStartY);
+                applyGalleryTransform(true);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDraggingMedia) {
+                isDraggingMedia = false;
+                if (galleryMediaEl) galleryMediaEl.style.cursor = galleryZoom > 1.05 ? 'grab' : 'default';
+            }
+        });
+
+        // Double-click to toggle Zoom (1x <-> 2.5x)
+        galleryMediaEl?.addEventListener('dblclick', (e) => {
+            if (galleryZoom > 1.2) {
+                resetGalleryZoom();
+            } else {
+                galleryZoom = 2.5;
+                applyGalleryTransform(false);
+            }
         });
 
         $('#gallery-download-btn')?.addEventListener('click', () => {
@@ -10970,6 +10844,9 @@
                     const badgeCfg = getFileBadgeConfig(ext);
                     previewWrap.className = 'phone-item-preview has-doc-badge';
                     previewWrap.style.background = badgeCfg.bg;
+                    previewWrap.style.display = 'flex';
+                    previewWrap.style.alignItems = 'center';
+                    previewWrap.style.justifyContent = 'center';
                     previewWrap.innerHTML = renderDocumentBadgeSvg(ext, pcViewMode === 'list' ? 26 : 52);
                 }
                 card.appendChild(previewWrap);
@@ -11377,7 +11254,7 @@
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     const rand = Math.random();
-                    const colorStr = rand < 0.5 ? '255, 255, 255' : (rand < 0.78 ? '245, 158, 11' : '16, 185, 129');
+                    const colorStr = rand < 0.6 ? '255, 255, 255' : (rand < 0.8 ? '255, 143, 177' : '116, 185, 255');
                     points.push({
                         baseX: c * spacing,
                         baseY: r * spacing,

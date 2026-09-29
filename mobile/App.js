@@ -1055,9 +1055,11 @@ export default function App() {
       setVideoControlsVisible(true);
       setVideoSeek(-1);
       mediaSlideAnim.setValue(SCREEN_WIDTH);
-      Animated.timing(mediaSlideAnim, {
+      Animated.spring(mediaSlideAnim, {
         toValue: 0,
-        duration: 180,
+        damping: 22,
+        mass: 0.8,
+        stiffness: 190,
         useNativeDriver: true,
       }).start(() => {
         isSlidingRef.current = false;
@@ -1093,9 +1095,11 @@ export default function App() {
       setVideoControlsVisible(true);
       setVideoSeek(-1);
       mediaSlideAnim.setValue(-SCREEN_WIDTH);
-      Animated.timing(mediaSlideAnim, {
+      Animated.spring(mediaSlideAnim, {
         toValue: 0,
-        duration: 180,
+        damping: 22,
+        mass: 0.8,
+        stiffness: 190,
         useNativeDriver: true,
       }).start(() => {
         isSlidingRef.current = false;
@@ -1181,8 +1185,8 @@ export default function App() {
           if (lastTouchDistanceRef.current && lastTouchDistanceRef.current > 0) {
             const delta = currentDistance / lastTouchDistanceRef.current;
             let nextScale = zoomScaleRef.current * delta;
-            if (nextScale < 0.8) nextScale = 0.8;
-            if (nextScale > 5) nextScale = 5;
+            if (nextScale < 0.5) nextScale = 0.5;
+            if (nextScale > 60) nextScale = 60;
             zoomScaleRef.current = nextScale;
             // Native direct update without React re-render: 120Hz butter-smooth!
             updateNativeTransform(nextScale, panOffsetRef.current.x, panOffsetRef.current.y);
@@ -1190,10 +1194,10 @@ export default function App() {
           lastTouchDistanceRef.current = currentDistance;
         } else if (touches.length === 1) {
           if (zoomScaleRef.current > 1.05) {
-            const maxPanX = (SCREEN_WIDTH * (zoomScaleRef.current - 1)) / 1.8;
-            const maxPanY = (SCREEN_HEIGHT * (zoomScaleRef.current - 1)) / 1.8;
-            let nextX = panOffsetRef.current.x + gestureState.dx * 0.25;
-            let nextY = panOffsetRef.current.y + gestureState.dy * 0.25;
+            const maxPanX = (SCREEN_WIDTH * (zoomScaleRef.current - 0.7)) / 1.4;
+            const maxPanY = (SCREEN_HEIGHT * (zoomScaleRef.current - 0.7)) / 1.4;
+            let nextX = panOffsetRef.current.x + gestureState.dx * 0.5;
+            let nextY = panOffsetRef.current.y + gestureState.dy * 0.5;
             nextX = Math.max(-maxPanX, Math.min(maxPanX, nextX));
             nextY = Math.max(-maxPanY, Math.min(maxPanY, nextY));
             panOffsetRef.current = { x: nextX, y: nextY };
@@ -1207,10 +1211,9 @@ export default function App() {
               const dragScale = Math.max(0.65, 1 - (dragY / SCREEN_HEIGHT) * 0.45);
               panOffsetRef.current = { x: gestureState.dx * 0.35, y: dragY };
               updateNativeTransform(dragScale, gestureState.dx * 0.35, dragY);
-            } else if (Math.abs(gestureState.dx) > 10) {
-              // Horizontal swipe feedback
-              panOffsetRef.current = { x: gestureState.dx * 0.4, y: 0 };
-              updateNativeTransform(1, gestureState.dx * 0.4, 0);
+            } else if (Math.abs(gestureState.dx) > 4 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7) {
+              // Natural 1:1 Finger-Tracking Horizontal Swipe
+              mediaSlideAnim.setValue(gestureState.dx);
             }
           }
         }
@@ -1225,13 +1228,21 @@ export default function App() {
             return;
           }
 
-          // Horizontal swipe left/right to change media (Google Photos carousel)
-          const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.8;
-          if (isHorizontal && (gestureState.dx < -35 || gestureState.vx < -0.4)) {
+          // Natural physics-based horizontal swipe release
+          const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7;
+          const swipeThreshold = SCREEN_WIDTH * 0.16; // ~60px responsive threshold
+          if (isHorizontal && (gestureState.dx < -swipeThreshold || gestureState.vx < -0.3)) {
             goToNextMediaRef.current();
-          } else if (isHorizontal && (gestureState.dx > 35 || gestureState.vx > 0.4)) {
+          } else if (isHorizontal && (gestureState.dx > swipeThreshold || gestureState.vx > 0.3)) {
             goToPrevMediaRef.current();
           } else {
+            Animated.spring(mediaSlideAnim, {
+              toValue: 0,
+              damping: 18,
+              mass: 0.7,
+              stiffness: 200,
+              useNativeDriver: true,
+            }).start();
             zoomScaleRef.current = 1;
             panOffsetRef.current = { x: 0, y: 0 };
             updateNativeTransform(1, 0, 0);
@@ -1254,10 +1265,10 @@ export default function App() {
       onStartShouldSetPanResponder: () => true,
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return Math.abs(gestureState.dx) > 8 || Math.abs(gestureState.dy) > 8;
+        return Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6;
       },
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
-        return Math.abs(gestureState.dx) > 15 || Math.abs(gestureState.dy) > 15;
+        return Math.abs(gestureState.dx) > 12 || Math.abs(gestureState.dy) > 12;
       },
       onPanResponderGrant: (evt) => {
         videoTouchStartRef.current = {
@@ -1265,6 +1276,11 @@ export default function App() {
           x: evt.nativeEvent.pageX,
           y: evt.nativeEvent.pageY,
         };
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (Math.abs(gestureState.dx) > 6 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7) {
+          mediaSlideAnim.setValue(gestureState.dx);
+        }
       },
       onPanResponderRelease: (evt, gestureState) => {
         const elapsed = Date.now() - videoTouchStartRef.current.time;
@@ -1308,12 +1324,21 @@ export default function App() {
           return;
         }
 
-        // 3. Swipe Left / Right to Change Media (Next / Prev)
-        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.8;
-        if (isHorizontal && (gestureState.dx < -35 || gestureState.vx < -0.4)) {
+        // 3. Natural Swipe Left / Right with spring reset
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7;
+        const swipeThreshold = SCREEN_WIDTH * 0.16;
+        if (isHorizontal && (gestureState.dx < -swipeThreshold || gestureState.vx < -0.3)) {
           goToNextMediaRef.current();
-        } else if (isHorizontal && (gestureState.dx > 35 || gestureState.vx > 0.4)) {
+        } else if (isHorizontal && (gestureState.dx > swipeThreshold || gestureState.vx > 0.3)) {
           goToPrevMediaRef.current();
+        } else {
+          Animated.spring(mediaSlideAnim, {
+            toValue: 0,
+            damping: 18,
+            mass: 0.7,
+            stiffness: 200,
+            useNativeDriver: true,
+          }).start();
         }
       },
     })
@@ -1393,7 +1418,7 @@ export default function App() {
 
   // Zoom button triggers
   const handleZoomIn = () => {
-    let next = Math.min(4, zoomScaleRef.current + 0.5);
+    let next = Math.min(60, zoomScaleRef.current + (zoomScaleRef.current < 4 ? 0.75 : 2.5));
     zoomScaleRef.current = next;
     setZoomScale(next);
   };
