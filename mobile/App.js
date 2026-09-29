@@ -500,14 +500,115 @@ const BottomCanvasLandscape = React.memo(({ isDark = false }) => (
   </View>
 ));
 
+// Aesthetic Vector Icons for premium UI look (No cheap OS emojis!)
+const VectorHomeIcon = React.memo(({ size = 18, color = '#3b82f6' }) => (
+  <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <Text style={{ fontSize: size * 0.95, color, fontWeight: '900', lineHeight: size }}>⌂</Text>
+  </View>
+));
+
+const VectorMonitorIcon = React.memo(({ size = 18, color = '#38bdf8' }) => {
+  const w = size;
+  const h = size * 0.72;
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: w,
+          height: h,
+          borderRadius: 3,
+          borderWidth: 1.5,
+          borderColor: color,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        <View style={{ width: w * 0.4, height: 1, backgroundColor: color, opacity: 0.6 }} />
+      </View>
+      <View style={{ width: 2, height: 2.5, backgroundColor: color }} />
+      <View style={{ width: w * 0.55, height: 1.5, borderRadius: 1, backgroundColor: color }} />
+    </View>
+  );
+});
+
+const VectorPhoneIcon = React.memo(({ size = 18, color = '#10b981' }) => {
+  const w = size * 0.62;
+  const h = size;
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: w,
+          height: h,
+          borderRadius: 4,
+          borderWidth: 1.5,
+          borderColor: color,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingVertical: 2,
+        }}>
+        <View style={{ width: w * 0.35, height: 1.2, borderRadius: 1, backgroundColor: color }} />
+        <View style={{ width: w * 0.45, height: 1.2, borderRadius: 1, backgroundColor: color }} />
+      </View>
+    </View>
+  );
+});
+
+const VectorLightningIcon = React.memo(({ size = 18, color = '#f59e0b' }) => (
+  <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <Text style={{ fontSize: size * 0.95, color, fontWeight: '900', lineHeight: size, textAlign: 'center' }}>⚡</Text>
+  </View>
+));
+
+const VectorClipboardIcon = React.memo(({ size = 18, color = '#a855f7' }) => {
+  const w = size * 0.72;
+  const h = size * 0.9;
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: w * 0.45,
+          height: 3,
+          borderTopLeftRadius: 2,
+          borderTopRightRadius: 2,
+          backgroundColor: color,
+          zIndex: 2,
+          marginBottom: -1.5,
+        }}
+      />
+      <View
+        style={{
+          width: w,
+          height: h,
+          borderRadius: 3,
+          borderWidth: 1.5,
+          borderColor: color,
+          paddingTop: 3,
+          paddingHorizontal: 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+        }}>
+        <View style={{ width: '70%', height: 1, backgroundColor: color, opacity: 0.7 }} />
+        <View style={{ width: '50%', height: 1, backgroundColor: color, opacity: 0.7 }} />
+      </View>
+    </View>
+  );
+});
+
+const VectorShareHubIcon = React.memo(({ size = 18, color = '#60a5fa' }) => (
+  <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <Text style={{ fontSize: size * 0.9, color, fontWeight: '900', lineHeight: size }}>⇄</Text>
+  </View>
+));
+
 // 8. Floating Bottom Navigation Bar (Modern floating capsule tabs)
 const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = false, pairedPc = null }) => {
   const tabs = [
-    { id: 'home', label: 'Home', icon: '⌂' },
-    { id: 'pc-explorer', label: 'PC Drives', icon: '💻' },
-    { id: 'phone-explorer', label: 'Phone', icon: '📱' },
-    { id: 'clipboard', label: 'Clipboard', icon: '📋' },
-    { id: 'transfer', label: 'Transfers', icon: '⚡' },
+    { id: 'home', label: 'Home', renderIcon: (c) => <VectorHomeIcon size={17} color={c} /> },
+    { id: 'pc-explorer', label: 'PC Drives', renderIcon: (c) => <VectorMonitorIcon size={17} color={c} /> },
+    { id: 'phone-explorer', label: 'Phone', renderIcon: (c) => <VectorPhoneIcon size={17} color={c} /> },
+    { id: 'clipboard', label: 'Clipboard', renderIcon: (c) => <VectorClipboardIcon size={17} color={c} /> },
+    { id: 'transfer', label: 'Transfers', renderIcon: (c) => <VectorLightningIcon size={17} color={c} /> },
   ];
 
   return (
@@ -516,7 +617,7 @@ const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = f
       bottom: 16,
       left: 16,
       right: 16,
-      backgroundColor: isDark ? 'rgba(12, 20, 24, 0.94)' : 'rgba(247, 246, 242, 0.95)',
+      backgroundColor: isDark ? 'rgba(10, 10, 10, 0.96)' : 'rgba(255, 255, 255, 0.97)',
       borderRadius: 36,
       flexDirection: 'row',
       alignItems: 'center',
@@ -524,8 +625,8 @@ const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = f
       paddingVertical: 6,
       paddingHorizontal: 6,
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(16, 185, 129, 0.22)' : 'rgba(26, 92, 74, 0.14)',
-      shadowColor: isDark ? '#000' : '#1A5C4A',
+      borderColor: isDark ? 'rgba(37, 99, 235, 0.25)' : 'rgba(37, 99, 235, 0.2)',
+      shadowColor: '#2563eb',
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: isDark ? 0.4 : 0.16,
       shadowRadius: 12,
@@ -534,6 +635,9 @@ const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = f
     }}>
       {tabs.map((t) => {
         const isActive = currentTab === t.id;
+        const iconColor = isActive
+          ? (isDark ? '#93c5fd' : '#ffffff')
+          : (isDark ? '#64748b' : '#64748b');
         return (
           <TouchableOpacity
             key={t.id}
@@ -546,23 +650,17 @@ const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = f
               paddingHorizontal: isActive ? 12 : 8,
               borderRadius: 24,
               backgroundColor: isActive
-                ? (isDark ? 'rgba(16, 185, 129, 0.22)' : '#1A5C4A')
+                ? (isDark ? 'rgba(37, 99, 235, 0.25)' : '#2563eb')
                 : 'transparent',
             }}>
-            <Text style={{
-              fontSize: 16,
-              color: isActive
-                ? (isDark ? '#34D399' : '#FFFFFF')
-                : (isDark ? '#64748B' : '#6B7280'),
-              marginRight: isActive ? 4 : 0,
-            }}>
-              {t.icon}
-            </Text>
+            <View style={{ marginRight: isActive ? 4 : 0 }}>
+              {t.renderIcon(iconColor)}
+            </View>
             {isActive && (
               <Text style={{
                 fontSize: 12,
-                fontWeight: '700',
-                color: isDark ? '#34D399' : '#FFFFFF',
+                fontWeight: '800',
+                color: isDark ? '#93c5fd' : '#ffffff',
               }}>
                 {t.label}
               </Text>
@@ -616,59 +714,33 @@ const FileBadgeIcon = ({ ext, isDir, size = 28 }) => {
   return (
     <View style={{
       width: 30 * scale,
-      height: 36 * scale,
-      borderRadius: 5 * scale,
-      backgroundColor: badgeColor + '14',
-      borderColor: badgeColor,
-      borderWidth: 1.8 * scale,
+      height: 34 * scale,
+      borderRadius: 6 * scale,
+      backgroundColor: badgeColor + '18',
+      borderColor: badgeColor + '55',
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
       position: 'relative',
-      overflow: 'hidden',
-      justifyContent: 'space-between',
-      paddingTop: 5 * scale,
-      paddingHorizontal: 3 * scale,
-      paddingBottom: 2 * scale,
     }}>
-      {/* Folded Flap Corner at Top-Right */}
       <View style={{
         position: 'absolute',
-        top: -1,
-        right: -1,
+        top: 0,
+        right: 0,
         width: 9 * scale,
         height: 9 * scale,
         backgroundColor: badgeColor + '35',
-        borderBottomLeftRadius: 4 * scale,
-        borderLeftWidth: 1.2 * scale,
-        borderBottomWidth: 1.2 * scale,
-        borderColor: badgeColor,
+        borderBottomLeftRadius: 5 * scale,
+        borderTopRightRadius: 5 * scale,
       }} />
-
-      {/* Document Text Lines (Image 2 & 3 likeness) */}
-      <View style={{ width: '70%', marginTop: 2 * scale }}>
-        <View style={{ height: 1.8 * scale, width: '75%', backgroundColor: badgeColor + '50', borderRadius: 1, marginBottom: 2 * scale }} />
-        <View style={{ height: 1.8 * scale, width: '100%', backgroundColor: badgeColor + '50', borderRadius: 1, marginBottom: 2 * scale }} />
-        <View style={{ height: 1.8 * scale, width: '85%', backgroundColor: badgeColor + '40', borderRadius: 1 }} />
-      </View>
-
-      {/* Bold Vibrant Extension Badge Pill (Image 2 style) */}
-      <View style={{
-        backgroundColor: badgeColor,
-        borderRadius: 3 * scale,
-        paddingHorizontal: 2.5 * scale,
-        paddingVertical: 1 * scale,
-        alignSelf: 'flex-start',
-        minWidth: 16 * scale,
-        alignItems: 'center',
-        justifyContent: 'center',
+      <Text style={{
+        fontSize: Math.max(8, 8.5 * scale),
+        fontWeight: '800',
+        color: badgeColor,
+        letterSpacing: 0.3,
       }}>
-        <Text style={{
-          fontSize: Math.max(6.5, 7.5 * scale),
-          fontWeight: '900',
-          color: '#ffffff',
-          letterSpacing: 0.3,
-        }}>
-          {label}
-        </Text>
-      </View>
+        {label}
+      </Text>
     </View>
   );
 };
@@ -849,6 +921,8 @@ export default function App() {
   // Active Shared Files Hub (Visible in Mobile Dashboard)
   const [sharedHubFiles, setSharedHubFiles] = useState([]);
   const [downloadedSharedIds, setDownloadedSharedIds] = useState(new Set());
+  const [shareHubSearch, setShareHubSearch] = useState('');
+  const [shareHubViewMode, setShareHubViewMode] = useState('grid');
 
   // Send to PC State (Replaces Sending)
   const [isSending, setIsSending] = useState(false);
@@ -865,6 +939,9 @@ export default function App() {
   const directShareModalVisibleRef = useRef(directShareModalVisible);
   directShareModalVisibleRef.current = directShareModalVisible;
 
+  // Native External File & Player Chooser Prompt State
+  const [externalFilePrompt, setExternalFilePrompt] = useState(null); // { file, source: 'phone' | 'pc' }
+
   // Universal Media Lightbox State with Pinch-to-Zoom & Pan & Carousel Playlist
   const [lightboxItem, setLightboxItem] = useState(null); // { item, source: 'phone' | 'pc', index: number, playlist: Array }
   const [zoomScale, setZoomScale] = useState(1);
@@ -874,13 +951,28 @@ export default function App() {
   const lastTouchDistanceRef = useRef(null);
   const lastTapTimeRef = useRef(0);
 
-  // In-App Video Player State
+  // In-App Video Player State (YouTube / MX Player Engine)
   const [videoPaused, setVideoPaused] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoMuted, setVideoMuted] = useState(false);
   const [videoRepeat, setVideoRepeat] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
+  const [videoControlsVisible, setVideoControlsVisible] = useState(true);
+  const [videoSpeed, setVideoSpeed] = useState(1.0);
+  const [videoResizeMode, setVideoResizeMode] = useState('contain');
+  const [videoSeek, setVideoSeek] = useState(-1);
+  const [videoDoubleTapFeedback, setVideoDoubleTapFeedback] = useState(null); // { side: 'left'|'right', text: '-10s'|'+10s' }
+  const [videoScrubbing, setVideoScrubbing] = useState(false);
+  const [videoScrubTime, setVideoScrubTime] = useState(0);
+  const [scrubberWidth, setScrubberWidth] = useState(SCREEN_WIDTH - 120);
   const videoViewRef = useRef(null);
+  const lastVideoTapRef = useRef(0);
+  const videoControlsTimerRef = useRef(null);
+  const videoCurrentTimeRef = useRef(0);
+  videoCurrentTimeRef.current = videoCurrentTime;
+  const videoDurationRef = useRef(0);
+  videoDurationRef.current = videoDuration;
 
   // Admin Security Password Modal State
   const [adminModalVisible, setAdminModalVisible] = useState(false);
@@ -931,14 +1023,25 @@ export default function App() {
     setTimeout(() => setClipboardToast(''), 3200);
   };
 
-  // Gallery Navigation Functions
+  // Gallery Navigation Functions with Smooth Sliding Transition Animation
+  const mediaSlideAnim = useRef(new Animated.Value(0)).current;
+  const isSlidingRef = useRef(false);
+
   const goToNextMedia = () => {
+    if (isSlidingRef.current) return;
     const current = lightboxItemRef.current;
     if (!current?.playlist || current.playlist.length <= 1) return;
     const { playlist, index, source } = current;
     const nextIdx = (index + 1) % playlist.length;
     const nextItem = playlist[nextIdx];
-    if (nextItem) {
+    if (!nextItem) return;
+
+    isSlidingRef.current = true;
+    Animated.timing(mediaSlideAnim, {
+      toValue: -SCREEN_WIDTH,
+      duration: 160,
+      useNativeDriver: true,
+    }).start(() => {
       setLightboxItem({
         item: nextItem,
         source: nextItem.downloadUrl ? 'pc' : source,
@@ -948,16 +1051,35 @@ export default function App() {
       resetZoom();
       setVideoPaused(false);
       setVideoDuration(0);
-    }
+      setVideoCurrentTime(0);
+      setVideoControlsVisible(true);
+      setVideoSeek(-1);
+      mediaSlideAnim.setValue(SCREEN_WIDTH);
+      Animated.timing(mediaSlideAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(() => {
+        isSlidingRef.current = false;
+      });
+    });
   };
 
   const goToPrevMedia = () => {
+    if (isSlidingRef.current) return;
     const current = lightboxItemRef.current;
     if (!current?.playlist || current.playlist.length <= 1) return;
     const { playlist, index, source } = current;
     const prevIdx = (index - 1 + playlist.length) % playlist.length;
     const prevItem = playlist[prevIdx];
-    if (prevItem) {
+    if (!prevItem) return;
+
+    isSlidingRef.current = true;
+    Animated.timing(mediaSlideAnim, {
+      toValue: SCREEN_WIDTH,
+      duration: 160,
+      useNativeDriver: true,
+    }).start(() => {
       setLightboxItem({
         item: prevItem,
         source: prevItem.downloadUrl ? 'pc' : source,
@@ -967,7 +1089,18 @@ export default function App() {
       resetZoom();
       setVideoPaused(false);
       setVideoDuration(0);
-    }
+      setVideoCurrentTime(0);
+      setVideoControlsVisible(true);
+      setVideoSeek(-1);
+      mediaSlideAnim.setValue(-SCREEN_WIDTH);
+      Animated.timing(mediaSlideAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(() => {
+        isSlidingRef.current = false;
+      });
+    });
   };
 
   const goToNextMediaRef = useRef(goToNextMedia);
@@ -1137,9 +1270,34 @@ export default function App() {
         const elapsed = Date.now() - videoTouchStartRef.current.time;
         const totalDistance = Math.hypot(gestureState.dx, gestureState.dy);
 
-        // 1. Single Tap on Video: Toggle Play / Pause
+        // 1. Tap & Double-Tap Handling (YouTube Style 10s Seek & Toggle Controls)
         if (elapsed < 350 && totalDistance < 15) {
-          setVideoPaused((prev) => !prev);
+          const now = Date.now();
+          const tapX = evt.nativeEvent.pageX;
+          if (now - lastVideoTapRef.current < 350) {
+            // Double Tap Detected! YouTube style 10s seek
+            lastVideoTapRef.current = 0;
+            if (tapX < SCREEN_WIDTH / 2) {
+              // Rewind 10s
+              const target = Math.max(0, videoCurrentTimeRef.current - 10);
+              setVideoCurrentTime(target);
+              setVideoSeek(target);
+              setVideoDoubleTapFeedback({ side: 'left', text: '−10s' });
+              setTimeout(() => setVideoDoubleTapFeedback(null), 650);
+            } else {
+              // Forward 10s
+              const target = Math.min(videoDurationRef.current, videoCurrentTimeRef.current + 10);
+              setVideoCurrentTime(target);
+              setVideoSeek(target);
+              setVideoDoubleTapFeedback({ side: 'right', text: '+10s' });
+              setTimeout(() => setVideoDoubleTapFeedback(null), 650);
+            }
+            setVideoControlsVisible(true);
+            return;
+          }
+          lastVideoTapRef.current = now;
+          // Single tap toggles controls visibility
+          setVideoControlsVisible((prev) => !prev);
           return;
         }
 
@@ -1160,6 +1318,78 @@ export default function App() {
       },
     })
   ).current;
+
+  // YouTube / MX Player Scrubber Pan Responder
+  const scrubberPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        setVideoScrubbing(true);
+        const touchX = evt.nativeEvent.locationX;
+        const dur = videoDurationRef.current || 0;
+        const ratio = Math.max(0, Math.min(1, touchX / (scrubberWidth || 1)));
+        setVideoScrubTime(ratio * dur);
+      },
+      onPanResponderMove: (evt) => {
+        const touchX = evt.nativeEvent.locationX;
+        const dur = videoDurationRef.current || 0;
+        const ratio = Math.max(0, Math.min(1, touchX / (scrubberWidth || 1)));
+        setVideoScrubTime(ratio * dur);
+      },
+      onPanResponderRelease: (evt) => {
+        const touchX = evt.nativeEvent.locationX;
+        const dur = videoDurationRef.current || 0;
+        const ratio = Math.max(0, Math.min(1, touchX / (scrubberWidth || 1)));
+        const target = ratio * dur;
+        setVideoCurrentTime(target);
+        setVideoSeek(target);
+        setVideoScrubbing(false);
+      },
+      onPanResponderTerminate: () => {
+        setVideoScrubbing(false);
+      },
+    })
+  ).current;
+
+  // Video Player Control Handlers
+  const cycleVideoSpeed = () => {
+    const speeds = [0.5, 1.0, 1.25, 1.5, 2.0];
+    const idx = speeds.indexOf(videoSpeed);
+    const next = speeds[(idx + 1) % speeds.length];
+    setVideoSpeed(next);
+    showToast(`Speed: ${next}x`);
+  };
+
+  const cycleVideoResizeMode = () => {
+    const next = videoResizeMode === 'contain' ? 'cover' : 'contain';
+    setVideoResizeMode(next);
+    showToast(`Aspect: ${next === 'contain' ? 'FIT' : 'FILL'}`);
+  };
+
+  const seekVideoDelta = (deltaSec) => {
+    const cur = videoCurrentTimeRef.current;
+    const dur = videoDurationRef.current;
+    const target = Math.max(0, Math.min(dur, cur + deltaSec));
+    setVideoCurrentTime(target);
+    setVideoSeek(target);
+    showToast(deltaSec > 0 ? `+${deltaSec}s` : `${deltaSec}s`);
+  };
+
+  // Auto-hide video controls after 3.5s of playing (YouTube / MX Player style)
+  useEffect(() => {
+    if (videoControlsTimerRef.current) {
+      clearTimeout(videoControlsTimerRef.current);
+    }
+    if (videoControlsVisible && !videoPaused && lightboxItem && isVideoFile(lightboxItem?.item?.ext)) {
+      videoControlsTimerRef.current = setTimeout(() => {
+        setVideoControlsVisible(false);
+      }, 3500);
+    }
+    return () => {
+      if (videoControlsTimerRef.current) clearTimeout(videoControlsTimerRef.current);
+    };
+  }, [videoControlsVisible, videoPaused, lightboxItem]);
 
   // Zoom button triggers
   const handleZoomIn = () => {
@@ -2234,9 +2464,9 @@ export default function App() {
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.breadcrumbScroll}>
         <TouchableOpacity
-          style={styles.breadcrumbItem}
+          style={[styles.breadcrumbItem, !isDarkMode && styles.breadcrumbItemLight]}
           onPress={() => onSelectPath(isPc ? 'C:\\' : '/storage/emulated/0')}>
-          <Text style={styles.breadcrumbTextRoot}>{isPc ? 'PC' : 'Phone'}</Text>
+          <Text style={[styles.breadcrumbTextRoot, !isDarkMode && styles.breadcrumbTextRootLight]}>{isPc ? 'PC' : 'Phone'}</Text>
         </TouchableOpacity>
 
         {parts.map((part, index) => {
@@ -2248,12 +2478,22 @@ export default function App() {
 
           return (
             <View key={subPath} style={styles.breadcrumbSegmentWrap}>
-              <Text style={styles.breadcrumbSeparator}>›</Text>
+              <Text style={[styles.breadcrumbSeparator, !isDarkMode && styles.breadcrumbSeparatorLight]}>›</Text>
               <TouchableOpacity
-                style={[styles.breadcrumbItem, isLast && styles.breadcrumbItemActive]}
+                style={[
+                  styles.breadcrumbItem,
+                  !isDarkMode && styles.breadcrumbItemLight,
+                  isLast && (isDarkMode ? styles.breadcrumbItemActive : styles.breadcrumbItemActiveLight),
+                ]}
                 disabled={isLast}
                 onPress={() => onSelectPath(subPath)}>
-                <Text style={[styles.breadcrumbText, isLast && styles.breadcrumbTextActive]} numberOfLines={1}>
+                <Text
+                  style={[
+                    styles.breadcrumbText,
+                    !isDarkMode && styles.breadcrumbTextLight,
+                    isLast && (isDarkMode ? styles.breadcrumbTextActive : styles.breadcrumbTextActiveLight),
+                  ]}
+                  numberOfLines={1}>
                   {part}
                 </Text>
               </TouchableOpacity>
@@ -2385,7 +2625,125 @@ export default function App() {
     return ['mp4', 'mkv', 'mov', 'webm', 'avi', 'flv', '3gp', 'wmv'].includes(e);
   };
 
+  const isAudioFile = (ext) => {
+    const e = (ext || '').toLowerCase().replace(/^\./, '');
+    return ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'opus', 'wma', 'amr', 'mid', 'midi'].includes(e);
+  };
+
+  const isViewableMedia = (ext) => isImageFile(ext) || isVideoFile(ext);
   const isMediaFile = (ext) => isImageFile(ext) || isVideoFile(ext);
+
+  const getMimeTypeForExt = (ext) => {
+    const e = (ext || '').toLowerCase().replace(/^\./, '');
+    const map = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      txt: 'text/plain',
+      csv: 'text/csv',
+      html: 'text/html',
+      htm: 'text/html',
+      json: 'application/json',
+      xml: 'application/xml',
+      zip: 'application/zip',
+      rar: 'application/x-rar-compressed',
+      '7z': 'application/x-7z-compressed',
+      tar: 'application/x-tar',
+      gz: 'application/gzip',
+      apk: 'application/vnd.android.package-archive',
+      epub: 'application/epub+zip',
+      mp3: 'audio/mpeg',
+      wav: 'audio/wav',
+      ogg: 'audio/ogg',
+      m4a: 'audio/mp4',
+      aac: 'audio/aac',
+      flac: 'audio/flac',
+      opus: 'audio/opus',
+      wma: 'audio/x-ms-wma',
+      mp4: 'video/mp4',
+      mkv: 'video/x-matroska',
+      webm: 'video/webm',
+      avi: 'video/avi',
+      mov: 'video/quicktime',
+      '3gp': 'video/3gpp',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      svg: 'image/svg+xml',
+    };
+    return map[e] || '*/*';
+  };
+
+  const openExternalFileOrChooser = async (file, source = 'phone', mode = 'auto') => {
+    if (!file) return;
+    const fileName = file.name || file.path?.split(/[\\/]/).pop() || 'file';
+    const fileExt = file.ext || (fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '');
+    const mimeType = getMimeTypeForExt(fileExt);
+
+    if (source === 'phone') {
+      const filePath = file.path;
+      if (!filePath) {
+        showToast('⚠️ Local file path is not available');
+        return;
+      }
+      if (FyloModule && FyloModule.openFileWithChooser) {
+        try {
+          await FyloModule.openFileWithChooser(filePath, mimeType);
+        } catch (err) {
+          console.warn('openFileWithChooser error:', err);
+          showToast(err?.message || '⚠️ No app found on phone to open this file');
+        }
+      } else {
+        showToast('⚠️ Native app chooser is not available');
+      }
+    } else {
+      // source === 'pc'
+      const downloadUrl = file.downloadUrl
+        ? file.downloadUrl
+        : (pairedPc ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(file.path || '')}${pcAuthToken ? `&auth=${pcAuthToken}` : ''}` : null);
+
+      if (!downloadUrl) {
+        showToast('⚠️ Cannot access PC file without connection');
+        return;
+      }
+
+      if (mode === 'stream' || (mode === 'auto' && isAudioFile(fileExt))) {
+        // Stream directly into phone media player / app (VLC, MX Player, etc.)
+        if (FyloModule && FyloModule.openUrlWithChooser) {
+          try {
+            await FyloModule.openUrlWithChooser(downloadUrl, mimeType, `Open ${fileName}`);
+            return;
+          } catch (err) {
+            console.warn('openUrlWithChooser failed, falling back to download:', err);
+          }
+        }
+      }
+
+      // Download file to cache / Downloads and open with native chooser
+      showToast(`📥 Downloading ${fileName} to open...`);
+      try {
+        if (FyloModule && FyloModule.downloadFileFromUrl) {
+          const localPath = await FyloModule.downloadFileFromUrl(downloadUrl, fileName);
+          if (localPath && FyloModule.openFileWithChooser) {
+            await FyloModule.openFileWithChooser(localPath, mimeType);
+          } else {
+            showToast(`✓ File saved to ${localPath || 'Downloads/Fylo'}`);
+          }
+        } else {
+          await handleDownloadPcFile(file.path, file.name);
+        }
+      } catch (dlErr) {
+        console.warn('Download & open error:', dlErr);
+        showToast(dlErr?.message || '⚠️ Failed to download file to open');
+      }
+    }
+  };
 
   // ==========================================
   // Active Share Hub Operations (Fetch from PC)
@@ -2490,7 +2848,7 @@ export default function App() {
     const isVid = isVideoFile(file.ext);
 
     if (isImg || isVid) {
-      const mediaFiles = sharedHubFiles.filter((f) => isMediaFile(f.ext));
+      const mediaFiles = sharedHubFiles.filter((f) => isViewableMedia(f.ext));
       const idx = mediaFiles.findIndex((f) => (f.id && file.id && f.id === file.id) || f.name === file.name || (f.path && file.path && f.path === file.path));
       const activeIdx = idx >= 0 ? idx : 0;
       setLightboxItem({
@@ -2503,7 +2861,7 @@ export default function App() {
         playlist: mediaFiles.length > 0 ? mediaFiles : [file],
       });
     } else {
-      handleDownloadSharedHubFile(file);
+      setExternalFilePrompt({ file, source: 'pc' });
     }
   };
 
@@ -2565,6 +2923,13 @@ export default function App() {
     });
     return sortExplorerItems(filtered, pcSortBy);
   }, [pcItems, pcFilter, pcSearch, pcSortBy]);
+
+  const filteredShareHubFiles = useMemo(() => {
+    if (!Array.isArray(sharedHubFiles)) return [];
+    if (!shareHubSearch.trim()) return sharedHubFiles;
+    const query = shareHubSearch.toLowerCase().trim();
+    return sharedHubFiles.filter((f) => (f.name || '').toLowerCase().includes(query));
+  }, [sharedHubFiles, shareHubSearch]);
 
   // Admin Protected Action Handler
   const requestAdminProtectedAction = (actionTitle, callback) => {
@@ -2683,7 +3048,7 @@ export default function App() {
     <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
       <StatusBar
         barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={isDarkMode ? "#080c14" : "#eff6ff"}
+        backgroundColor={isDarkMode ? "#000000" : "#F4F8F6"}
       />
 
       {/* ========================================================= */}
@@ -2710,7 +3075,8 @@ export default function App() {
               <View>
                 <Text style={[styles.brandTitle, !isDarkMode && styles.brandTitleLight]}>fylo</Text>
                 <Text style={[styles.brandSub, !isDarkMode && styles.brandSubLight]}>
-                  {currentTab === 'home' ? 'Command Center' :
+                  {currentTab === 'home' ? 'Home' :
+                   currentTab === 'sharehub' ? 'ShareHub' :
                    currentTab === 'phone-explorer' ? 'Phone Storage' :
                    currentTab === 'pc-explorer' ? 'PC Drives' :
                    currentTab === 'clipboard' ? 'Shared Clip' : 'Speed Hub'}
@@ -2910,7 +3276,7 @@ export default function App() {
               </View>
 
               <View style={styles.bentoCardBottomRow}>
-                <Text style={[styles.bentoActionLink, { color: !isDarkMode ? '#1A5C4A' : '#34D399' }]}>Open PC Drives →</Text>
+                <Text style={[styles.bentoActionLink, { color: !isDarkMode ? '#2563eb' : '#60a5fa' }]}>Open PC Drives →</Text>
                 <View style={[styles.circleArrowBtn, { backgroundColor: !isDarkMode ? '#D1FAE5' : 'rgba(16, 185, 129, 0.25)' }]}>
                   <Text style={{ color: !isDarkMode ? '#065F46' : '#34D399', fontSize: 13, fontWeight: '900' }}>→</Text>
                 </View>
@@ -2948,18 +3314,18 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* 3. SECONDARY ACTION CARDS (ShareHub, Clipboard, Transfers with soft pastel tones) */}
+          {/* 3. SECONDARY ACTION CARDS (ShareHub, Clipboard, Transfers with sleek vector icons) */}
           <View style={styles.bentoSecondaryRow}>
             {/* ShareHub */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#111c33' : '#F3E8FF' }]}
+              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#0A0A0A' : '#F3E8FF' }]}
               onPress={() => {
+                setCurrentTab('sharehub');
                 fetchSharedHubFiles();
-                showToast('ShareHub synchronized');
               }}>
               <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(124, 58, 237, 0.25)' : '#EDE9FE' }]}>
-                <Text style={{ color: '#7C3AED', fontSize: 18, fontWeight: '800' }}>⇄</Text>
+                <VectorShareHubIcon size={18} color="#7C3AED" />
               </View>
               <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>ShareHub</Text>
               <Text style={[styles.bentoSecSub, !isDarkMode && styles.bentoSecSubLight]}>
@@ -2973,10 +3339,10 @@ export default function App() {
             {/* Clipboard */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#1e1b14' : '#FEF3C7' }]}
+              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#0A0A0A' : '#FEF3C7' }]}
               onPress={() => setCurrentTab('clipboard')}>
               <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A' }]}>
-                <Text style={{ fontSize: 18 }}>📋</Text>
+                <VectorClipboardIcon size={18} color="#D97706" />
               </View>
               <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>Clipboard</Text>
               <Text style={[styles.bentoSecSub, !isDarkMode && styles.bentoSecSubLight]}>
@@ -2990,10 +3356,10 @@ export default function App() {
             {/* Transfers */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#22121c' : '#FFE4E6' }]}
+              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#0A0A0A' : '#FFE4E6' }]}
               onPress={() => setCurrentTab('transfer')}>
               <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(225, 29, 72, 0.25)' : '#FECDD3' }]}>
-                <Text style={{ color: '#E11D48', fontSize: 18 }}>⚡</Text>
+                <VectorLightningIcon size={18} color="#E11D48" />
               </View>
               <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>Transfers</Text>
               <Text style={[styles.bentoSecSub, !isDarkMode && styles.bentoSecSubLight]}>
@@ -3042,12 +3408,17 @@ export default function App() {
           {/* 5. SHARE HUB CARD */}
           <View style={[styles.sectionCard, !isDarkMode && styles.sectionCardLight]}>
             <View style={styles.sectionHeaderRow}>
-              <View>
-                <Text style={[styles.sectionTitle, !isDarkMode && styles.sectionTitleLight]}>Share Hub</Text>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => {
+                  setCurrentTab('sharehub');
+                  fetchSharedHubFiles();
+                }}>
+                <Text style={[styles.sectionTitle, !isDarkMode && styles.sectionTitleLight]}>ShareHub →</Text>
                 <Text style={[styles.sectionSubtitle, !isDarkMode && styles.sectionSubtitleLight]}>
                   Active shared files from PC & Mobile
                 </Text>
-              </View>
+              </TouchableOpacity>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <TouchableOpacity
                   activeOpacity={0.7}
@@ -3285,22 +3656,325 @@ export default function App() {
       )}
 
       {/* ========================================================= */}
+      {/* TAB: DEDICATED FULLSCREEN SHAREHUB VIEW                  */}
+      {/* ========================================================= */}
+      {currentTab === 'sharehub' && (
+        <View style={[styles.explorerContainer, !isDarkMode && styles.explorerContainerLight]}>
+          {/* Top navigation bar */}
+          <View style={[styles.navBar, !isDarkMode && styles.navBarLight]}>
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={[styles.navUpBtn, !isDarkMode && styles.navUpBtnLight]}
+              onPress={() => setCurrentTab('home')}>
+              <Text style={[styles.navUpBtnText, !isDarkMode && styles.navUpBtnTextLight]}>‹ Back to Home</Text>
+            </TouchableOpacity>
+
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={[styles.shareHubScreenTitle, !isDarkMode && styles.shareHubScreenTitleLight]}>
+                ShareHub
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight]}
+              onPress={() => {
+                fetchSharedHubFiles();
+                showToast('ShareHub refreshed');
+              }}>
+              <Text style={[styles.refreshBtnText, !isDarkMode && styles.refreshBtnTextLight]}>↻</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={[
+                styles.viewModeBtn,
+                !isDarkMode && styles.viewModeBtnLight,
+                shareHubViewMode === 'grid' && styles.viewModeBtnActive,
+              ]}
+              onPress={() => setShareHubViewMode(shareHubViewMode === 'grid' ? 'list' : 'grid')}>
+              <Text style={[styles.viewModeBtnText, !isDarkMode && styles.viewModeBtnTextLight]}>
+                {shareHubViewMode === 'grid' ? '☷' : '☰'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Search Bar + Batch "Save All From PC" Button Row */}
+          <View style={styles.searchRow}>
+            <View style={[styles.searchInputWrap, !isDarkMode && styles.searchInputWrapLight]}>
+              <SearchVectorIcon color={!isDarkMode ? '#64748b' : '#94a3b8'} />
+              <TextInput
+                style={[styles.searchInput, !isDarkMode && styles.searchInputLight]}
+                placeholder="Search shared files..."
+                placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
+                value={shareHubSearch}
+                onChangeText={setShareHubSearch}
+              />
+              {shareHubSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setShareHubSearch('')} style={{ padding: 4 }}>
+                  <Text style={{ color: '#94a3b8', fontSize: 13, fontWeight: '700' }}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {filteredShareHubFiles.some((f) => f.direction === 'received') && (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.shareHubSaveAllBtn}
+                onPress={handleDownloadAllSharedHubFiles}>
+                <Text style={styles.shareHubSaveAllBtnText}>
+                  Save All From PC ({filteredShareHubFiles.filter((f) => f.direction === 'received').length}) ↓
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Action buttons row: "+ Send to PC" and "Clear Local List" */}
+          <View style={styles.shareHubActionRow}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              disabled={isSending}
+              style={[styles.shareHubPrimarySendBtn, isSending && { opacity: 0.6 }]}
+              onPress={handlePickAndSendToPc}>
+              <Text style={styles.shareHubPrimarySendBtnText}>
+                {isSending ? 'Sending to PC...' : '+ Send to PC'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={[styles.shareHubClearBtn, !isDarkMode && styles.shareHubClearBtnLight]}
+              onPress={() => setSharedHubFiles([])}>
+              <Text style={[styles.shareHubClearBtnText, !isDarkMode && styles.shareHubClearBtnTextLight]}>
+                Clear Local List
+              </Text>
+            </TouchableOpacity>
+
+            {pairedPc && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={[styles.shareHubClearBtn, !isDarkMode && styles.shareHubClearBtnLight]}
+                onPress={() => {
+                  fetchSharedHubFiles();
+                  showToast('ShareHub synced with PC');
+                }}>
+                <Text style={[styles.shareHubClearBtnText, { color: '#2563eb' }]}>↻ Sync</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* ShareHub Content: Grid mode vs List mode vs Empty state */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 90 }}
+            showsVerticalScrollIndicator={false}>
+            {filteredShareHubFiles.length === 0 ? (
+              <View style={[styles.shareHubDashedBox, !isDarkMode && styles.shareHubDashedBoxLight]}>
+                <View style={[styles.shareHubEmptyCircle, !isDarkMode && styles.shareHubEmptyCircleLight]}>
+                  <Win11FolderIcon size={32} />
+                </View>
+                <Text style={[styles.shareHubEmptyTitle, !isDarkMode && styles.shareHubEmptyTitleLight]}>
+                  {shareHubSearch ? 'No matching shared files' : 'No files shared yet'}
+                </Text>
+                <Text style={[styles.shareHubEmptySub, !isDarkMode && styles.shareHubEmptySubLight]}>
+                  {shareHubSearch
+                    ? 'Try searching with a different term'
+                    : 'Send photos & documents to PC or share files from PC to access them here instantly'}
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.shareHubPrimarySendBtn, { marginTop: 14 }]}
+                  onPress={handlePickAndSendToPc}>
+                  <Text style={styles.shareHubPrimarySendBtnText}>+ Send Files to PC</Text>
+                </TouchableOpacity>
+              </View>
+            ) : shareHubViewMode === 'grid' ? (
+              /* GRID MODE (3 COLUMNS) */
+              <View style={styles.responsiveGridWrap}>
+                {filteredShareHubFiles.map((file, idx) => {
+                  const isSaved = downloadedSharedIds.has(file.id || file.name);
+                  const isReceived = file.direction === 'received';
+                  const ext = file.ext || (file.name || '').split('.').pop().toLowerCase();
+                  const isImg = isImageFile(ext);
+                  const isVid = isVideoFile(ext);
+
+                  return (
+                    <TouchableOpacity
+                      key={file.id || file.path || idx}
+                      activeOpacity={0.75}
+                      style={[
+                        styles.gridTile,
+                        !isDarkMode && styles.gridTileLight,
+                        { width: GRID_TILE_WIDTH },
+                      ]}
+                      onPress={() => handleSharedHubItemPress(file)}>
+                      {/* Media Preview or Icon */}
+                      {isImg ? (
+                        <SafeImage
+                          source={{
+                            uri: file.downloadUrl
+                              ? file.downloadUrl
+                              : (file.path ? 'file://' + file.path : ''),
+                          }}
+                          style={styles.gridThumbnailImage}
+                          resizeMode="cover"
+                          fallbackText=""
+                        />
+                      ) : isVid ? (
+                        <VideoThumbnail
+                          path={file.path || file.name}
+                          isPc={isReceived}
+                          pairedPc={pairedPc}
+                          pcAuthToken={pcAuthToken}
+                        />
+                      ) : (
+                        <FileBadgeIcon ext={ext} isDir={false} size={34} />
+                      )}
+
+                      {/* Direction Badge (PC vs Phone) */}
+                      <View style={[
+                        styles.shareHubDirectionBadge,
+                        isReceived ? styles.badgePc : styles.badgePhone,
+                      ]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          {isReceived ? (
+                            <VectorMonitorIcon size={10} color="#93c5fd" />
+                          ) : (
+                            <VectorPhoneIcon size={10} color="#6ee7b7" />
+                          )}
+                          <Text style={styles.shareHubDirectionText}>
+                            {isReceived ? 'PC' : 'Phone'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* File Name */}
+                      <Text style={[styles.gridFileName, !isDarkMode && styles.gridFileNameLight]} numberOfLines={1}>
+                        {file.name}
+                      </Text>
+
+                      {/* Meta & Status */}
+                      <Text style={[styles.gridFileMeta, !isDarkMode && styles.gridFileMetaLight]}>
+                        {file.size ? formatFileSize(file.size) : (file.sizeLabel || 'Ready')}
+                      </Text>
+
+                      {/* Quick Save / Saved Chip for PC files in Grid */}
+                      {isReceived && (
+                        isSaved ? (
+                          <View style={styles.shareHubGridSavedChip}>
+                            <Text style={styles.shareHubGridSavedChipText}>✓ Saved</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={styles.shareHubGridActionBtn}
+                            onPress={() => handleDownloadSharedHubFile(file)}>
+                            <Text style={styles.shareHubGridActionBtnText}>Save ↓</Text>
+                          </TouchableOpacity>
+                        )
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              /* LIST MODE */
+              <View style={styles.shareHubList}>
+                {filteredShareHubFiles.map((file, idx) => {
+                  const isSaved = downloadedSharedIds.has(file.id || file.name);
+                  const isReceived = file.direction === 'received';
+                  const ext = file.ext || (file.name || '').split('.').pop().toLowerCase();
+                  const isImg = isImageFile(ext);
+
+                  return (
+                    <TouchableOpacity
+                      key={file.id || file.path || idx}
+                      activeOpacity={0.75}
+                      style={[styles.shareHubRow, !isDarkMode && styles.shareHubRowLight]}
+                      onPress={() => handleSharedHubItemPress(file)}>
+                      {isImg ? (
+                        <SafeImage
+                          source={{
+                            uri: file.downloadUrl
+                              ? file.downloadUrl
+                              : (file.path ? 'file://' + file.path : ''),
+                          }}
+                          style={{ width: 38, height: 38, borderRadius: 8 }}
+                          resizeMode="cover"
+                          fallbackText=""
+                        />
+                      ) : (
+                        <FileBadgeIcon ext={ext} isDir={false} size={28} />
+                      )}
+
+                      <View style={{ flex: 1, minWidth: 0, marginHorizontal: 10 }}>
+                        <Text style={[styles.shareHubFileName, !isDarkMode && styles.shareHubFileNameLight]} numberOfLines={1}>
+                          {file.name}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                          <View style={[styles.shareHubDirectionBadge, isReceived ? styles.badgePc : styles.badgePhone]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                              {isReceived ? (
+                                <VectorMonitorIcon size={10} color="#93c5fd" />
+                              ) : (
+                                <VectorPhoneIcon size={10} color="#6ee7b7" />
+                              )}
+                              <Text style={styles.shareHubDirectionText}>
+                                {isReceived ? 'PC' : 'Phone'}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={styles.shareHubFileMeta}>
+                            {file.size ? formatFileSize(file.size) : (file.sizeLabel || 'Ready')}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {isReceived ? (
+                        isSaved ? (
+                          <View style={styles.shareHubSavedChip}>
+                            <Text style={styles.shareHubSavedChipText}>✓ Saved</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={styles.shareHubActionBtn}
+                            onPress={() => handleDownloadSharedHubFile(file)}>
+                            <Text style={styles.shareHubActionBtnText}>Save ↓</Text>
+                          </TouchableOpacity>
+                        )
+                      ) : (
+                        <View style={styles.shareHubStatusChip}>
+                          <Text style={styles.shareHubStatusText}>Done</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* ========================================================= */}
       {/* TAB 2: PHONE STORAGE EXPLORER & GALLERY                   */}
       {/* Clean, compact, non-cropped, one-step-back & sorting       */}
       {/* ========================================================= */}
       {currentTab === 'phone-explorer' && (
-        <View style={styles.explorerContainer}>
+        <View style={[styles.explorerContainer, !isDarkMode && styles.explorerContainerLight]}>
           {/* Breadcrumbs Navigation Bar with ONE-STEP-BACK */}
-          <View style={styles.navBar}>
+          <View style={[styles.navBar, !isDarkMode && styles.navBarLight]}>
             <TouchableOpacity
               activeOpacity={0.75}
               style={[
                 styles.navUpBtn,
+                !isDarkMode && styles.navUpBtnLight,
                 phoneHistory.length === 0 && (!phoneParentPath || phoneParentPath === phoneCurrentPath) && styles.navBtnDisabled,
               ]}
               disabled={phoneHistory.length === 0 && (!phoneParentPath || phoneParentPath === phoneCurrentPath)}
               onPress={goBackPhoneFolder}>
-              <Text style={styles.navUpBtnText}>‹ Back</Text>
+              <Text style={[styles.navUpBtnText, !isDarkMode && styles.navUpBtnTextLight]}>‹ Back</Text>
             </TouchableOpacity>
 
             <View style={{ flex: 1 }}>
@@ -3309,27 +3983,31 @@ export default function App() {
 
             <TouchableOpacity
               activeOpacity={0.75}
-              style={styles.refreshBtn}
+              style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight]}
               onPress={() => loadPhoneFolder(phoneCurrentPath)}>
-              <Text style={styles.refreshBtnText}>↻</Text>
+              <Text style={[styles.refreshBtnText, !isDarkMode && styles.refreshBtnTextLight]}>↻</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               activeOpacity={0.75}
-              style={[styles.viewModeBtn, phoneViewMode === 'grid' && styles.viewModeBtnActive]}
+              style={[
+                styles.viewModeBtn,
+                !isDarkMode && styles.viewModeBtnLight,
+                phoneViewMode === 'grid' && styles.viewModeBtnActive,
+              ]}
               onPress={() => setPhoneViewMode(phoneViewMode === 'grid' ? 'list' : 'grid')}>
-              <Text style={styles.viewModeBtnText}>{phoneViewMode === 'grid' ? '☷' : '☰'}</Text>
+              <Text style={[styles.viewModeBtnText, !isDarkMode && styles.viewModeBtnTextLight]}>{phoneViewMode === 'grid' ? '☷' : '☰'}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Search, Sort & Multi-Select Bar */}
           <View style={styles.searchRow}>
-            <View style={styles.searchInputWrap}>
-              <SearchVectorIcon />
+            <View style={[styles.searchInputWrap, !isDarkMode && styles.searchInputWrapLight]}>
+              <SearchVectorIcon color={!isDarkMode ? '#64748b' : '#94a3b8'} />
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, !isDarkMode && styles.searchInputLight]}
                 placeholder="Search phone files..."
-                placeholderTextColor="#64748b"
+                placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
                 value={phoneSearch}
                 onChangeText={setPhoneSearch}
               />
@@ -3346,21 +4024,29 @@ export default function App() {
             {/* Sort Toggle Button (Latest STRICT DEFAULT) */}
             <TouchableOpacity
               activeOpacity={0.75}
-              style={styles.sortToggleBtn}
+              style={[styles.sortToggleBtn, !isDarkMode && styles.sortToggleBtnLight]}
               onPress={() => setSortModalTarget('phone')}>
-              <Text style={styles.sortToggleBtnText}>
+              <Text style={[styles.sortToggleBtnText, !isDarkMode && styles.sortToggleBtnTextLight]}>
                 {getSortLabel(phoneSortBy)} ▾
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               activeOpacity={0.75}
-              style={[styles.multiSelectToggle, phoneMultiSelect && styles.multiSelectToggleActive]}
+              style={[
+                styles.multiSelectToggle,
+                !isDarkMode && styles.multiSelectToggleLight,
+                phoneMultiSelect && styles.multiSelectToggleActive,
+              ]}
               onPress={() => {
                 setPhoneMultiSelect(!phoneMultiSelect);
                 setPhoneSelectedPaths(new Set());
               }}>
-              <Text style={[styles.multiSelectToggleText, phoneMultiSelect && styles.multiSelectToggleTextActive]}>
+              <Text style={[
+                styles.multiSelectToggleText,
+                !isDarkMode && styles.multiSelectToggleTextLight,
+                phoneMultiSelect && styles.multiSelectToggleTextActive,
+              ]}>
                 {phoneMultiSelect ? 'Done' : 'Select'}
               </Text>
             </TouchableOpacity>
@@ -3431,8 +4117,8 @@ export default function App() {
                           setPhoneSelectedPaths(next);
                         } else if (item.isDir) {
                           loadPhoneFolder(item.path);
-                        } else {
-                          const playlist = filteredPhoneItems.filter((f) => !f.isDir && isMediaFile(f.ext));
+                        } else if (isViewableMedia(item.ext)) {
+                          const playlist = filteredPhoneItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                           const idx = playlist.findIndex((f) => f.path === item.path);
                           setLightboxItem({
                             item,
@@ -3440,6 +4126,8 @@ export default function App() {
                             index: idx >= 0 ? idx : 0,
                             playlist: playlist.length > 0 ? playlist : [item],
                           });
+                        } else {
+                          setExternalFilePrompt({ file: item, source: 'phone' });
                         }
                       }}
                       onLongPress={() => {
@@ -3476,10 +4164,10 @@ export default function App() {
                         <FileBadgeIcon ext={item?.ext} isDir={false} size={34} />
                       )}
 
-                      <Text style={styles.gridFileName} numberOfLines={1}>
+                      <Text style={[styles.gridFileName, !isDarkMode && styles.gridFileNameLight]} numberOfLines={1}>
                         {item.name}
                       </Text>
-                      <Text style={styles.gridFileMeta}>
+                      <Text style={[styles.gridFileMeta, !isDarkMode && styles.gridFileMetaLight]}>
                         {item.isDir ? 'Folder' : formatFileSize(item.size)}
                       </Text>
                     </TouchableOpacity>
@@ -3498,7 +4186,7 @@ export default function App() {
                   <TouchableOpacity
                     key={item.path || idx}
                     activeOpacity={0.75}
-                    style={[styles.listRow, isSelected && styles.listRowSelected]}
+                    style={[styles.listRow, !isDarkMode && styles.listRowLight, isSelected && styles.listRowSelected]}
                     onPress={() => {
                       if (phoneMultiSelect) {
                         const next = new Set(phoneSelectedPaths);
@@ -3506,8 +4194,8 @@ export default function App() {
                         setPhoneSelectedPaths(next);
                       } else if (item.isDir) {
                         loadPhoneFolder(item.path);
-                      } else {
-                        const playlist = filteredPhoneItems.filter((f) => !f.isDir && isMediaFile(f.ext));
+                      } else if (isViewableMedia(item.ext)) {
+                        const playlist = filteredPhoneItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                         const idx = playlist.findIndex((f) => f.path === item.path);
                         setLightboxItem({
                           item,
@@ -3515,6 +4203,8 @@ export default function App() {
                           index: idx >= 0 ? idx : 0,
                           playlist: playlist.length > 0 ? playlist : [item],
                         });
+                      } else {
+                        setExternalFilePrompt({ file: item, source: 'phone' });
                       }
                     }}>
                     {item.isDir ? (
@@ -3540,15 +4230,15 @@ export default function App() {
                     )}
 
                     <View style={styles.listRowContent}>
-                      <Text style={styles.listRowName} numberOfLines={1}>
+                      <Text style={[styles.listRowName, !isDarkMode && styles.listRowNameLight]} numberOfLines={1}>
                         {item.name}
                       </Text>
-                      <Text style={styles.listRowMeta}>
+                      <Text style={[styles.listRowMeta, !isDarkMode && styles.listRowMetaLight]}>
                         {item.isDir ? 'Folder' : formatFileSize(item.size)}
                       </Text>
                     </View>
 
-                    <Text style={styles.listRowChevron}>›</Text>
+                    <Text style={[styles.listRowChevron, !isDarkMode && styles.listRowChevronLight]}>›</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -3557,9 +4247,9 @@ export default function App() {
 
           {/* Floating Multi-Select Bar with SEND TO PC Action */}
           {phoneMultiSelect && phoneSelectedPaths.size > 0 && (
-            <View style={styles.floatingMultiSelectBar}>
+            <View style={[styles.floatingMultiSelectBar, !isDarkMode && styles.floatingMultiSelectBarLight]}>
               <View>
-                <Text style={styles.floatingSelectCount}>{phoneSelectedPaths.size} Selected</Text>
+                <Text style={[styles.floatingSelectCount, !isDarkMode && styles.floatingSelectCountLight]}>{phoneSelectedPaths.size} Selected</Text>
               </View>
 
               <View style={styles.floatingActionsRow}>
@@ -3657,11 +4347,12 @@ export default function App() {
                         activeOpacity={0.75}
                         style={[
                           styles.pcDrivePill,
+                          !isDarkMode && styles.pcDrivePillLight,
                           pcCurrentPath === d?.path && styles.pcDrivePillActive,
                         ]}
                         onPress={() => d?.path && loadPcFolder(d.path)}>
                         <Text style={[styles.pcDrivePillIcon, { color: '#60a5fa', fontWeight: '800' }]}>⛁</Text>
-                        <Text style={[styles.pcDrivePillText, pcCurrentPath === d?.path && styles.pcDrivePillTextActive]}>
+                        <Text style={[styles.pcDrivePillText, !isDarkMode && styles.pcDrivePillTextLight, pcCurrentPath === d?.path && styles.pcDrivePillTextActive]}>
                           {d?.name || d?.path || 'Drive'}
                         </Text>
                       </TouchableOpacity>
@@ -3703,7 +4394,7 @@ export default function App() {
                     <TouchableOpacity
                       key={'pcsc-' + i}
                       activeOpacity={0.75}
-                      style={styles.pcShortcutPill}
+                      style={[styles.pcShortcutPill, !isDarkMode && styles.pcShortcutPillLight]}
                       onPress={() => {
                         const match = Array.isArray(pcQuickAccess?.shortcuts)
                           ? pcQuickAccess.shortcuts.find((s) =>
@@ -3712,7 +4403,7 @@ export default function App() {
                           : null;
                         loadPcFolder(match?.path || sc.path);
                       }}>
-                      <Text style={styles.pcShortcutPillText}>
+                      <Text style={[styles.pcShortcutPillText, !isDarkMode && styles.pcShortcutPillTextLight]}>
                         {sc.name}
                       </Text>
                     </TouchableOpacity>
@@ -3721,16 +4412,17 @@ export default function App() {
               </View>
 
               {/* PC Breadcrumbs & Nav Bar with ONE-STEP-BACK */}
-              <View style={styles.navBar}>
+              <View style={[styles.navBar, !isDarkMode && styles.navBarLight]}>
                 <TouchableOpacity
                   activeOpacity={0.75}
                   style={[
                     styles.navUpBtn,
+                    !isDarkMode && styles.navUpBtnLight,
                     pcHistory.length === 0 && (!pcParentPath || pcParentPath === pcCurrentPath) && styles.navBtnDisabled,
                   ]}
                   disabled={pcHistory.length === 0 && (!pcParentPath || pcParentPath === pcCurrentPath)}
                   onPress={goBackPcFolder}>
-                  <Text style={styles.navUpBtnText}>‹ Back</Text>
+                  <Text style={[styles.navUpBtnText, !isDarkMode && styles.navUpBtnTextLight]}>‹ Back</Text>
                 </TouchableOpacity>
 
                 <View style={{ flex: 1 }}>
@@ -3739,27 +4431,31 @@ export default function App() {
 
                 <TouchableOpacity
                   activeOpacity={0.75}
-                  style={styles.refreshBtn}
+                  style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight]}
                   onPress={() => loadPcFolder(pcCurrentPath)}>
-                  <Text style={styles.refreshBtnText}>↻</Text>
+                  <Text style={[styles.refreshBtnText, !isDarkMode && styles.refreshBtnTextLight]}>↻</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   activeOpacity={0.75}
-                  style={[styles.viewModeBtn, pcViewMode === 'grid' && styles.viewModeBtnActive]}
+                  style={[
+                    styles.viewModeBtn,
+                    !isDarkMode && styles.viewModeBtnLight,
+                    pcViewMode === 'grid' && styles.viewModeBtnActive,
+                  ]}
                   onPress={() => setPcViewMode(pcViewMode === 'grid' ? 'list' : 'grid')}>
-                  <Text style={styles.viewModeBtnText}>{pcViewMode === 'grid' ? '☷' : '☰'}</Text>
+                  <Text style={[styles.viewModeBtnText, !isDarkMode && styles.viewModeBtnTextLight]}>{pcViewMode === 'grid' ? '☷' : '☰'}</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Search, Sort & Multi-Select Bar */}
               <View style={styles.searchRow}>
-                <View style={styles.searchInputWrap}>
-                  <SearchVectorIcon />
+                <View style={[styles.searchInputWrap, !isDarkMode && styles.searchInputWrapLight]}>
+                  <SearchVectorIcon color={!isDarkMode ? '#64748b' : '#94a3b8'} />
                   <TextInput
-                    style={styles.searchInput}
+                    style={[styles.searchInput, !isDarkMode && styles.searchInputLight]}
                     placeholder="Search PC files..."
-                    placeholderTextColor="#64748b"
+                    placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
                     value={pcSearch}
                     onChangeText={setPcSearch}
                   />
@@ -3776,21 +4472,29 @@ export default function App() {
                 {/* Sort Toggle Button (Latest STRICT DEFAULT) */}
                 <TouchableOpacity
                   activeOpacity={0.75}
-                  style={styles.sortToggleBtn}
+                  style={[styles.sortToggleBtn, !isDarkMode && styles.sortToggleBtnLight]}
                   onPress={() => setSortModalTarget('pc')}>
-                  <Text style={styles.sortToggleBtnText}>
+                  <Text style={[styles.sortToggleBtnText, !isDarkMode && styles.sortToggleBtnTextLight]}>
                     {getSortLabel(pcSortBy)} ▾
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   activeOpacity={0.75}
-                  style={[styles.multiSelectToggle, pcMultiSelect && styles.multiSelectToggleActive]}
+                  style={[
+                    styles.multiSelectToggle,
+                    !isDarkMode && styles.multiSelectToggleLight,
+                    pcMultiSelect && styles.multiSelectToggleActive,
+                  ]}
                   onPress={() => {
                     setPcMultiSelect(!pcMultiSelect);
                     setPcSelectedPaths(new Set());
                   }}>
-                  <Text style={[styles.multiSelectToggleText, pcMultiSelect && styles.multiSelectToggleTextActive]}>
+                  <Text style={[
+                    styles.multiSelectToggleText,
+                    !isDarkMode && styles.multiSelectToggleTextLight,
+                    pcMultiSelect && styles.multiSelectToggleTextActive,
+                  ]}>
                     {pcMultiSelect ? 'Done' : 'Select'}
                   </Text>
                 </TouchableOpacity>
@@ -3846,6 +4550,7 @@ export default function App() {
                           activeOpacity={0.75}
                           style={[
                             styles.gridTile,
+                            !isDarkMode && styles.gridTileLight,
                             { width: GRID_TILE_WIDTH },
                             isSelected && styles.gridTileSelected,
                           ]}
@@ -3856,8 +4561,8 @@ export default function App() {
                               setPcSelectedPaths(next);
                             } else if (item.isDir) {
                               loadPcFolder(item.path);
-                            } else {
-                              const playlist = filteredPcItems.filter((f) => !f.isDir && isMediaFile(f.ext));
+                            } else if (isViewableMedia(item.ext)) {
+                              const playlist = filteredPcItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                               const idx = playlist.findIndex((f) => f.path === item.path);
                               setLightboxItem({
                                 item,
@@ -3865,6 +4570,8 @@ export default function App() {
                                 index: idx >= 0 ? idx : 0,
                                 playlist: playlist.length > 0 ? playlist : [item],
                               });
+                            } else {
+                              setExternalFilePrompt({ file: item, source: 'pc' });
                             }
                           }}>
                           {item.isDir ? (
@@ -3888,10 +4595,10 @@ export default function App() {
                           ) : (
                             <FileBadgeIcon ext={item.ext} isDir={false} size={34} />
                           )}
-                          <Text style={styles.gridFileName} numberOfLines={1}>
+                          <Text style={[styles.gridFileName, !isDarkMode && styles.gridFileNameLight]} numberOfLines={1}>
                             {item.name}
                           </Text>
-                          <Text style={styles.gridFileMeta}>
+                          <Text style={[styles.gridFileMeta, !isDarkMode && styles.gridFileMetaLight]}>
                             {item.isDir ? 'Folder' : formatFileSize(item.size)}
                           </Text>
                         </TouchableOpacity>
@@ -3909,7 +4616,7 @@ export default function App() {
                       <TouchableOpacity
                         key={item.path || idx}
                         activeOpacity={0.75}
-                        style={[styles.listRow, isSelected && styles.listRowSelected]}
+                        style={[styles.listRow, !isDarkMode && styles.listRowLight, isSelected && styles.listRowSelected]}
                         onPress={() => {
                           if (pcMultiSelect) {
                             const next = new Set(pcSelectedPaths);
@@ -3917,8 +4624,8 @@ export default function App() {
                             setPcSelectedPaths(next);
                           } else if (item.isDir) {
                             loadPcFolder(item.path);
-                          } else {
-                            const playlist = filteredPcItems.filter((f) => !f.isDir && isMediaFile(f.ext));
+                          } else if (isViewableMedia(item.ext)) {
+                            const playlist = filteredPcItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                             const idx = playlist.findIndex((f) => f.path === item.path);
                             setLightboxItem({
                               item,
@@ -3926,6 +4633,8 @@ export default function App() {
                               index: idx >= 0 ? idx : 0,
                               playlist: playlist.length > 0 ? playlist : [item],
                             });
+                          } else {
+                            setExternalFilePrompt({ file: item, source: 'pc' });
                           }
                         }}>
                         {item.isDir ? (
@@ -3951,14 +4660,14 @@ export default function App() {
                           <FileBadgeIcon ext={item.ext} isDir={false} size={24} />
                         )}
                         <View style={styles.listRowContent}>
-                          <Text style={styles.listRowName} numberOfLines={1}>
+                          <Text style={[styles.listRowName, !isDarkMode && styles.listRowNameLight]} numberOfLines={1}>
                             {item.name}
                           </Text>
-                          <Text style={styles.listRowMeta}>
+                          <Text style={[styles.listRowMeta, !isDarkMode && styles.listRowMetaLight]}>
                             {item.isDir ? 'Folder' : formatFileSize(item.size)}
                           </Text>
                         </View>
-                        <Text style={styles.listRowChevron}>›</Text>
+                        <Text style={[styles.listRowChevron, !isDarkMode && styles.listRowChevronLight]}>›</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -3967,8 +4676,8 @@ export default function App() {
 
               {/* Floating Multi-Select Bar for PC (Download Only - Security Enforced) */}
               {pcMultiSelect && pcSelectedPaths.size > 0 && (
-                <View style={styles.floatingMultiSelectBar}>
-                  <Text style={styles.floatingSelectCount}>{pcSelectedPaths.size} Selected</Text>
+                <View style={[styles.floatingMultiSelectBar, !isDarkMode && styles.floatingMultiSelectBarLight]}>
+                  <Text style={[styles.floatingSelectCount, !isDarkMode && styles.floatingSelectCountLight]}>{pcSelectedPaths.size} Selected</Text>
                   <TouchableOpacity
                     activeOpacity={0.75}
                     style={[styles.floatingTrashBtn, { backgroundColor: '#2563eb' }]}
@@ -4032,18 +4741,18 @@ export default function App() {
           </View>
 
           {/* Card 1: Received PC Clipboard */}
-          <View style={styles.bentoCard}>
+          <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
             <View style={styles.bentoCardHeaderRow}>
               <View>
-                <Text style={styles.bentoCardTitle}>PC Clipboard (Received)</Text>
-                <Text style={styles.bentoCardSubtitle}>
+                <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>PC Clipboard (Received)</Text>
+                <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]}>
                   {pcClipboardUpdatedBy ? `Last synced from: ${pcClipboardUpdatedBy}` : 'Waiting for sync...'}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.clipboardDisplayBox}>
-              <Text style={styles.clipboardDisplayText} selectable>
+            <View style={[styles.clipboardDisplayBox, !isDarkMode && styles.clipboardDisplayBoxLight]}>
+              <Text style={[styles.clipboardDisplayText, !isDarkMode && styles.clipboardDisplayTextLight]} selectable>
                 {pcClipboardText || 'No clipboard content received yet.'}
               </Text>
             </View>
@@ -4059,16 +4768,16 @@ export default function App() {
           </View>
 
           {/* Card 2: Send Text to PC Clipboard */}
-          <View style={styles.bentoCard}>
-            <Text style={styles.bentoCardTitle}>Push to PC Clipboard (Send)</Text>
-            <Text style={styles.bentoCardSubtitle}>
+          <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
+            <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Push to PC Clipboard (Send)</Text>
+            <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]}>
               Type or paste text below to immediately set Windows PC clipboard
             </Text>
 
             <TextInput
-              style={styles.clipboardTextInput}
+              style={[styles.clipboardTextInput, !isDarkMode && styles.clipboardTextInputLight]}
               placeholder="Paste or type text to send to Windows PC..."
-              placeholderTextColor="#64748b"
+              placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
               multiline
               numberOfLines={4}
               value={clipboardInput}
@@ -4096,15 +4805,15 @@ export default function App() {
             <View style={styles.snippetRow}>
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={styles.snippetChip}
+                style={[styles.snippetChip, !isDarkMode && styles.snippetChipLight]}
                 onPress={() => setClipboardInput(`http://${deviceIp}:${serverPort}`)}>
-                <Text style={styles.snippetChipText}>+ Phone Server URL</Text>
+                <Text style={[styles.snippetChipText, !isDarkMode && styles.snippetChipTextLight]}>+ Phone Server URL</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={styles.snippetChip}
+                style={[styles.snippetChip, !isDarkMode && styles.snippetChipLight]}
                 onPress={() => setClipboardInput(deviceIp)}>
-                <Text style={styles.snippetChipText}>+ Phone IP Address</Text>
+                <Text style={[styles.snippetChipText, !isDarkMode && styles.snippetChipTextLight]}>+ Phone IP Address</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -4192,16 +4901,16 @@ export default function App() {
           </View>
 
           {/* Server Connection Logs */}
-          <View style={styles.bentoCard}>
-            <Text style={styles.bentoCardTitle}>Real-Time Connection Logs</Text>
-            <Text style={styles.bentoCardSubtitle}>Last 30 network & server events</Text>
+          <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
+            <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Real-Time Connection Logs</Text>
+            <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]}>Last 30 network & server events</Text>
 
             <ScrollView style={{ maxHeight: 180, marginTop: 8 }} nestedScrollEnabled>
               {logs.length === 0 ? (
-                <Text style={styles.emptyLogsText}>No connection events logged yet.</Text>
+                <Text style={[styles.emptyLogsText, !isDarkMode && styles.emptyLogsTextLight]}>No connection events logged yet.</Text>
               ) : (
                 logs.map((log, index) => (
-                  <Text key={index} style={styles.logTextItem}>
+                  <Text key={index} style={[styles.logTextItem, !isDarkMode && styles.logTextItemLight]}>
                     {log}
                   </Text>
                 ))
@@ -4236,43 +4945,45 @@ export default function App() {
             resetZoom();
           }}>
           <View style={styles.lightboxOverlay}>
-            <View style={styles.lightboxHeader}>
-              <View style={{ flex: 1, marginRight: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.lightboxFileName} numberOfLines={1}>
-                    {lightboxItem?.item?.name || 'File'}
+            {!isVideoFile(lightboxItem?.item?.ext) && (
+              <View style={styles.lightboxHeader}>
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.lightboxFileName} numberOfLines={1}>
+                      {lightboxItem?.item?.name || 'File'}
+                    </Text>
+                    {lightboxItem?.playlist && lightboxItem.playlist.length > 0 && (
+                      <View style={styles.lightboxIndexBadge}>
+                        <Text style={styles.lightboxIndexBadgeText}>
+                          {lightboxItem.index + 1} of {lightboxItem.playlist.length}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.lightboxMeta}>
+                    {lightboxItem?.source === 'pc' ? 'Windows PC' : 'Local Phone'} • {formatFileSize(lightboxItem?.item?.size)}
                   </Text>
-                  {lightboxItem?.playlist && lightboxItem.playlist.length > 0 && (
-                    <View style={styles.lightboxIndexBadge}>
-                      <Text style={styles.lightboxIndexBadgeText}>
-                        {lightboxItem.index + 1} of {lightboxItem.playlist.length}
-                      </Text>
-                    </View>
-                  )}
                 </View>
-                <Text style={styles.lightboxMeta}>
-                  {lightboxItem?.source === 'pc' ? 'Windows PC' : 'Local Phone'} • {formatFileSize(lightboxItem?.item?.size)}
-                </Text>
-              </View>
 
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.lightboxCloseBtn}
-                onPress={() => {
-                  setLightboxItem(null);
-                  resetZoom();
-                }}>
-                <Text style={styles.lightboxCloseBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={styles.lightboxCloseBtn}
+                  onPress={() => {
+                    setLightboxItem(null);
+                    resetZoom();
+                  }}>
+                  <Text style={styles.lightboxCloseBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Pinchable, Zoomable & Swipeable Media Body */}
             <View
-              style={styles.lightboxBody}
+              style={isVideoFile(lightboxItem?.item?.ext) ? styles.lightboxVideoFullBody : styles.lightboxBody}
               {...(isImageFile(lightboxItem?.item?.ext) ? zoomPanResponder.panHandlers : videoPanResponder.panHandlers)}>
 
               {/* Navigation chevrons for carousel playlists */}
-              {lightboxItem?.playlist && lightboxItem.playlist.length > 1 && (
+              {!isVideoFile(lightboxItem?.item?.ext) && lightboxItem?.playlist && lightboxItem.playlist.length > 1 && (
                 <>
                   <TouchableOpacity
                     activeOpacity={0.75}
@@ -4289,8 +5000,9 @@ export default function App() {
                 </>
               )}
 
+              <Animated.View style={{ flex: 1, width: '100%', height: '100%', transform: [{ translateX: mediaSlideAnim }] }}>
               {isVideoFile(lightboxItem?.item?.ext) ? (
-                /* Native In-App Video View Component with Gesture Overlay */
+                /* Native In-App Video View Component with YouTube & MX Player UI */
                 <View style={styles.lightboxVideoContainer}>
                   {FyloVideoView ? (
                     <FyloVideoView
@@ -4307,14 +5019,22 @@ export default function App() {
                       controls={false}
                       repeat={videoRepeat}
                       muted={videoMuted}
-                      resizeMode="contain"
+                      speed={videoSpeed}
+                      seek={videoSeek}
+                      resizeMode={videoResizeMode}
                       onVideoLoad={(e) => {
                         setVideoDuration(e?.nativeEvent?.duration || 0);
                         setVideoLoading(false);
                       }}
+                      onVideoProgress={(e) => {
+                        if (!videoScrubbing) {
+                          setVideoCurrentTime(e?.nativeEvent?.currentTime || 0);
+                        }
+                      }}
                       onVideoEnd={() => {
                         if (!videoRepeat) {
                           setVideoPaused(true);
+                          setVideoControlsVisible(true);
                         }
                       }}
                       onVideoError={(e) => {
@@ -4329,57 +5049,193 @@ export default function App() {
                     </View>
                   )}
 
-                  {/* Transparent Gesture Overlay directly over native video: intercepts swipes & single taps without native event loss */}
+                  {/* Transparent Gesture Overlay directly over native video: intercepts swipes & single/double taps */}
                   <View
                     style={[StyleSheet.absoluteFillObject, { zIndex: 10 }]}
                     {...videoPanResponder.panHandlers}
                   />
 
-                  {/* Custom In-App Playback HUD */}
-                  <View style={[styles.lightboxVideoHud, { zIndex: 30 }]}>
-                    <TouchableOpacity
-                      activeOpacity={0.75}
-                      style={styles.lightboxHudBtn}
-                      onPress={() => setVideoPaused(!videoPaused)}>
-                      <Text style={styles.lightboxHudBtnText}>{videoPaused ? '▶' : '❙❙'}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      activeOpacity={0.75}
-                      style={styles.lightboxHudBtn}
-                      onPress={() => setVideoMuted(!videoMuted)}>
-                      <Text style={[styles.lightboxHudBtnText, { fontSize: 13, fontWeight: '800' }]}>{videoMuted ? '⊘' : '◖'}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      activeOpacity={0.75}
-                      style={styles.lightboxHudBtn}
-                      onPress={() => setVideoRepeat(!videoRepeat)}>
-                      <Text style={[styles.lightboxHudBtnText, videoRepeat && { color: '#60cdff' }]}>↻</Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.lightboxHudDurationWrap}>
-                      <Text style={styles.lightboxHudDurationText}>
-                        {formatDuration(videoDuration)}
+                  {/* Double Tap Seek Feedback Ripple (YouTube style) */}
+                  {videoDoubleTapFeedback && (
+                    <View
+                      style={[
+                        styles.ytRippleBadge,
+                        videoDoubleTapFeedback.side === 'left' ? styles.ytRippleBadgeLeft : styles.ytRippleBadgeRight,
+                        { zIndex: 40 },
+                      ]}>
+                      <Text style={styles.ytRippleBadgeIcon}>
+                        {videoDoubleTapFeedback.side === 'left' ? '↺' : '↻'}
                       </Text>
+                      <Text style={styles.ytRippleBadgeText}>{videoDoubleTapFeedback.text}</Text>
                     </View>
+                  )}
 
-                    <TouchableOpacity
-                      activeOpacity={0.75}
-                      style={styles.lightboxHudBtn}
-                      onPress={() => {
-                        const pathOrUrl = lightboxItem?.source === 'pc'
-                          ? (lightboxItem?.item?.downloadUrl
-                              ? lightboxItem.item.downloadUrl
-                              : `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`)
-                          : lightboxItem?.item?.path;
-                        if (FyloModule && FyloModule.openVideoPlayer) {
-                          FyloModule.openVideoPlayer(pathOrUrl, 'video/*');
-                        }
-                      }}>
-                      <Text style={styles.lightboxHudBtnText}>⛶</Text>
-                    </TouchableOpacity>
-                  </View>
+                  {/* YouTube / MX Player Full Controls Overlay */}
+                  {videoControlsVisible && (
+                    <View style={[StyleSheet.absoluteFillObject, { zIndex: 30, justifyContent: 'space-between' }]} pointerEvents="box-none">
+                      {/* Top Bar */}
+                      <View style={styles.ytTopBar}>
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          style={styles.ytTopBackBtn}
+                          onPress={() => {
+                            setLightboxItem(null);
+                            resetZoom();
+                          }}>
+                          <Text style={styles.ytTopBackBtnText}>✕</Text>
+                        </TouchableOpacity>
+
+                        <View style={styles.ytTopTitleWrap}>
+                          <Text style={styles.ytTopTitle} numberOfLines={1}>
+                            {lightboxItem?.item?.name || 'Video Player'}
+                          </Text>
+                          <Text style={styles.ytTopMeta}>
+                            {lightboxItem?.source === 'pc' ? 'PC Drive' : 'Phone'} • {(lightboxItem?.item?.ext || 'MP4').toUpperCase()}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          style={styles.ytTopActionBtn}
+                          onPress={cycleVideoSpeed}>
+                          <Text style={styles.ytTopActionBtnText}>{videoSpeed}x</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          style={styles.ytTopActionBtn}
+                          onPress={cycleVideoResizeMode}>
+                          <Text style={styles.ytTopActionBtnText}>
+                            {videoResizeMode === 'contain' ? 'FIT' : 'FILL'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          style={[styles.ytTopActionBtn, { backgroundColor: 'rgba(37, 99, 235, 0.45)', borderColor: '#3b82f6', borderWidth: 1 }]}
+                          onPress={() => {
+                            const pathOrUrl = lightboxItem?.source === 'pc'
+                              ? (lightboxItem?.item?.downloadUrl
+                                  ? lightboxItem.item.downloadUrl
+                                  : `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`)
+                              : lightboxItem?.item?.path;
+                            if (FyloModule && FyloModule.openVideoPlayer) {
+                              FyloModule.openVideoPlayer(pathOrUrl, 'video/*');
+                            }
+                          }}>
+                          <Text style={[styles.ytTopActionBtnText, { color: '#93c5fd' }]}>⛶ MX Player</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Center Controls (Rewind 10s, Big Play/Pause, Forward 10s) */}
+                      <View style={styles.ytCenterControls} pointerEvents="box-none">
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          style={styles.ytCircleBtn}
+                          onPress={() => seekVideoDelta(-10)}>
+                          <Text style={styles.ytCircleBtnText}>↺ 10</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          style={styles.ytPlayPauseBtn}
+                          onPress={() => setVideoPaused(!videoPaused)}>
+                          <Text style={styles.ytPlayPauseText}>{videoPaused ? '▶' : '❙❙'}</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          style={styles.ytCircleBtn}
+                          onPress={() => seekVideoDelta(10)}>
+                          <Text style={styles.ytCircleBtnText}>↻ 10</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Bottom Bar: Timeline Scrubber + Actions */}
+                      <View style={styles.ytBottomBar}>
+                        {/* Interactive Scrubber Bar */}
+                        <View
+                          style={styles.ytScrubberTrack}
+                          onLayout={(e) => setScrubberWidth(e.nativeEvent.layout.width)}
+                          {...scrubberPanResponder.panHandlers}>
+                          <View style={styles.ytScrubberBg}>
+                            <View
+                              style={[
+                                styles.ytScrubberFill,
+                                {
+                                  width: `${
+                                    videoDuration > 0
+                                      ? Math.max(0, Math.min(100, ((videoScrubbing ? videoScrubTime : videoCurrentTime) / videoDuration) * 100))
+                                      : 0
+                                  }%`,
+                                },
+                              ]}
+                            />
+                            <View
+                              style={[
+                                styles.ytScrubberThumb,
+                                {
+                                  left: `${
+                                    videoDuration > 0
+                                      ? Math.max(0, Math.min(100, ((videoScrubbing ? videoScrubTime : videoCurrentTime) / videoDuration) * 100))
+                                      : 0
+                                  }%`,
+                                  marginLeft: -7,
+                                },
+                              ]}
+                            />
+                          </View>
+                        </View>
+
+                        {/* Bottom Actions Row */}
+                        <View style={styles.ytBottomActionRow}>
+                          <Text style={styles.ytTimeText}>
+                            {formatDuration(videoScrubbing ? videoScrubTime : videoCurrentTime)} / {formatDuration(videoDuration)}
+                          </Text>
+
+                          <View style={styles.ytBottomActionsRight}>
+                            <TouchableOpacity
+                              activeOpacity={0.75}
+                              style={styles.ytIconBtn}
+                              onPress={() => setVideoMuted(!videoMuted)}>
+                              <Text style={styles.ytIconBtnText}>{videoMuted ? '🔇' : '🔊'}</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              activeOpacity={0.75}
+                              style={styles.ytIconBtn}
+                              onPress={() => setVideoRepeat(!videoRepeat)}>
+                              <Text style={[styles.ytIconBtnText, videoRepeat && { color: '#60cdff' }]}>↻</Text>
+                            </TouchableOpacity>
+
+                            {lightboxItem?.source === 'pc' && (
+                              <TouchableOpacity
+                                activeOpacity={0.75}
+                                style={styles.ytIconBtn}
+                                onPress={() => {
+                                  if (lightboxItem?.item?.downloadUrl) {
+                                    handleDownloadSharedHubFile(lightboxItem.item);
+                                  } else {
+                                    handleDownloadPcFile(lightboxItem?.item?.path, lightboxItem?.item?.name);
+                                  }
+                                }}>
+                                <Text style={styles.ytIconBtnText}>↓ Save</Text>
+                              </TouchableOpacity>
+                            )}
+
+                            {lightboxItem?.source === 'phone' && pairedPc && (
+                              <TouchableOpacity
+                                activeOpacity={0.75}
+                                style={styles.ytIconBtn}
+                                onPress={() => handleSendFilesToPc([lightboxItem?.item?.path])}>
+                                <Text style={styles.ytIconBtnText}>→ PC</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  )}
                 </View>
               ) : isImageFile(lightboxItem?.item?.ext) ? (
                 /* Hardware-Accelerated 120Hz Fluid Pinch & Zoom Image Container */
@@ -4405,6 +5261,19 @@ export default function App() {
                   <FileBadgeIcon ext={lightboxItem?.item?.ext} isDir={false} size={64} />
                   <Text style={styles.lightboxNonImgTitle}>{lightboxItem?.item?.name || 'File'}</Text>
                   <Text style={styles.lightboxNonImgMeta}>{formatFileSize(lightboxItem?.item?.size)}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.lightboxOpenExternalBtn}
+                    onPress={() => {
+                      openExternalFileOrChooser(lightboxItem.item, lightboxItem.source);
+                    }}>
+                    <Text style={styles.lightboxOpenExternalBtnIcon}>
+                      {isAudioFile(lightboxItem?.item?.ext) ? '🎵' : '↗'}
+                    </Text>
+                    <Text style={styles.lightboxOpenExternalBtnText}>
+                      {isAudioFile(lightboxItem?.item?.ext) ? 'Play in Phone Music Player' : 'Open in External App / Player ↗'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -4422,66 +5291,79 @@ export default function App() {
                   </TouchableOpacity>
                 </View>
               )}
+              </Animated.View>
             </View>
 
-            <View style={styles.lightboxFooter}>
-              {lightboxItem?.source === 'pc' && (
+            {!isVideoFile(lightboxItem?.item?.ext) && (
+              <View style={styles.lightboxFooter}>
                 <TouchableOpacity
                   activeOpacity={0.75}
-                  style={styles.lightboxDlBtn}
+                  style={styles.lightboxOpenInAppBtn}
                   onPress={() => {
-                    if (lightboxItem?.item?.downloadUrl) {
-                      handleDownloadSharedHubFile(lightboxItem.item);
-                    } else {
-                      handleDownloadPcFile(lightboxItem?.item?.path, lightboxItem?.item?.name);
-                    }
+                    openExternalFileOrChooser(lightboxItem.item, lightboxItem.source);
                   }}>
-                  <Text style={styles.lightboxDlBtnText}>Save to Phone ↓</Text>
+                  <Text style={styles.lightboxOpenInAppBtnText}>
+                    {isAudioFile(lightboxItem?.item?.ext) ? 'Play Track 🎵' : 'Open with App ↗'}
+                  </Text>
                 </TouchableOpacity>
-              )}
+                {lightboxItem?.source === 'pc' && (
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.lightboxDlBtn}
+                    onPress={() => {
+                      if (lightboxItem?.item?.downloadUrl) {
+                        handleDownloadSharedHubFile(lightboxItem.item);
+                      } else {
+                        handleDownloadPcFile(lightboxItem?.item?.path, lightboxItem?.item?.name);
+                      }
+                    }}>
+                    <Text style={styles.lightboxDlBtnText}>Save to Phone ↓</Text>
+                  </TouchableOpacity>
+                )}
 
-              {lightboxItem?.source === 'phone' && pairedPc && (
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  style={styles.lightboxSendBtn}
-                  onPress={() => handleSendFilesToPc([lightboxItem?.item?.path])}>
-                  <Text style={styles.lightboxSendBtnText}>Send to PC →</Text>
-                </TouchableOpacity>
-              )}
+                {lightboxItem?.source === 'phone' && pairedPc && (
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.lightboxSendBtn}
+                    onPress={() => handleSendFilesToPc([lightboxItem?.item?.path])}>
+                    <Text style={styles.lightboxSendBtnText}>Send to PC →</Text>
+                  </TouchableOpacity>
+                )}
 
-              {lightboxItem?.source === 'phone' && (
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  style={styles.lightboxTrashBtn}
-                  onPress={() => {
-                    Alert.alert(
-                      'Move to Trash',
-                      `Are you sure you want to move "${lightboxItem?.item?.name || 'this file'}" to trash?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Trash',
-                          style: 'destructive',
-                          onPress: async () => {
-                            if (FyloModule && FyloModule.trashFile && lightboxItem?.item?.path) {
-                              try {
-                                await FyloModule.trashFile(lightboxItem.item.path);
-                                showToast('Moved to .trash safely');
-                              } catch (err) {
-                                showToast('Trash Error: ' + (err?.message || 'Failed'));
+                {lightboxItem?.source === 'phone' && (
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.lightboxTrashBtn}
+                    onPress={() => {
+                      Alert.alert(
+                        'Move to Trash',
+                        `Are you sure you want to move "${lightboxItem?.item?.name || 'this file'}" to trash?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Trash',
+                            style: 'destructive',
+                            onPress: async () => {
+                              if (FyloModule && FyloModule.trashFile && lightboxItem?.item?.path) {
+                                try {
+                                  await FyloModule.trashFile(lightboxItem.item.path);
+                                  showToast('Moved to .trash safely');
+                                } catch (err) {
+                                  showToast('Trash Error: ' + (err?.message || 'Failed'));
+                                }
                               }
-                            }
-                            setLightboxItem(null);
-                            loadPhoneFolder(phoneCurrentPath);
+                              setLightboxItem(null);
+                              loadPhoneFolder(phoneCurrentPath);
+                            },
                           },
-                        },
-                      ]
-                    );
-                  }}>
-                  <Text style={styles.lightboxTrashBtnText}>Trash</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                        ]
+                      );
+                    }}>
+                    <Text style={styles.lightboxTrashBtnText}>Trash</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         </Modal>
       )}
@@ -4512,14 +5394,14 @@ export default function App() {
                 style={styles.drawerCloseBtn}
                 activeOpacity={0.75}
                 onPress={closeSidebar}>
-                <Text style={styles.drawerCloseBtnText}>✕</Text>
+                <Text style={[styles.drawerCloseBtnText, !isDarkMode && styles.drawerCloseBtnTextLight]}>✕</Text>
               </TouchableOpacity>
             </View>
 
             {/* Connection Status Card in Drawer */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[styles.drawerConnCard, pairedPc && styles.drawerConnCardActive]}
+              style={[styles.drawerConnCard, !isDarkMode && styles.drawerConnCardLight, pairedPc && (isDarkMode ? styles.drawerConnCardActive : styles.drawerConnCardActiveLight)]}
               onPress={() => {
                 closeSidebar();
                 if (pairedPc) {
@@ -4530,10 +5412,10 @@ export default function App() {
               }}>
               <View style={[styles.beaconDot, { backgroundColor: pairedPc ? (isPcReachable ? '#10b981' : '#ef4444') : '#64748b' }]} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.drawerConnTitle}>
+                <Text style={[styles.drawerConnTitle, !isDarkMode && styles.drawerConnTitleLight]}>
                   {pairedPc ? (isPcReachable ? `Linked to ${pcHostName || 'PC'}` : `${pcHostName || 'PC'} (Offline)`) : 'Not Paired to PC'}
                 </Text>
-                <Text style={styles.drawerConnSub}>
+                <Text style={[styles.drawerConnSub, !isDarkMode && styles.drawerConnSubLight]}>
                   {pairedPc ? (isPcReachable ? `${pairedPc} • ${pingLatency !== null ? `${pingLatency} ms latency` : 'Connected'}` : `${pairedPc} • PC Unreachable`) : 'Tap to scan QR or connect via IP'}
                 </Text>
               </View>
@@ -4544,81 +5426,164 @@ export default function App() {
             <ScrollView style={styles.drawerNavList} showsVerticalScrollIndicator={false}>
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={[styles.drawerNavItem, currentTab === 'home' && styles.drawerNavItemActive]}
+                style={[
+                  styles.drawerNavItem,
+                  !isDarkMode && styles.drawerNavItemLight,
+                  currentTab === 'home' && (isDarkMode ? styles.drawerNavItemActive : styles.drawerNavItemActiveLight),
+                ]}
                 onPress={() => {
                   setCurrentTab('home');
                   closeSidebar();
                 }}>
-                <Text style={styles.drawerNavIcon}>⌂</Text>
+                <VectorHomeIcon size={18} color={currentTab === 'home' ? '#2563eb' : (isDarkMode ? '#94a3b8' : '#475569')} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.drawerNavLabel, currentTab === 'home' && styles.drawerNavLabelActive]}>
-                    Command Center
+                  <Text
+                    style={[
+                      styles.drawerNavLabel,
+                      !isDarkMode && styles.drawerNavLabelLight,
+                      currentTab === 'home' && (isDarkMode ? styles.drawerNavLabelActive : styles.drawerNavLabelActiveLight),
+                    ]}>
+                    Home
                   </Text>
-                  <Text style={styles.drawerNavSub}>Instant transfer & device storage</Text>
+                  <Text style={[styles.drawerNavSub, !isDarkMode && styles.drawerNavSubLight]}>
+                    Instant transfer & device storage
+                  </Text>
                 </View>
               </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={[styles.drawerNavItem, currentTab === 'pc-explorer' && styles.drawerNavItemActive]}
+                style={[
+                  styles.drawerNavItem,
+                  !isDarkMode && styles.drawerNavItemLight,
+                  currentTab === 'sharehub' && (isDarkMode ? styles.drawerNavItemActive : styles.drawerNavItemActiveLight),
+                ]}
+                onPress={() => {
+                  setCurrentTab('sharehub');
+                  fetchSharedHubFiles();
+                  closeSidebar();
+                }}>
+                <VectorShareHubIcon size={18} color={currentTab === 'sharehub' ? '#2563eb' : (isDarkMode ? '#94a3b8' : '#475569')} />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.drawerNavLabel,
+                      !isDarkMode && styles.drawerNavLabelLight,
+                      currentTab === 'sharehub' && (isDarkMode ? styles.drawerNavLabelActive : styles.drawerNavLabelActiveLight),
+                    ]}>
+                    ShareHub
+                  </Text>
+                  <Text style={[styles.drawerNavSub, !isDarkMode && styles.drawerNavSubLight]}>
+                    Active shared files from PC & Phone
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[
+                  styles.drawerNavItem,
+                  !isDarkMode && styles.drawerNavItemLight,
+                  currentTab === 'pc-explorer' && (isDarkMode ? styles.drawerNavItemActive : styles.drawerNavItemActiveLight),
+                ]}
                 onPress={() => {
                   setCurrentTab('pc-explorer');
                   closeSidebar();
                 }}>
-                <Text style={styles.drawerNavIcon}>⬡</Text>
+                <VectorMonitorIcon size={18} color={currentTab === 'pc-explorer' ? '#2563eb' : (isDarkMode ? '#94a3b8' : '#475569')} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.drawerNavLabel, currentTab === 'pc-explorer' && styles.drawerNavLabelActive]}>
+                  <Text
+                    style={[
+                      styles.drawerNavLabel,
+                      !isDarkMode && styles.drawerNavLabelLight,
+                      currentTab === 'pc-explorer' && (isDarkMode ? styles.drawerNavLabelActive : styles.drawerNavLabelActiveLight),
+                    ]}>
                     PC Drives Explorer
                   </Text>
-                  <Text style={styles.drawerNavSub}>Browse Windows C:\, D:\, Downloads</Text>
+                  <Text style={[styles.drawerNavSub, !isDarkMode && styles.drawerNavSubLight]}>
+                    Browse Windows C:\, D:\, Downloads
+                  </Text>
                 </View>
               </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={[styles.drawerNavItem, currentTab === 'phone-explorer' && styles.drawerNavItemActive]}
+                style={[
+                  styles.drawerNavItem,
+                  !isDarkMode && styles.drawerNavItemLight,
+                  currentTab === 'phone-explorer' && (isDarkMode ? styles.drawerNavItemActive : styles.drawerNavItemActiveLight),
+                ]}
                 onPress={() => {
                   setCurrentTab('phone-explorer');
                   closeSidebar();
                 }}>
-                <Text style={styles.drawerNavIcon}>▣</Text>
+                <VectorPhoneIcon size={18} color={currentTab === 'phone-explorer' ? '#2563eb' : (isDarkMode ? '#94a3b8' : '#475569')} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.drawerNavLabel, currentTab === 'phone-explorer' && styles.drawerNavLabelActive]}>
+                  <Text
+                    style={[
+                      styles.drawerNavLabel,
+                      !isDarkMode && styles.drawerNavLabelLight,
+                      currentTab === 'phone-explorer' && (isDarkMode ? styles.drawerNavLabelActive : styles.drawerNavLabelActiveLight),
+                    ]}>
                     Phone Storage & Gallery
                   </Text>
-                  <Text style={styles.drawerNavSub}>Internal files, DCIM, Photos & Media</Text>
+                  <Text style={[styles.drawerNavSub, !isDarkMode && styles.drawerNavSubLight]}>
+                    Internal files, DCIM, Photos & Media
+                  </Text>
                 </View>
               </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={[styles.drawerNavItem, currentTab === 'clipboard' && styles.drawerNavItemActive]}
+                style={[
+                  styles.drawerNavItem,
+                  !isDarkMode && styles.drawerNavItemLight,
+                  currentTab === 'clipboard' && (isDarkMode ? styles.drawerNavItemActive : styles.drawerNavItemActiveLight),
+                ]}
                 onPress={() => {
                   setCurrentTab('clipboard');
                   closeSidebar();
                 }}>
-                <Text style={styles.drawerNavIcon}>⎘</Text>
+                <VectorClipboardIcon size={18} color={currentTab === 'clipboard' ? '#2563eb' : (isDarkMode ? '#94a3b8' : '#475569')} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.drawerNavLabel, currentTab === 'clipboard' && styles.drawerNavLabelActive]}>
+                  <Text
+                    style={[
+                      styles.drawerNavLabel,
+                      !isDarkMode && styles.drawerNavLabelLight,
+                      currentTab === 'clipboard' && (isDarkMode ? styles.drawerNavLabelActive : styles.drawerNavLabelActiveLight),
+                    ]}>
                     LAN Shared Clipboard
                   </Text>
-                  <Text style={styles.drawerNavSub}>Live bidirectional text sync</Text>
+                  <Text style={[styles.drawerNavSub, !isDarkMode && styles.drawerNavSubLight]}>
+                    Live bidirectional text sync
+                  </Text>
                 </View>
               </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={[styles.drawerNavItem, currentTab === 'transfer' && styles.drawerNavItemActive]}
+                style={[
+                  styles.drawerNavItem,
+                  !isDarkMode && styles.drawerNavItemLight,
+                  currentTab === 'transfer' && (isDarkMode ? styles.drawerNavItemActive : styles.drawerNavItemActiveLight),
+                ]}
                 onPress={() => {
                   setCurrentTab('transfer');
                   closeSidebar();
                 }}>
-                <Text style={styles.drawerNavIcon}>⚡</Text>
+                <VectorLightningIcon size={18} color={currentTab === 'transfer' ? '#2563eb' : (isDarkMode ? '#94a3b8' : '#475569')} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.drawerNavLabel, currentTab === 'transfer' && styles.drawerNavLabelActive]}>
+                  <Text
+                    style={[
+                      styles.drawerNavLabel,
+                      !isDarkMode && styles.drawerNavLabelLight,
+                      currentTab === 'transfer' && (isDarkMode ? styles.drawerNavLabelActive : styles.drawerNavLabelActiveLight),
+                    ]}>
                     Speed & Diagnostics
                   </Text>
-                  <Text style={styles.drawerNavSub}>Ping latency, server status & logs</Text>
+                  <Text style={[styles.drawerNavSub, !isDarkMode && styles.drawerNavSubLight]}>
+                    Ping latency, server status & logs
+                  </Text>
                 </View>
               </TouchableOpacity>
 
@@ -4646,7 +5611,7 @@ export default function App() {
                     Allow Full Storage
                   </Text>
                 </View>
-                <Text style={styles.drawerSettingSub}>
+                <Text style={[styles.drawerSettingSub, !isDarkMode && styles.drawerSettingSubLight]}>
                   Allow paired PC to browse phone folders. When disabled, only ShareHub transfers work.
                 </Text>
               </View>
@@ -4810,6 +5775,106 @@ export default function App() {
               onPress={() => setDirectShareModalVisible(false)}>
               <Text style={styles.directShareCancelBtnText}>Cancel</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========================================================= */}
+      {/* NATIVE EXTERNAL FILE & PLAYER CHOOSER MODAL               */}
+      {/* ========================================================= */}
+      <Modal
+        visible={!!externalFilePrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExternalFilePrompt(null)}>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalDismissArea}
+            activeOpacity={1}
+            onPress={() => setExternalFilePrompt(null)}
+          />
+          <View style={[styles.externalPromptCard, !isDarkMode && styles.externalPromptCardLight]}>
+            {/* Header */}
+            <View style={styles.externalPromptHeader}>
+              <View style={styles.externalPromptBadgeRow}>
+                <FileBadgeIcon ext={externalFilePrompt?.file?.ext} isDir={false} size={36} />
+                <View style={{ marginLeft: 10, flex: 1 }}>
+                  <Text style={[styles.externalPromptHeading, !isDarkMode && styles.externalPromptHeadingLight]}>
+                    {isAudioFile(externalFilePrompt?.file?.ext) ? 'Play with Native Player' : 'Open with Phone App'}
+                  </Text>
+                  <Text style={styles.externalPromptBadgeSub}>
+                    {externalFilePrompt?.source === 'pc' ? 'Windows PC' : 'Local Phone'} • {formatFileSize(externalFilePrompt?.file?.size)}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => setExternalFilePrompt(null)}
+                style={styles.externalPromptCloseBtn}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* File Details */}
+            <View style={[styles.externalPromptFileBox, !isDarkMode && styles.externalPromptFileBoxLight]}>
+              <Text
+                style={[styles.externalPromptFileName, !isDarkMode && styles.externalPromptFileNameLight]}
+                numberOfLines={2}>
+                {externalFilePrompt?.file?.name || 'File'}
+              </Text>
+              <Text style={styles.externalPromptFileFormat}>
+                Format: {(externalFilePrompt?.file?.ext || 'Unknown').toUpperCase()}
+              </Text>
+            </View>
+
+            {/* Informative text */}
+            <Text style={[styles.externalPromptDesc, !isDarkMode && styles.externalPromptDescLight]}>
+              {isAudioFile(externalFilePrompt?.file?.ext)
+                ? 'Choose your favorite music or media player installed on this phone to listen to this audio track.'
+                : 'Select an app installed on your phone (PDF reader, Docs, Office, browser, etc.) to view or edit this file.'}
+            </Text>
+
+            {/* Action Buttons */}
+            <View style={styles.externalPromptActions}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.externalPromptPrimaryBtn}
+                onPress={async () => {
+                  const prompt = externalFilePrompt;
+                  setExternalFilePrompt(null);
+                  if (prompt?.file) {
+                    await openExternalFileOrChooser(prompt.file, prompt.source, 'auto');
+                  }
+                }}>
+                <Text style={styles.externalPromptPrimaryBtnText}>
+                  {isAudioFile(externalFilePrompt?.file?.ext) ? '▶ Choose Player from Phone' : '↗ Open in App / Player'}
+                </Text>
+              </TouchableOpacity>
+
+              {externalFilePrompt?.source === 'pc' && (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.externalPromptSecondaryBtn, !isDarkMode && styles.externalPromptSecondaryBtnLight]}
+                  onPress={async () => {
+                    const prompt = externalFilePrompt;
+                    setExternalFilePrompt(null);
+                    if (prompt?.file) {
+                      await openExternalFileOrChooser(prompt.file, 'pc', 'download');
+                    }
+                  }}>
+                  <Text style={[styles.externalPromptSecondaryBtnText, !isDarkMode && styles.externalPromptSecondaryBtnTextLight]}>
+                    📥 Download to Phone & Open
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.externalPromptCancelBtn}
+                onPress={() => setExternalFilePrompt(null)}>
+                <Text style={styles.externalPromptCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -5080,28 +6145,29 @@ export default function App() {
       {/* ========================================================= */}
       <Modal visible={diagVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, !isDarkMode && styles.modalContentLight]}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Network & Ping Diagnostics</Text>
+              <Text style={[styles.modalTitle, !isDarkMode && styles.modalTitleLight]}>Network & Ping Diagnostics</Text>
               <TouchableOpacity activeOpacity={0.75} onPress={() => setDiagVisible(false)}>
-                <Text style={styles.modalCloseText}>✕</Text>
+                <Text style={[styles.modalCloseText, !isDarkMode && styles.modalCloseTextLight]}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <View
               style={[
                 styles.diagResultBento,
+                !isDarkMode && styles.diagResultBentoLight,
                 diagStatus === 'success' ? styles.diagSuccess : styles.diagWarning,
               ]}>
-              <Text style={styles.diagResultText}>{diagMessage || 'Running network diagnostic...'}</Text>
+              <Text style={[styles.diagResultText, !isDarkMode && styles.diagResultTextLight]}>{diagMessage || 'Running network diagnostic...'}</Text>
             </View>
 
             <View style={styles.modalBtnRow}>
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={styles.modalCancelBtn}
+                style={[styles.modalCancelBtn, !isDarkMode && styles.modalCancelBtnLight]}
                 onPress={() => setDiagVisible(false)}>
-                <Text style={styles.modalCancelBtnText}>Close</Text>
+                <Text style={[styles.modalCancelBtnText, !isDarkMode && styles.modalCancelBtnTextLight]}>Close</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -5290,7 +6356,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1014',
+    backgroundColor: '#000000',
   },
   containerLight: {
     backgroundColor: '#F7F6F2',
@@ -5303,7 +6369,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-    backgroundColor: '#0A1014',
+    backgroundColor: '#000000',
   },
   topHeaderLight: {
     backgroundColor: 'transparent',
@@ -5323,7 +6389,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#111827',
+    backgroundColor: '#0A0A0A',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
@@ -5347,14 +6413,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#15534c',
+    backgroundColor: '#2563eb',
+    borderColor: '#60a5fa',
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#15534c',
+    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
   },
   brandCircleText: {
     color: '#ffffff',
@@ -5711,11 +6779,12 @@ const styles = StyleSheet.create({
 
   /* Bento Dashboard General */
   bentoScroll: {
+    backgroundColor: '#000000',
     padding: 14,
     paddingBottom: 100,
   },
   bentoCardHero: {
-    backgroundColor: '#111827',
+    backgroundColor: '#0A0A0A',
     borderRadius: 24,
     padding: 18,
     borderWidth: 1,
@@ -6056,7 +7125,7 @@ const styles = StyleSheet.create({
 
   /* Section Cards (Send Files, Share Hub, Internal Storage, etc.) */
   sectionCard: {
-    backgroundColor: '#111827',
+    backgroundColor: '#0A0A0A',
     borderRadius: 22,
     padding: 16,
     borderWidth: 1,
@@ -6236,7 +7305,7 @@ const styles = StyleSheet.create({
 
   /* Standard Bento Card */
   bentoCard: {
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
@@ -6520,6 +7589,7 @@ const styles = StyleSheet.create({
   /* ==================== EXPLORER STYLES ==================== */
   explorerContainer: {
     flex: 1,
+    backgroundColor: '#000000',
     paddingHorizontal: 10,
     paddingTop: 8,
   },
@@ -6541,7 +7611,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 999,
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     gap: 6,
@@ -6570,7 +7640,7 @@ const styles = StyleSheet.create({
   },
   pcShortcutPill: {
     minHeight: 30,
-    backgroundColor: '#172033',
+    backgroundColor: '#121212',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
     paddingHorizontal: 10,
@@ -6588,7 +7658,7 @@ const styles = StyleSheet.create({
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -6599,7 +7669,7 @@ const styles = StyleSheet.create({
   },
   navUpBtn: {
     minHeight: 30,
-    backgroundColor: '#172033',
+    backgroundColor: '#121212',
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 8,
@@ -6667,7 +7737,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 6,
-    backgroundColor: '#172033',
+    backgroundColor: '#121212',
   },
   viewModeBtnActive: {
     backgroundColor: 'rgba(37, 99, 235, 0.25)',
@@ -6690,7 +7760,7 @@ const styles = StyleSheet.create({
     minHeight: 36,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 10,
@@ -6715,7 +7785,7 @@ const styles = StyleSheet.create({
   },
   sortToggleBtn: {
     minHeight: 36,
-    backgroundColor: '#172033',
+    backgroundColor: '#121212',
     paddingHorizontal: 10,
     borderRadius: 10,
     justifyContent: 'center',
@@ -6730,7 +7800,7 @@ const styles = StyleSheet.create({
   },
   multiSelectToggle: {
     minHeight: 36,
-    backgroundColor: '#172033',
+    backgroundColor: '#121212',
     paddingHorizontal: 11,
     borderRadius: 10,
     justifyContent: 'center',
@@ -6788,7 +7858,7 @@ const styles = StyleSheet.create({
   },
   gridTile: {
     minHeight: 102,
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
     borderRadius: 14,
@@ -6854,7 +7924,7 @@ const styles = StyleSheet.create({
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 10,
@@ -6895,7 +7965,7 @@ const styles = StyleSheet.create({
     bottom: 14,
     left: 12,
     right: 12,
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderWidth: 1.5,
     borderColor: '#2563eb',
     borderRadius: 18,
@@ -7038,7 +8108,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   clipboardTextInput: {
-    backgroundColor: '#080c14',
+    backgroundColor: '#000000',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
@@ -7348,6 +8418,12 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     fontWeight: '300',
   },
+  lightboxVideoFullBody: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#000000',
+  },
   lightboxVideoContainer: {
     width: '100%',
     height: '100%',
@@ -7360,45 +8436,204 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  lightboxVideoHud: {
+  /* YouTube / MX Player In-App HUD Styles */
+  ytTopBar: {
     position: 'absolute',
-    bottom: 16,
-    left: 20,
-    right: 20,
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.88)',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    zIndex: 30,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    zIndex: 35,
   },
-  lightboxHudBtn: {
+  ytTopBackBtn: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lightboxHudBtnText: {
+  ytTopBackBtnText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '800',
   },
-  lightboxHudDurationWrap: {
+  ytTopTitleWrap: {
     flex: 1,
+    marginHorizontal: 10,
+  },
+  ytTopTitle: {
+    color: '#ffffff',
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  ytTopMeta: {
+    color: '#94a3b8',
+    fontSize: 10.5,
+    marginTop: 1,
+    fontWeight: '600',
+  },
+  ytTopActionBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    marginLeft: 6,
+  },
+  ytTopActionBtnText: {
+    color: '#ffffff',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  ytCenterControls: {
+    position: 'absolute',
+    top: '42%',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 32,
+    zIndex: 35,
+  },
+  ytCircleBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lightboxHudDurationText: {
-    color: '#94a3b8',
-    fontSize: 12,
+  ytCircleBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  ytPlayPauseBtn: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(37, 99, 235, 0.9)',
+    borderWidth: 2,
+    borderColor: '#60a5fa',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#2563eb',
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+  },
+  ytPlayPauseText: {
+    color: '#ffffff',
+    fontSize: 26,
+    fontWeight: '900',
+    marginLeft: 2,
+  },
+  ytBottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.82)',
+    zIndex: 35,
+  },
+  ytScrubberTrack: {
+    height: 28,
+    justifyContent: 'center',
+  },
+  ytScrubberBg: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    position: 'relative',
+  },
+  ytScrubberFill: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#3b82f6',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+  },
+  ytScrubberThumb: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#ffffff',
+    position: 'absolute',
+    top: -4.5,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+  },
+  ytBottomActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  ytTimeText: {
+    color: '#cbd5e1',
+    fontSize: 11.5,
     fontWeight: '700',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  ytBottomActionsRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  ytIconBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  ytIconBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  ytRippleBadge: {
+    position: 'absolute',
+    top: '42%',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  ytRippleBadgeLeft: {
+    left: 32,
+  },
+  ytRippleBadgeRight: {
+    right: 32,
+  },
+  ytRippleBadgeIcon: {
+    color: '#3b82f6',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  ytRippleBadgeText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
   },
 
   /* QUICK SHARE MODAL ROW */
@@ -7437,7 +8672,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalContent: {
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
@@ -7539,7 +8774,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   modalInput: {
-    backgroundColor: '#080c14',
+    backgroundColor: '#000000',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: 10,
@@ -7850,7 +9085,7 @@ const styles = StyleSheet.create({
   sortModalCard: {
     width: '88%',
     maxWidth: 380,
-    backgroundColor: '#0d1527',
+    backgroundColor: '#0A0A0A',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(37, 99, 235, 0.35)',
@@ -8198,7 +9433,7 @@ const styles = StyleSheet.create({
   directShareCard: {
     width: '90%',
     maxWidth: 400,
-    backgroundColor: '#0d1527',
+    backgroundColor: '#0A0A0A',
     borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(37, 99, 235, 0.35)',
@@ -8314,7 +9549,7 @@ const styles = StyleSheet.create({
   directShareCard: {
     width: '90%',
     maxWidth: 400,
-    backgroundColor: '#0d1527',
+    backgroundColor: '#0A0A0A',
     borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(37, 99, 235, 0.35)',
@@ -8428,7 +9663,7 @@ const styles = StyleSheet.create({
 
   /* Storage Access Permission Prompt Modal */
   storagePromptCard: {
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderRadius: 22,
     padding: 22,
     borderWidth: 1,
@@ -8572,7 +9807,7 @@ const styles = StyleSheet.create({
 
   /* Settings Modal Card */
   settingsModalCard: {
-    backgroundColor: '#0d1322',
+    backgroundColor: '#0A0A0A',
     borderRadius: 22,
     padding: 20,
     borderWidth: 1,
@@ -8609,5 +9844,500 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15,
     marginTop: 2,
+  },
+
+  /* Native External File / Player Chooser Modal */
+  externalPromptCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 20,
+    padding: 20,
+    width: SCREEN_WIDTH - 36,
+    maxWidth: 420,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+  },
+  externalPromptCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    shadowOpacity: 0.15,
+  },
+  externalPromptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  externalPromptBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  externalPromptHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: -0.2,
+  },
+  externalPromptHeadingLight: {
+    color: '#0f172a',
+  },
+  externalPromptBadgeSub: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  externalPromptCloseBtn: {
+    padding: 6,
+  },
+  externalPromptFileBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  externalPromptFileBoxLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  externalPromptFileName: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#38bdf8',
+    marginBottom: 4,
+  },
+  externalPromptFileNameLight: {
+    color: '#0284c7',
+  },
+  externalPromptFileFormat: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  externalPromptDesc: {
+    fontSize: 12.5,
+    color: '#cbd5e1',
+    lineHeight: 18,
+    marginBottom: 18,
+  },
+  externalPromptDescLight: {
+    color: '#475569',
+  },
+  externalPromptActions: {
+    gap: 10,
+  },
+  externalPromptPrimaryBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  externalPromptPrimaryBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  externalPromptSecondaryBtn: {
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+  },
+  externalPromptSecondaryBtnLight: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  externalPromptSecondaryBtnText: {
+    color: '#60a5fa',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  externalPromptSecondaryBtnTextLight: {
+    color: '#2563eb',
+  },
+  externalPromptCancelBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  externalPromptCancelBtnText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  lightboxOpenExternalBtn: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  lightboxOpenExternalBtnIcon: {
+    fontSize: 15,
+    marginRight: 6,
+    color: '#ffffff',
+  },
+  lightboxOpenExternalBtnText: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  lightboxOpenInAppBtn: {
+    flex: 1,
+    minHeight: 40,
+    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxOpenInAppBtnText: {
+    color: '#93c5fd',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+
+  /* UI POLISH & LIGHT MODE AUDIT STYLES */
+  explorerContainerLight: {
+    backgroundColor: '#F7F6F2',
+  },
+  bentoCardSubtitleLight: {
+    color: '#64748b',
+  },
+  logTextItemLight: {
+    color: '#334155',
+  },
+  emptyLogsTextLight: {
+    color: '#64748b',
+  },
+  modalContentLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  modalTitleLight: {
+    color: '#0f172a',
+  },
+  modalCloseTextLight: {
+    color: '#64748b',
+  },
+  diagResultBentoLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  diagResultTextLight: {
+    color: '#0f172a',
+  },
+  modalCancelBtnLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+  },
+  modalCancelBtnTextLight: {
+    color: '#334155',
+  },
+  clipboardDisplayBoxLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  clipboardDisplayTextLight: {
+    color: '#0f172a',
+  },
+  clipboardTextInputLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
+  },
+  snippetChipLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
+  },
+  snippetChipTextLight: {
+    color: '#334155',
+  },
+  navBarLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  navUpBtnLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
+  },
+  navUpBtnTextLight: {
+    color: '#334155',
+  },
+  refreshBtnLight: {
+    backgroundColor: '#f1f5f9',
+  },
+  refreshBtnTextLight: {
+    color: '#2563eb',
+  },
+  viewModeBtnLight: {
+    backgroundColor: '#f1f5f9',
+  },
+  viewModeBtnTextLight: {
+    color: '#334155',
+  },
+  searchInputWrapLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  searchInputLight: {
+    color: '#0f172a',
+  },
+  sortToggleBtnLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+  },
+  sortToggleBtnTextLight: {
+    color: '#334155',
+  },
+  multiSelectToggleLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+  },
+  multiSelectToggleTextLight: {
+    color: '#334155',
+  },
+  pcDrivePillLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  pcDrivePillTextLight: {
+    color: '#0f172a',
+  },
+  pcShortcutPillLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
+  },
+  pcShortcutPillTextLight: {
+    color: '#334155',
+  },
+  breadcrumbItemLight: {
+    backgroundColor: '#f8fafc',
+  },
+  breadcrumbItemActiveLight: {
+    backgroundColor: '#eff6ff',
+  },
+  breadcrumbTextLight: {
+    color: '#64748b',
+  },
+  breadcrumbTextActiveLight: {
+    color: '#0f172a',
+  },
+  breadcrumbTextRootLight: {
+    color: '#2563eb',
+  },
+  breadcrumbSeparatorLight: {
+    color: '#94a3b8',
+  },
+  gridTileLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  gridFileNameLight: {
+    color: '#0f172a',
+  },
+  gridFileMetaLight: {
+    color: '#64748b',
+  },
+  listRowLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  listRowNameLight: {
+    color: '#0f172a',
+  },
+  listRowMetaLight: {
+    color: '#64748b',
+  },
+  listRowChevronLight: {
+    color: '#94a3b8',
+  },
+  floatingMultiSelectBarLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#2563eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  floatingSelectCountLight: {
+    color: '#1d4ed8',
+  },
+  drawerCloseBtnTextLight: {
+    color: '#475569',
+  },
+  drawerSubLight: {
+    color: '#64748b',
+  },
+  drawerConnCardLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  drawerConnCardActiveLight: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  drawerConnTitleLight: {
+    color: '#0f172a',
+  },
+  drawerConnSubLight: {
+    color: '#64748b',
+  },
+  drawerNavItemLight: {
+    backgroundColor: 'transparent',
+  },
+  drawerNavItemActiveLight: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  drawerNavLabelLight: {
+    color: '#475569',
+  },
+  drawerNavLabelActiveLight: {
+    color: '#2563eb',
+    fontWeight: '800',
+  },
+  drawerNavSubLight: {
+    color: '#64748b',
+  },
+  drawerSettingSubLight: {
+    color: '#64748b',
+  },
+
+  /* SHAREHUB DEDICATED VIEW STYLES */
+  shareHubScreenTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  shareHubScreenTitleLight: {
+    color: '#0f172a',
+  },
+  shareHubActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  shareHubPrimarySendBtn: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  shareHubPrimarySendBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  shareHubDirectionBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'center',
+    marginBottom: 3,
+  },
+  badgePc: {
+    backgroundColor: 'rgba(59, 130, 246, 0.18)',
+    borderColor: 'rgba(59, 130, 246, 0.35)',
+    borderWidth: 1,
+  },
+  badgePhone: {
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+    borderWidth: 1,
+  },
+  shareHubDirectionText: {
+    fontSize: 8.5,
+    fontWeight: '700',
+    color: '#93c5fd',
+  },
+  shareHubGridSavedChip: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 4,
+  },
+  shareHubGridSavedChipText: {
+    color: '#10b981',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  shareHubGridActionBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 4,
+  },
+  shareHubGridActionBtnText: {
+    color: '#ffffff',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  shareHubClearBtnLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
+  },
+  shareHubClearBtnTextLight: {
+    color: '#64748b',
   },
 });

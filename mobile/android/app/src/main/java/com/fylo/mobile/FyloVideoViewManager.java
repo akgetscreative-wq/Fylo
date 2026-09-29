@@ -3,8 +3,11 @@ package com.fylo.mobile;
 import android.content.Context;
 import android.graphics.Color;
 import android.media.MediaPlayer;
+import android.media.PlaybackParams;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -34,6 +37,7 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
     public static final String EVENT_LOAD = "topVideoLoad";
     public static final String EVENT_END = "topVideoEnd";
     public static final String EVENT_ERROR = "topVideoError";
+    public static final String EVENT_PROGRESS = "topVideoProgress";
 
     @NonNull
     @Override
@@ -60,6 +64,7 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
             .put(EVENT_LOAD, MapBuilder.of("registrationName", "onVideoLoad"))
             .put(EVENT_END, MapBuilder.of("registrationName", "onVideoEnd"))
             .put(EVENT_ERROR, MapBuilder.of("registrationName", "onVideoError"))
+            .put(EVENT_PROGRESS, MapBuilder.of("registrationName", "onVideoProgress"))
             .build();
     }
 
@@ -100,6 +105,11 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
         }
     }
 
+    @ReactProp(name = "speed", defaultFloat = 1.0f)
+    public void setSpeed(FyloVideoLayout view, float speed) {
+        view.setPlaybackSpeed(speed);
+    }
+
     // =========================================================================
     // NATIVE VIDEO LAYOUT CONTAINER (Zero external npm libraries, 100% Native)
     // =========================================================================
@@ -118,8 +128,35 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
         private boolean mControls = true;
         private boolean mRepeat = false;
         private boolean mMuted = false;
+        private float mSpeed = 1.0f;
         private String mResizeMode = "contain";
         private boolean mIsPrepared = false;
+
+        private final Handler mProgressHandler = new Handler(Looper.getMainLooper());
+        private final Runnable mProgressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (mIsPrepared && mVideoView != null && mVideoView.isPlaying()) {
+                    try {
+                        int current = mVideoView.getCurrentPosition();
+                        int duration = mVideoView.getDuration();
+                        Context context = getContext();
+                        if (context instanceof ThemedReactContext) {
+                            ThemedReactContext reactContext = (ThemedReactContext) context;
+                            WritableMap event = Arguments.createMap();
+                            event.putDouble("currentTime", current > 0 ? current / 1000.0 : 0);
+                            event.putDouble("duration", duration > 0 ? duration / 1000.0 : 0);
+                            reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(
+                                getId(),
+                                EVENT_PROGRESS,
+                                event
+                            );
+                        }
+                    } catch (Throwable ignored) {}
+                }
+                mProgressHandler.postDelayed(this, 250);
+            }
+        };
 
         public FyloVideoLayout(@NonNull Context context) {
             super(context);
@@ -199,8 +236,10 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
                     if (mVideoView.isPlaying()) {
                         mVideoView.pause();
                     }
+                    mProgressHandler.removeCallbacks(mProgressRunnable);
                 } else {
                     mVideoView.start();
+                    mProgressHandler.post(mProgressRunnable);
                 }
             }
         }
@@ -229,8 +268,49 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
             }
         }
 
+        public void setPlaybackSpeed(float speed) {
+            mSpeed = speed > 0 ? speed : 1.0f;
+            if (mMediaPlayer != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                try {
+                    PlaybackParams params = mMediaPlayer.getPlaybackParams();
+                    params.setSpeed(mSpeed);
+                    mMediaPlayer.setPlaybackParams(params);
+                } catch (Throwable t) {
+                    Log.w(TAG, "Failed to set playback speed: " + t.getMessage());
+                }
+            }
+        }
+
         public void setResizeMode(String resizeMode) {
             mResizeMode = resizeMode != null ? resizeMode : "contain";
+            applyResizeMode();
+        }
+
+        private void applyResizeMode() {
+            if (mVideoView != null && mMediaPlayer != null) {
+                try {
+                    int videoW = mMediaPlayer.getVideoWidth();
+                    int videoH = mMediaPlayer.getVideoHeight();
+                    int viewW = getWidth();
+                    int viewH = getHeight();
+                    if (videoW > 0 && videoH > 0 && viewW > 0 && viewH > 0) {
+                        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mVideoView.getLayoutParams();
+                        if ("cover".equalsIgnoreCase(mResizeMode) || "fill".equalsIgnoreCase(mResizeMode)) {
+                            float scaleX = (float) viewW / videoW;
+                            float scaleY = (float) viewH / videoH;
+                            float maxScale = Math.max(scaleX, scaleY);
+                            lp.width = (int) (videoW * maxScale);
+                            lp.height = (int) (videoH * maxScale);
+                            lp.gravity = Gravity.CENTER;
+                        } else {
+                            lp.width = FrameLayout.LayoutParams.MATCH_PARENT;
+                            lp.height = FrameLayout.LayoutParams.MATCH_PARENT;
+                            lp.gravity = Gravity.CENTER;
+                        }
+                        mVideoView.setLayoutParams(lp);
+                    }
+                } catch (Throwable ignored) {}
+            }
         }
 
         public void seekTo(int ms) {
@@ -263,12 +343,19 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
                 mp.setLooping(mRepeat);
                 float vol = mMuted ? 0.0f : 1.0f;
                 mp.setVolume(vol, vol);
+                if (mSpeed != 1.0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    PlaybackParams params = mp.getPlaybackParams();
+                    params.setSpeed(mSpeed);
+                    mp.setPlaybackParams(params);
+                }
             } catch (Throwable ignored) {}
 
             updateMediaController();
+            applyResizeMode();
 
             if (!mPaused) {
                 mVideoView.start();
+                mProgressHandler.post(mProgressRunnable);
             }
 
             // Dispatch topVideoLoad event to JS
@@ -301,6 +388,7 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
         @Override
         public void onCompletion(MediaPlayer mp) {
             mProgressBar.setVisibility(View.GONE);
+            mProgressHandler.removeCallbacks(mProgressRunnable);
 
             // Dispatch topVideoEnd event to JS
             try {
@@ -320,12 +408,14 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
 
             if (mRepeat) {
                 mVideoView.start();
+                mProgressHandler.post(mProgressRunnable);
             }
         }
 
         @Override
         public boolean onError(MediaPlayer mp, int what, int extra) {
             mProgressBar.setVisibility(View.GONE);
+            mProgressHandler.removeCallbacks(mProgressRunnable);
             Log.e(TAG, "VideoView playback error: what=" + what + ", extra=" + extra);
 
             // Dispatch topVideoError event to JS
@@ -350,6 +440,7 @@ public class FyloVideoViewManager extends SimpleViewManager<FyloVideoViewManager
 
         public void cleanup() {
             try {
+                mProgressHandler.removeCallbacks(mProgressRunnable);
                 mIsPrepared = false;
                 if (mVideoView != null) {
                     mVideoView.stopPlayback();

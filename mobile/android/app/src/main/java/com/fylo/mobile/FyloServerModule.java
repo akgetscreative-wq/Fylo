@@ -31,6 +31,7 @@ import android.content.ActivityNotFoundException;
 import android.database.Cursor;
 import android.provider.OpenableColumns;
 import android.media.MediaScannerConnection;
+import android.webkit.MimeTypeMap;
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
@@ -858,6 +859,174 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         } catch (Throwable e) {
             Log.e(TAG, "openVideoPlayer error: " + e.getMessage(), e);
             safePromise.reject("PLAYER_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    public static String resolveMimeType(String pathOrName, String fallbackMime) {
+        if (fallbackMime != null && !fallbackMime.trim().isEmpty() && !"*/*".equals(fallbackMime.trim())) {
+            return fallbackMime.trim();
+        }
+        if (pathOrName == null) return "*/*";
+        String clean = pathOrName;
+        int q = clean.indexOf('?');
+        if (q >= 0) clean = clean.substring(0, q);
+        int dot = clean.lastIndexOf('.');
+        if (dot >= 0 && dot < clean.length() - 1) {
+            String ext = clean.substring(dot + 1).toLowerCase();
+            try {
+                String mimeFromMap = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+                if (mimeFromMap != null && !mimeFromMap.trim().isEmpty()) {
+                    return mimeFromMap.trim();
+                }
+            } catch (Throwable ignored) {}
+
+            switch (ext) {
+                case "pdf": return "application/pdf";
+                case "doc": return "application/msword";
+                case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                case "xls": return "application/vnd.ms-excel";
+                case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                case "ppt": return "application/vnd.ms-powerpoint";
+                case "pptx": return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+                case "txt": return "text/plain";
+                case "csv": return "text/csv";
+                case "json": return "application/json";
+                case "xml": return "application/xml";
+                case "html":
+                case "htm": return "text/html";
+                case "mp3": return "audio/mpeg";
+                case "wav": return "audio/wav";
+                case "ogg": return "audio/ogg";
+                case "m4a": return "audio/mp4";
+                case "flac": return "audio/flac";
+                case "aac": return "audio/aac";
+                case "opus": return "audio/opus";
+                case "wma": return "audio/x-ms-wma";
+                case "mp4": return "video/mp4";
+                case "mkv": return "video/x-matroska";
+                case "webm": return "video/webm";
+                case "avi": return "video/avi";
+                case "mov": return "video/quicktime";
+                case "3gp": return "video/3gpp";
+                case "zip": return "application/zip";
+                case "rar": return "application/x-rar-compressed";
+                case "7z": return "application/x-7z-compressed";
+                case "tar": return "application/x-tar";
+                case "gz": return "application/gzip";
+                case "apk": return "application/vnd.android.package-archive";
+                case "epub": return "application/epub+zip";
+            }
+        }
+        return "*/*";
+    }
+
+    @ReactMethod
+    public void openFileWithChooser(String filePath, String mimeType, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            if (filePath == null || filePath.trim().isEmpty()) {
+                safePromise.reject("INVALID_PATH", "File path is empty");
+                return;
+            }
+
+            File file = new File(filePath.trim());
+            if (!file.exists()) {
+                safePromise.reject("FILE_NOT_FOUND", "File does not exist: " + filePath);
+                return;
+            }
+
+            String finalMimeType = resolveMimeType(file.getName(), mimeType);
+            Context ctx = getCurrentActivity() != null ? getCurrentActivity() : reactContext;
+
+            Uri uri = null;
+            String[] authorities = new String[] {
+                "com.fylo.mobile.fileprovider",
+                ctx.getPackageName() + ".fileprovider",
+                ctx.getPackageName() + ".provider",
+                "com.fylo.mobile.provider"
+            };
+
+            for (String auth : authorities) {
+                try {
+                    uri = FileProvider.getUriForFile(ctx, auth, file);
+                    if (uri != null) break;
+                } catch (Throwable ignored) {}
+            }
+
+            if (uri == null) {
+                try {
+                    StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+                    StrictMode.setVmPolicy(builder.build());
+                    uri = Uri.fromFile(file);
+                } catch (Throwable t) {
+                    safePromise.reject("URI_ERROR", "Could not create content URI for file: " + t.getMessage());
+                    return;
+                }
+            }
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, finalMimeType);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            Intent chooser = Intent.createChooser(intent, "Open with...");
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            Activity currentActivity = getCurrentActivity();
+            if (currentActivity != null) {
+                currentActivity.startActivity(chooser);
+            } else {
+                reactContext.startActivity(chooser);
+            }
+            safePromise.resolve(true);
+        } catch (ActivityNotFoundException anf) {
+            Log.w(TAG, "No app found to open file: " + anf.getMessage());
+            safePromise.reject("NO_APP", "No application found on your phone to open this file format");
+        } catch (Throwable e) {
+            Log.e(TAG, "openFileWithChooser error: " + e.getMessage(), e);
+            safePromise.reject("OPEN_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void openUrlWithChooser(String urlString, String mimeType, String title, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            if (urlString == null || urlString.trim().isEmpty()) {
+                safePromise.reject("INVALID_URL", "URL is empty");
+                return;
+            }
+
+            String trimmedUrl = urlString.trim();
+            Uri uri = Uri.parse(trimmedUrl);
+            String finalMimeType = resolveMimeType(trimmedUrl, mimeType);
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            if (finalMimeType != null && !finalMimeType.trim().isEmpty() && !"*/*".equals(finalMimeType.trim())) {
+                intent.setDataAndType(uri, finalMimeType.trim());
+            } else {
+                intent.setData(uri);
+            }
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            String chooserTitle = (title != null && !title.trim().isEmpty()) ? title.trim() : "Open with...";
+            Intent chooser = Intent.createChooser(intent, chooserTitle);
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            Activity currentActivity = getCurrentActivity();
+            if (currentActivity != null) {
+                currentActivity.startActivity(chooser);
+            } else {
+                reactContext.startActivity(chooser);
+            }
+            safePromise.resolve(true);
+        } catch (ActivityNotFoundException anf) {
+            Log.w(TAG, "No app found to open URL: " + anf.getMessage());
+            safePromise.reject("NO_APP", "No application found on your phone to open this file/link");
+        } catch (Throwable e) {
+            Log.e(TAG, "openUrlWithChooser error: " + e.getMessage(), e);
+            safePromise.reject("OPEN_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
