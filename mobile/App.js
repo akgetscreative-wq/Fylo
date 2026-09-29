@@ -941,6 +941,7 @@ export default function App() {
 
   // Native External File & Player Chooser Prompt State
   const [externalFilePrompt, setExternalFilePrompt] = useState(null); // { file, source: 'phone' | 'pc' }
+  const [audioChoiceModal, setAudioChoiceModal] = useState(null); // { file, source: 'phone' | 'pc' }
 
   // Universal Media Lightbox State with Pinch-to-Zoom & Pan & Carousel Playlist
   const [lightboxItem, setLightboxItem] = useState(null); // { item, source: 'phone' | 'pc', index: number, playlist: Array }
@@ -1112,21 +1113,17 @@ export default function App() {
   const goToPrevMediaRef = useRef(goToPrevMedia);
   goToPrevMediaRef.current = goToPrevMedia;
 
-  // Native Image Container Ref for 120Hz Hardware-Accelerated Pan & Zoom
-  const imageContainerRef = useRef(null);
+  // Native Animated Values for 120Hz Hardware-Accelerated Pan & Zoom (Pinch, Double-Tap & Buttons)
+  const zoomScaleAnim = useRef(new Animated.Value(1)).current;
+  const panXAnim = useRef(new Animated.Value(0)).current;
+  const panYAnim = useRef(new Animated.Value(0)).current;
 
   const updateNativeTransform = (scale, x, y) => {
-    if (imageContainerRef.current && imageContainerRef.current.setNativeProps) {
-      imageContainerRef.current.setNativeProps({
-        style: {
-          transform: [
-            { scale: scale },
-            { translateX: x },
-            { translateY: y },
-          ],
-        },
-      });
-    }
+    zoomScaleAnim.setValue(scale);
+    panXAnim.setValue(x);
+    panYAnim.setValue(y);
+    setZoomScale(scale);
+    setPanOffset({ x, y });
   };
 
   // Reset zoom & pan helper
@@ -1136,7 +1133,9 @@ export default function App() {
     setZoomScale(1);
     setPanOffset({ x: 0, y: 0 });
     lastTouchDistanceRef.current = null;
-    updateNativeTransform(1, 0, 0);
+    Animated.timing(zoomScaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    Animated.timing(panXAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start();
+    Animated.timing(panYAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start();
   };
 
   useEffect(() => {
@@ -1151,26 +1150,29 @@ export default function App() {
   const zoomPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6;
+        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4;
       },
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
-        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 12 || Math.abs(gestureState.dy) > 12;
+        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
       },
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (evt) => {
-        if (evt.nativeEvent.touches.length === 2) {
+        if (evt.nativeEvent.touches.length >= 2) {
           const [t1, t2] = evt.nativeEvent.touches;
           lastTouchDistanceRef.current = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
         } else if (evt.nativeEvent.touches.length === 1) {
-          // Double tap to smoothly toggle zoom in/out with native hardware acceleration
           const now = Date.now();
           if (now - lastTapTimeRef.current < 320) {
             const nextScale = zoomScaleRef.current > 1.2 ? 1 : 2.5;
             zoomScaleRef.current = nextScale;
             panOffsetRef.current = { x: 0, y: 0 };
-            updateNativeTransform(nextScale, 0, 0);
             setZoomScale(nextScale);
             setPanOffset({ x: 0, y: 0 });
+            Animated.spring(zoomScaleAnim, { toValue: nextScale, useNativeDriver: true, damping: 18, stiffness: 180 }).start();
+            Animated.spring(panXAnim, { toValue: 0, useNativeDriver: true }).start();
+            Animated.spring(panYAnim, { toValue: 0, useNativeDriver: true }).start();
             lastTapTimeRef.current = 0;
             return;
           }
@@ -1179,40 +1181,37 @@ export default function App() {
       },
       onPanResponderMove: (evt, gestureState) => {
         const touches = evt.nativeEvent.touches;
-        if (touches.length === 2) {
+        if (touches.length >= 2) {
           const [t1, t2] = touches;
           const currentDistance = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
           if (lastTouchDistanceRef.current && lastTouchDistanceRef.current > 0) {
             const delta = currentDistance / lastTouchDistanceRef.current;
             let nextScale = zoomScaleRef.current * delta;
-            if (nextScale < 0.5) nextScale = 0.5;
+            if (nextScale < 0.6) nextScale = 0.6;
             if (nextScale > 60) nextScale = 60;
             zoomScaleRef.current = nextScale;
-            // Native direct update without React re-render: 120Hz butter-smooth!
-            updateNativeTransform(nextScale, panOffsetRef.current.x, panOffsetRef.current.y);
+            zoomScaleAnim.setValue(nextScale);
+            setZoomScale(nextScale);
           }
           lastTouchDistanceRef.current = currentDistance;
         } else if (touches.length === 1) {
           if (zoomScaleRef.current > 1.05) {
             const maxPanX = (SCREEN_WIDTH * (zoomScaleRef.current - 0.7)) / 1.4;
             const maxPanY = (SCREEN_HEIGHT * (zoomScaleRef.current - 0.7)) / 1.4;
-            let nextX = panOffsetRef.current.x + gestureState.dx * 0.5;
-            let nextY = panOffsetRef.current.y + gestureState.dy * 0.5;
+            let nextX = panOffsetRef.current.x + gestureState.dx * 0.55;
+            let nextY = panOffsetRef.current.y + gestureState.dy * 0.55;
             nextX = Math.max(-maxPanX, Math.min(maxPanX, nextX));
             nextY = Math.max(-maxPanY, Math.min(maxPanY, nextY));
             panOffsetRef.current = { x: nextX, y: nextY };
-            // Native direct update without React re-render!
-            updateNativeTransform(zoomScaleRef.current, nextX, nextY);
+            panXAnim.setValue(nextX);
+            panYAnim.setValue(nextY);
           } else {
-            // At 1.0x Scale: Pull down to dismiss or swipe left/right for carousel
             if (gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 0.9) {
-              // Google Photos style: slide / pull image down to dismiss!
               const dragY = gestureState.dy;
               const dragScale = Math.max(0.65, 1 - (dragY / SCREEN_HEIGHT) * 0.45);
-              panOffsetRef.current = { x: gestureState.dx * 0.35, y: dragY };
-              updateNativeTransform(dragScale, gestureState.dx * 0.35, dragY);
+              panYAnim.setValue(dragY);
+              zoomScaleAnim.setValue(dragScale);
             } else if (Math.abs(gestureState.dx) > 4 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7) {
-              // Natural 1:1 Finger-Tracking Horizontal Swipe
               mediaSlideAnim.setValue(gestureState.dx);
             }
           }
@@ -1221,16 +1220,16 @@ export default function App() {
       onPanResponderRelease: (evt, gestureState) => {
         lastTouchDistanceRef.current = null;
         if (zoomScaleRef.current <= 1.05) {
-          // Swipe down to close (return to explorer): dy > 50 or downward flick with vy > 0.4
           if (gestureState.dy > 50 || (gestureState.dy > 20 && gestureState.vy > 0.4)) {
             setLightboxItem(null);
             resetZoom();
             return;
           }
+          Animated.spring(panYAnim, { toValue: 0, useNativeDriver: true }).start();
+          Animated.spring(zoomScaleAnim, { toValue: 1, useNativeDriver: true }).start();
 
-          // Natural physics-based horizontal swipe release
           const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7;
-          const swipeThreshold = SCREEN_WIDTH * 0.16; // ~60px responsive threshold
+          const swipeThreshold = SCREEN_WIDTH * 0.16;
           if (isHorizontal && (gestureState.dx < -swipeThreshold || gestureState.vx < -0.3)) {
             goToNextMediaRef.current();
           } else if (isHorizontal && (gestureState.dx > swipeThreshold || gestureState.vx > 0.3)) {
@@ -1243,16 +1242,15 @@ export default function App() {
               stiffness: 200,
               useNativeDriver: true,
             }).start();
-            zoomScaleRef.current = 1;
-            panOffsetRef.current = { x: 0, y: 0 };
-            updateNativeTransform(1, 0, 0);
-            setZoomScale(1);
-            setPanOffset({ x: 0, y: 0 });
+            resetZoom();
           }
         } else {
           setZoomScale(zoomScaleRef.current);
           setPanOffset({ ...panOffsetRef.current });
         }
+      },
+      onPanResponderTerminate: () => {
+        lastTouchDistanceRef.current = null;
       },
     })
   ).current;
@@ -1421,15 +1419,29 @@ export default function App() {
     let next = Math.min(60, zoomScaleRef.current + (zoomScaleRef.current < 4 ? 0.75 : 2.5));
     zoomScaleRef.current = next;
     setZoomScale(next);
+    Animated.spring(zoomScaleAnim, {
+      toValue: next,
+      useNativeDriver: true,
+      damping: 18,
+      stiffness: 180,
+    }).start();
   };
   const handleZoomOut = () => {
-    let next = Math.max(1, zoomScaleRef.current - 0.5);
+    let next = Math.max(1, zoomScaleRef.current - (zoomScaleRef.current > 4 ? 2.5 : 0.75));
     zoomScaleRef.current = next;
-    if (next === 1) {
+    setZoomScale(next);
+    if (next <= 1) {
       panOffsetRef.current = { x: 0, y: 0 };
       setPanOffset({ x: 0, y: 0 });
+      Animated.spring(panXAnim, { toValue: 0, useNativeDriver: true }).start();
+      Animated.spring(panYAnim, { toValue: 0, useNativeDriver: true }).start();
     }
-    setZoomScale(next);
+    Animated.spring(zoomScaleAnim, {
+      toValue: next,
+      useNativeDriver: true,
+      damping: 18,
+      stiffness: 180,
+    }).start();
   };
 
   // Left-anchored Drawer Slide Animation & Helpers
@@ -2867,8 +2879,13 @@ export default function App() {
 
   const handleSharedHubItemPress = (file) => {
     if (!file) return;
-    const isImg = isImageFile(file.ext);
-    const isVid = isVideoFile(file.ext);
+    const ext = file.ext || (file.name || '').split('.').pop().toLowerCase();
+    if (isAudioFile(ext)) {
+      setAudioChoiceModal({ file, source: 'pc' });
+      return;
+    }
+    const isImg = isImageFile(ext);
+    const isVid = isVideoFile(ext);
 
     if (isImg || isVid) {
       const mediaFiles = sharedHubFiles.filter((f) => isViewableMedia(f.ext));
@@ -4139,6 +4156,8 @@ export default function App() {
                           setPhoneSelectedPaths(next);
                         } else if (item.isDir) {
                           loadPhoneFolder(item.path);
+                        } else if (isAudioFile(item.ext)) {
+                          setAudioChoiceModal({ file: item, source: 'phone' });
                         } else if (isViewableMedia(item.ext)) {
                           const playlist = filteredPhoneItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                           const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4216,6 +4235,8 @@ export default function App() {
                         setPhoneSelectedPaths(next);
                       } else if (item.isDir) {
                         loadPhoneFolder(item.path);
+                      } else if (isAudioFile(item.ext)) {
+                        setAudioChoiceModal({ file: item, source: 'phone' });
                       } else if (isViewableMedia(item.ext)) {
                         const playlist = filteredPhoneItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                         const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4599,6 +4620,8 @@ export default function App() {
                               setPcSelectedPaths(next);
                             } else if (item.isDir) {
                               loadPcFolder(item.path);
+                            } else if (isAudioFile(item.ext)) {
+                              setAudioChoiceModal({ file: item, source: 'pc' });
                             } else if (isViewableMedia(item.ext)) {
                               const playlist = filteredPcItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                               const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4662,6 +4685,8 @@ export default function App() {
                             setPcSelectedPaths(next);
                           } else if (item.isDir) {
                             loadPcFolder(item.path);
+                          } else if (isAudioFile(item.ext)) {
+                            setAudioChoiceModal({ file: item, source: 'pc' });
                           } else if (isViewableMedia(item.ext)) {
                             const playlist = filteredPcItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                             const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4983,11 +5008,13 @@ export default function App() {
         <Modal
           visible={!!lightboxItem}
           transparent
+          statusBarTranslucent={true}
           animationType="fade"
           onRequestClose={() => {
             setLightboxItem(null);
             resetZoom();
           }}>
+          <StatusBar hidden={isVideoFile(lightboxItem?.item?.ext)} translucent={true} backgroundColor="transparent" barStyle="light-content" />
           <View style={styles.lightboxOverlay}>
             {!isVideoFile(lightboxItem?.item?.ext) && (
               <View style={styles.lightboxHeader}>
@@ -5167,7 +5194,7 @@ export default function App() {
                               FyloModule.openVideoPlayer(pathOrUrl, 'video/*');
                             }
                           }}>
-                          <Text style={[styles.ytTopActionBtnText, { color: '#93c5fd' }]}>⛶ MX Player</Text>
+                          <Text style={[styles.ytTopActionBtnText, { color: '#93c5fd' }]}>⛶ Fullscreen</Text>
                         </TouchableOpacity>
                       </View>
 
@@ -5283,9 +5310,18 @@ export default function App() {
                 </View>
               ) : isImageFile(lightboxItem?.item?.ext) ? (
                 /* Hardware-Accelerated 120Hz Fluid Pinch & Zoom Image Container */
-                <View
-                  ref={imageContainerRef}
-                  style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                <Animated.View
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transform: [
+                      { scale: zoomScaleAnim },
+                      { translateX: panXAnim },
+                      { translateY: panYAnim },
+                    ],
+                  }}>
                   <SafeImage
                     source={{
                       uri: lightboxItem?.source === 'pc'
@@ -5299,7 +5335,7 @@ export default function App() {
                     resizeMode="contain"
                     fallbackText=""
                   />
-                </View>
+                </Animated.View>
               ) : (
                 <View style={styles.lightboxNonImgContainer}>
                   <FileBadgeIcon ext={lightboxItem?.item?.ext} isDir={false} size={64} />
@@ -6402,6 +6438,106 @@ export default function App() {
               style={[styles.modalPrimaryBtn, { marginTop: 14 }]}
               onPress={() => setShowSettingsModal(false)}>
               <Text style={styles.modalPrimaryBtnText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      {/* Sleek Audio Player Selector Modal */}
+      <Modal
+        visible={!!audioChoiceModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent={true}
+        onRequestClose={() => setAudioChoiceModal(null)}>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalDismissArea}
+            activeOpacity={1}
+            onPress={() => setAudioChoiceModal(null)}
+          />
+          <View style={[styles.modalContent, !isDarkMode && styles.modalContentLight, { maxWidth: 360, padding: 22, borderRadius: 24 }]}>
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(37, 99, 235, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <Text style={{ fontSize: 26 }}>🎵</Text>
+              </View>
+              <Text style={[styles.modalTitle, !isDarkMode && styles.modalTitleLight, { textAlign: 'center', fontSize: 16, marginBottom: 4 }]} numberOfLines={1}>
+                {audioChoiceModal?.file?.name || 'Audio Track'}
+              </Text>
+              <Text style={{ color: !isDarkMode ? '#64748b' : '#94a3b8', fontSize: 12, textAlign: 'center' }}>
+                Play in Fylo preinstalled player or choose an app from your phone:
+              </Text>
+            </View>
+
+            {/* Option 1: In-App Player (Preinstalled) */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={{
+                backgroundColor: '#2563eb',
+                paddingVertical: 13,
+                paddingHorizontal: 16,
+                borderRadius: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                marginBottom: 10,
+              }}
+              onPress={() => {
+                const choice = audioChoiceModal;
+                setAudioChoiceModal(null);
+                if (choice) {
+                  const pathOrUrl = choice.source === 'pc'
+                    ? (choice.file?.downloadUrl
+                        ? choice.file.downloadUrl
+                        : `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(choice.file?.path || '')}&auth=${pcAuthToken || ''}`)
+                    : choice.file?.path;
+                  if (FyloModule && FyloModule.openVideoPlayer) {
+                    FyloModule.openVideoPlayer(pathOrUrl, 'audio/*');
+                  } else {
+                    setLightboxItem({ item: choice.file, source: choice.source, index: 0, playlist: [choice.file] });
+                  }
+                }
+              }}>
+              <Text style={{ fontSize: 15, color: '#fff' }}>▶</Text>
+              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 14 }}>
+                Play in In-App Player (Preinstalled)
+              </Text>
+            </TouchableOpacity>
+
+            {/* Option 2: Choose App from Phone */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={{
+                backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
+                paddingVertical: 13,
+                paddingHorizontal: 16,
+                borderRadius: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                borderWidth: 1,
+                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+                marginBottom: 12,
+              }}
+              onPress={() => {
+                const choice = audioChoiceModal;
+                setAudioChoiceModal(null);
+                if (choice) {
+                  openExternalFileOrChooser(choice.file, choice.source);
+                }
+              }}>
+              <Text style={{ fontSize: 15, color: '#3b82f6' }}>🎵</Text>
+              <Text style={{ color: isDarkMode ? '#f8fafc' : '#0f172a', fontWeight: '800', fontSize: 14 }}>
+                Choose App from Phone
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={{ paddingVertical: 8, alignItems: 'center' }}
+              onPress={() => setAudioChoiceModal(null)}>
+              <Text style={{ color: !isDarkMode ? '#64748b' : '#94a3b8', fontSize: 13, fontWeight: '700' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -8294,7 +8430,7 @@ const styles = StyleSheet.create({
   /* UNIVERSAL LIGHTBOX */
   lightboxOverlay: {
     flex: 1,
-    backgroundColor: '#06080e',
+    backgroundColor: '#000000',
   },
   lightboxHeader: {
     height: 52,
@@ -8490,6 +8626,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   lightboxVideoContainer: {
+    flex: 1,
     width: '100%',
     height: '100%',
     alignItems: 'center',

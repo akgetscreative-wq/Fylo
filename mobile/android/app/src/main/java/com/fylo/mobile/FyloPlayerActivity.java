@@ -21,6 +21,8 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -120,6 +122,16 @@ public class FyloPlayerActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(lp);
+        }
+
         setImmersiveMode();
 
         mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
@@ -168,6 +180,33 @@ public class FyloPlayerActivity extends Activity {
             Gravity.CENTER
         );
         root.addView(mProgressBar, progressParams);
+
+        // 2b. Audio Artwork Layout (for MP3 & Audio files)
+        if (mMimeType != null && (mMimeType.startsWith("audio/") || (mUrlOrPath != null && (mUrlOrPath.endsWith(".mp3") || mUrlOrPath.endsWith(".wav") || mUrlOrPath.endsWith(".m4a") || mUrlOrPath.endsWith(".flac"))))) {
+            LinearLayout audioArtLayout = new LinearLayout(this);
+            audioArtLayout.setOrientation(LinearLayout.VERTICAL);
+            audioArtLayout.setGravity(Gravity.CENTER);
+            FrameLayout.LayoutParams audioParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER
+            );
+
+            TextView audioIcon = new TextView(this);
+            audioIcon.setText("🎵");
+            audioIcon.setTextSize(TypedValue.COMPLEX_UNIT_SP, 64);
+            audioIcon.setGravity(Gravity.CENTER);
+
+            TextView audioSub = new TextView(this);
+            audioSub.setText("Fylo Preinstalled Audio Player");
+            audioSub.setTextColor(Color.parseColor("#94a3b8"));
+            audioSub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            audioSub.setPadding(0, dpToPx(12), 0, 0);
+
+            audioArtLayout.addView(audioIcon);
+            audioArtLayout.addView(audioSub);
+            root.addView(audioArtLayout, audioParams);
+        }
 
         // 3. Top Header Bar (YouTube / MX Player style)
         mHeaderLayout = new LinearLayout(this);
@@ -773,8 +812,23 @@ public class FyloPlayerActivity extends Activity {
         }
     }
 
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            setImmersiveMode();
+        }
+    }
+
     private void setImmersiveMode() {
         try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                android.view.WindowInsetsController controller = getWindow().getInsetsController();
+                if (controller != null) {
+                    controller.hide(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
+                    controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                }
+            }
             View decorView = getWindow().getDecorView();
             decorView.setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
