@@ -26,6 +26,9 @@ public class MainActivity extends ReactActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+        }
         handleShareIntent(getIntent());
     }
 

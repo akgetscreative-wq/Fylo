@@ -606,76 +606,6 @@ const VectorShareHubIcon = React.memo(({ size = 18, color = '#60a5fa' }) => (
   </View>
 ));
 
-// 8. Floating Bottom Navigation Bar (Modern floating capsule tabs)
-const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = false, pairedPc = null }) => {
-  const tabs = [
-    { id: 'home', label: 'Home', renderIcon: (c) => <VectorHomeIcon size={17} color={c} /> },
-    { id: 'pc-explorer', label: 'PC Drives', renderIcon: (c) => <VectorMonitorIcon size={17} color={c} /> },
-    { id: 'phone-explorer', label: 'Phone', renderIcon: (c) => <VectorPhoneIcon size={17} color={c} /> },
-    { id: 'clipboard', label: 'Clipboard', renderIcon: (c) => <VectorClipboardIcon size={17} color={c} /> },
-    { id: 'transfer', label: 'Transfers', renderIcon: (c) => <VectorLightningIcon size={17} color={c} /> },
-  ];
-
-  return (
-    <View style={{
-      position: 'absolute',
-      bottom: 16,
-      left: 16,
-      right: 16,
-      backgroundColor: isDark ? 'rgba(10, 10, 10, 0.96)' : 'rgba(255, 255, 255, 0.97)',
-      borderRadius: 36,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-around',
-      paddingVertical: 6,
-      paddingHorizontal: 6,
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(37, 99, 235, 0.25)' : 'rgba(37, 99, 235, 0.2)',
-      shadowColor: '#2563eb',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: isDark ? 0.4 : 0.16,
-      shadowRadius: 12,
-      elevation: 8,
-      zIndex: 1000,
-    }}>
-      {tabs.map((t) => {
-        const isActive = currentTab === t.id;
-        const iconColor = isActive
-          ? (isDark ? '#93c5fd' : '#ffffff')
-          : (isDark ? '#64748b' : '#64748b');
-        return (
-          <TouchableOpacity
-            key={t.id}
-            activeOpacity={0.75}
-            onPress={() => setCurrentTab(t.id)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 7,
-              paddingHorizontal: isActive ? 12 : 8,
-              borderRadius: 24,
-              backgroundColor: isActive
-                ? (isDark ? 'rgba(37, 99, 235, 0.25)' : '#2563eb')
-                : 'transparent',
-            }}>
-            <View style={{ marginRight: isActive ? 4 : 0 }}>
-              {t.renderIcon(iconColor)}
-            </View>
-            {isActive && (
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '800',
-                color: isDark ? '#93c5fd' : '#ffffff',
-              }}>
-                {t.label}
-              </Text>
-            )}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-});
 
 // Clean Vector File Badge Icon (Replaces random emojis with professional type badges)
 const FileBadgeIcon = ({ ext, isDir, size = 28 }) => {
@@ -5027,17 +4957,6 @@ export default function App() {
         </View>
       )}
 
-      {/* ========================================================= */}
-      {/* FLOATING NATURE-INSPIRED BOTTOM NAVIGATION BAR             */}
-      {/* ========================================================= */}
-      {!lightboxItem && !sidebarOpen && (
-        <FloatingBottomTabBar
-          currentTab={currentTab}
-          setCurrentTab={setCurrentTab}
-          isDark={isDarkMode}
-          pairedPc={pairedPc}
-        />
-      )}
 
       {/* ========================================================= */}
       {/* UNIVERSAL MEDIA LIGHTBOX & GALLERY CAROUSEL WITH VIDEO    */}
