@@ -1981,7 +1981,10 @@ app.get('/api/pc/explorer/file', (req, res) => {
             '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif',
             '.webp': 'image/webp', '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
             '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.mkv': 'video/x-matroska',
+            '.avi': 'video/x-msvideo', '.wmv': 'video/x-ms-wmv', '.flv': 'video/x-flv', '.ts': 'video/mp2t',
+            '.m4v': 'video/mp4', '.3gp': 'video/3gpp',
             '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.flac': 'audio/flac',
+            '.aac': 'audio/aac', '.opus': 'audio/opus',
             '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8', '.json': 'application/json',
             '.zip': 'application/zip'
         };
@@ -1990,6 +1993,7 @@ app.get('/api/pc/explorer/file', (req, res) => {
         }
 
         res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
         if (download) {
             res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
         }
@@ -2010,10 +2014,14 @@ app.get('/api/pc/explorer/file', (req, res) => {
             res.setHeader('Content-Length', chunksize);
 
             const stream = fs.createReadStream(filePath, { start, end });
+            res.on('close', () => { stream.destroy(); });
+            res.on('error', () => { stream.destroy(); });
             stream.pipe(res);
         } else {
             res.setHeader('Content-Length', fileSize);
             const stream = fs.createReadStream(filePath);
+            res.on('close', () => { stream.destroy(); });
+            res.on('error', () => { stream.destroy(); });
             stream.pipe(res);
         }
     } catch (e) {

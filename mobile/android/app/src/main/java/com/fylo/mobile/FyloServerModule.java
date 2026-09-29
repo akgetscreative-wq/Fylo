@@ -868,8 +868,21 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         }
         if (pathOrName == null) return "*/*";
         String clean = pathOrName;
-        int q = clean.indexOf('?');
-        if (q >= 0) clean = clean.substring(0, q);
+
+        // If it's a URL with path= query param, extract the real target path
+        if (clean.contains("path=")) {
+            try {
+                int pIdx = clean.indexOf("path=");
+                String sub = clean.substring(pIdx + 5);
+                int amp = sub.indexOf('&');
+                if (amp >= 0) sub = sub.substring(0, amp);
+                clean = java.net.URLDecoder.decode(sub, "UTF-8");
+            } catch (Throwable ignored) {}
+        } else {
+            int q = clean.indexOf('?');
+            if (q >= 0) clean = clean.substring(0, q);
+        }
+
         int dot = clean.lastIndexOf('.');
         if (dot >= 0 && dot < clean.length() - 1) {
             String ext = clean.substring(dot + 1).toLowerCase();
@@ -908,6 +921,10 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                 case "avi": return "video/avi";
                 case "mov": return "video/quicktime";
                 case "3gp": return "video/3gpp";
+                case "ts": return "video/mp2t";
+                case "wmv": return "video/x-ms-wmv";
+                case "flv": return "video/x-flv";
+                case "m4v": return "video/mp4";
                 case "zip": return "application/zip";
                 case "rar": return "application/x-rar-compressed";
                 case "7z": return "application/x-7z-compressed";
@@ -1001,6 +1018,13 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
             Uri uri = Uri.parse(trimmedUrl);
             String finalMimeType = resolveMimeType(trimmedUrl, mimeType);
 
+            // If it's video or audio, ensure we have video/* or audio/* so all installed players (VLC, MX Player, etc.) match
+            if (finalMimeType != null && finalMimeType.startsWith("video/")) {
+                finalMimeType = "video/*";
+            } else if (finalMimeType != null && finalMimeType.startsWith("audio/")) {
+                finalMimeType = "audio/*";
+            }
+
             Intent intent = new Intent(Intent.ACTION_VIEW);
             if (finalMimeType != null && !finalMimeType.trim().isEmpty() && !"*/*".equals(finalMimeType.trim())) {
                 intent.setDataAndType(uri, finalMimeType.trim());
@@ -1010,7 +1034,7 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-            String chooserTitle = (title != null && !title.trim().isEmpty()) ? title.trim() : "Open with...";
+            String chooserTitle = (title != null && !title.trim().isEmpty()) ? title.trim() : "Stream / Open with...";
             Intent chooser = Intent.createChooser(intent, chooserTitle);
             chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
