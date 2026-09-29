@@ -2738,20 +2738,18 @@ export default function App() {
         return;
       }
 
-      if (mode === 'stream' || (mode === 'auto' && isAudioFile(fileExt))) {
-        // Stream directly into phone media player / app (VLC, MX Player, etc.)
-        if (FyloModule && FyloModule.openUrlWithChooser) {
-          try {
-            await FyloModule.openUrlWithChooser(downloadUrl, mimeType, `Open ${fileName}`);
-            return;
-          } catch (err) {
-            console.warn('openUrlWithChooser failed, falling back to download:', err);
-          }
+      // First try opening directly via URL with Android native chooser (VLC, MX Player, Office, Drive, browsers)
+      if (FyloModule && FyloModule.openUrlWithChooser) {
+        try {
+          await FyloModule.openUrlWithChooser(downloadUrl, mimeType, `Open ${fileName}`);
+          return;
+        } catch (err) {
+          console.warn('openUrlWithChooser failed, falling back to silent cache & open:', err);
         }
       }
 
-      // Download file to cache / Downloads and open with native chooser
-      showToast(`📥 Downloading ${fileName} to open...`);
+      // If openUrlWithChooser throws/unsupported, silently cache to temp/cache and open via chooser
+      showToast(`Opening ${fileName}...`);
       try {
         if (FyloModule && FyloModule.downloadFileFromUrl) {
           const localPath = await FyloModule.downloadFileFromUrl(downloadUrl, fileName);
@@ -2765,7 +2763,7 @@ export default function App() {
         }
       } catch (dlErr) {
         console.warn('Download & open error:', dlErr);
-        showToast(dlErr?.message || '⚠️ Failed to download file to open');
+        showToast(dlErr?.message || '⚠️ Failed to open file');
       }
     }
   };
@@ -2886,7 +2884,7 @@ export default function App() {
         playlist: mediaFiles.length > 0 ? mediaFiles : [file],
       });
     } else {
-      setExternalFilePrompt({ file, source: 'pc' });
+      openExternalFileOrChooser(file, 'pc');
     }
   };
 
@@ -4151,7 +4149,7 @@ export default function App() {
                             playlist: playlist.length > 0 ? playlist : [item],
                           });
                         } else {
-                          setExternalFilePrompt({ file: item, source: 'phone' });
+                          openExternalFileOrChooser(item, 'phone');
                         }
                       }}
                       onLongPress={() => {
@@ -4228,7 +4226,7 @@ export default function App() {
                           playlist: playlist.length > 0 ? playlist : [item],
                         });
                       } else {
-                        setExternalFilePrompt({ file: item, source: 'phone' });
+                        openExternalFileOrChooser(item, 'phone');
                       }
                     }}>
                     {item.isDir ? (
@@ -4340,12 +4338,12 @@ export default function App() {
       {/* Clean, compact ribbon, one-step-back & sorting            */}
       {/* ========================================================= */}
       {currentTab === 'pc-explorer' && (
-        <View style={styles.explorerContainer}>
+        <View style={[styles.explorerContainer, !isDarkMode && styles.explorerContainerLight]}>
           {!pairedPc ? (
             <View style={styles.centerLoading}>
               <Text style={{ fontSize: 40, color: '#3b82f6', marginBottom: 12 }}>⬡</Text>
-              <Text style={styles.pcEmptyTitle}>PC Remote Explorer</Text>
-              <Text style={styles.pcEmptyDesc}>
+              <Text style={[styles.pcEmptyTitle, !isDarkMode && styles.pcEmptyTitleLight]}>PC Remote Explorer</Text>
+              <Text style={[styles.pcEmptyDesc, !isDarkMode && styles.pcEmptyDescLight]}>
                 Browse, stream, and manage your Windows PC drives and folders directly from your phone.
               </Text>
               <TouchableOpacity
@@ -4385,26 +4383,42 @@ export default function App() {
                     <>
                       <TouchableOpacity
                         activeOpacity={0.75}
-                        style={[styles.pcDrivePill, pcCurrentPath.startsWith('C:') && styles.pcDrivePillActive]}
+                        style={[
+                          styles.pcDrivePill,
+                          !isDarkMode && styles.pcDrivePillLight,
+                          pcCurrentPath.startsWith('C:') && styles.pcDrivePillActive,
+                        ]}
                         onPress={() => loadPcFolder('C:\\')}>
                         <Text style={[styles.pcDrivePillIcon, { color: '#60a5fa', fontWeight: '800' }]}>⛁</Text>
-                        <Text style={[styles.pcDrivePillText, pcCurrentPath.startsWith('C:') && styles.pcDrivePillTextActive]}>
+                        <Text style={[
+                          styles.pcDrivePillText,
+                          !isDarkMode && styles.pcDrivePillTextLight,
+                          pcCurrentPath.startsWith('C:') && styles.pcDrivePillTextActive,
+                        ]}>
                           Drive (C:)
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         activeOpacity={0.75}
-                        style={[styles.pcDrivePill, pcCurrentPath.startsWith('D:') && styles.pcDrivePillActive]}
+                        style={[
+                          styles.pcDrivePill,
+                          !isDarkMode && styles.pcDrivePillLight,
+                          pcCurrentPath.startsWith('D:') && styles.pcDrivePillActive,
+                        ]}
                         onPress={() => loadPcFolder('D:\\')}>
                         <Text style={[styles.pcDrivePillIcon, { color: '#60a5fa', fontWeight: '800' }]}>⛁</Text>
-                        <Text style={[styles.pcDrivePillText, pcCurrentPath.startsWith('D:') && styles.pcDrivePillTextActive]}>
+                        <Text style={[
+                          styles.pcDrivePillText,
+                          !isDarkMode && styles.pcDrivePillTextLight,
+                          pcCurrentPath.startsWith('D:') && styles.pcDrivePillTextActive,
+                        ]}>
                           Drive (D:)
                         </Text>
                       </TouchableOpacity>
                     </>
                   )}
 
-                  <View style={styles.ribbonDivider} />
+                  <View style={[styles.ribbonDivider, !isDarkMode && { backgroundColor: '#cbd5e1' }]} />
 
                   {/* Windows Folder Shortcuts */}
                   {[
@@ -4595,7 +4609,7 @@ export default function App() {
                                 playlist: playlist.length > 0 ? playlist : [item],
                               });
                             } else {
-                              setExternalFilePrompt({ file: item, source: 'pc' });
+                              openExternalFileOrChooser(item, 'pc');
                             }
                           }}>
                           {item.isDir ? (
@@ -4658,7 +4672,7 @@ export default function App() {
                               playlist: playlist.length > 0 ? playlist : [item],
                             });
                           } else {
-                            setExternalFilePrompt({ file: item, source: 'pc' });
+                            openExternalFileOrChooser(item, 'pc');
                           }
                         }}>
                         {item.isDir ? (
@@ -4731,8 +4745,11 @@ export default function App() {
       {/* TAB 4: DEDICATED LAN SHARED CLIPBOARD HUB                 */}
       {/* ========================================================= */}
       {currentTab === 'clipboard' && (
-        <ScrollView contentContainerStyle={[styles.bentoScroll, isDarkMode ? styles.bentoScrollDark : styles.bentoScrollLight]}
-          showsVerticalScrollIndicator={false}>
+        <View style={{ flex: 1, backgroundColor: isDarkMode ? '#000000' : '#F7F6F2' }}>
+          <ScrollView
+            style={{ flex: 1, backgroundColor: isDarkMode ? '#000000' : '#F7F6F2' }}
+            contentContainerStyle={[styles.bentoScroll, isDarkMode ? styles.bentoScrollDark : styles.bentoScrollLight]}
+            showsVerticalScrollIndicator={false}>
 
           {/* Sync Beacon Status */}
           <View style={[styles.bentoCardHero, !isDarkMode && styles.bentoCardHeroLight]}>
@@ -4747,7 +4764,7 @@ export default function App() {
                   <Text style={pairedPc ? styles.beaconStatusLabel : styles.beaconStatusLabelIdle}>
                     {pairedPc ? 'LAN CLIPBOARD SYNC ACTIVE' : 'CLIPBOARD STANDALONE'}
                   </Text>
-                  <Text style={styles.beaconHostTitle}>
+                  <Text style={[styles.beaconHostTitle, !isDarkMode && styles.beaconHostTitleLight]}>
                     {pairedPc ? `Linked to ${pairedPc}` : 'Not Paired with PC'}
                   </Text>
                 </View>
@@ -4841,14 +4858,18 @@ export default function App() {
             </View>
           </View>
         </ScrollView>
+        </View>
       )}
 
       {/* ========================================================= */}
       {/* TAB 5: TRANSFER & NETWORK SPEED OPTIMIZER                 */}
       {/* ========================================================= */}
       {currentTab === 'transfer' && (
-        <ScrollView contentContainerStyle={[styles.bentoScroll, isDarkMode ? styles.bentoScrollDark : styles.bentoScrollLight]}
-          showsVerticalScrollIndicator={false}>
+        <View style={{ flex: 1, backgroundColor: isDarkMode ? '#000000' : '#F7F6F2' }}>
+          <ScrollView
+            style={{ flex: 1, backgroundColor: isDarkMode ? '#000000' : '#F7F6F2' }}
+            contentContainerStyle={[styles.bentoScroll, isDarkMode ? styles.bentoScrollDark : styles.bentoScrollLight]}
+            showsVerticalScrollIndicator={false}>
 
           {/* Diagnostic Speed Test Card */}
           <View style={[styles.bentoCardHero, !isDarkMode && styles.bentoCardHeroLight]}>
@@ -4890,8 +4911,8 @@ export default function App() {
                 <Text style={styles.stepBadgeText}>1</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.stepTitle}>Turn on Phone Hotspot (5GHz)</Text>
-                <Text style={styles.stepDesc}>
+                <Text style={[styles.stepTitle, !isDarkMode && styles.stepTitleLight]}>Turn on Phone Hotspot (5GHz)</Text>
+                <Text style={[styles.stepDesc, !isDarkMode && styles.stepDescLight]}>
                   Direct device-to-device hotspot eliminates router lag and bypasses slow public Wi-Fi.
                 </Text>
               </View>
@@ -4902,8 +4923,8 @@ export default function App() {
                 <Text style={styles.stepBadgeText}>2</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.stepTitle}>Connect PC to Phone Hotspot</Text>
-                <Text style={styles.stepDesc}>
+                <Text style={[styles.stepTitle, !isDarkMode && styles.stepTitleLight]}>Connect PC to Phone Hotspot</Text>
+                <Text style={[styles.stepDesc, !isDarkMode && styles.stepDescLight]}>
                   On Windows, connect your Wi-Fi to this phone's personal hotspot network.
                 </Text>
               </View>
@@ -4914,8 +4935,8 @@ export default function App() {
                 <Text style={styles.stepBadgeText}>3</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.stepTitle}>Enter Hotspot IP (192.168.43.1)</Text>
-                <Text style={styles.stepDesc}>
+                <Text style={[styles.stepTitle, !isDarkMode && styles.stepTitleLight]}>Enter Hotspot IP (192.168.43.1)</Text>
+                <Text style={[styles.stepDesc, !isDarkMode && styles.stepDescLight]}>
                   Fylo automatically detects the direct hotspot IP for ultra-low ping transfers.
                 </Text>
               </View>
@@ -4940,6 +4961,7 @@ export default function App() {
             </ScrollView>
           </View>
         </ScrollView>
+        </View>
       )}
 
       {/* ========================================================= */}
@@ -5805,7 +5827,7 @@ export default function App() {
       {/* NATIVE EXTERNAL FILE & PLAYER CHOOSER MODAL               */}
       {/* ========================================================= */}
       <Modal
-        visible={!!externalFilePrompt}
+        visible={false}
         transparent
         animationType="fade"
         onRequestClose={() => setExternalFilePrompt(null)}>
@@ -5965,11 +5987,11 @@ export default function App() {
       {/* ========================================================= */}
       <Modal visible={showPairModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, !isDarkMode && styles.modalContentLight]}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Pair with PC</Text>
+              <Text style={[styles.modalTitle, !isDarkMode && styles.modalTitleLight]}>Pair with PC</Text>
               <TouchableOpacity activeOpacity={0.75} onPress={() => setShowPairModal(false)}>
-                <Text style={styles.modalCloseText}>✕</Text>
+                <Text style={[styles.modalCloseText, !isDarkMode && styles.modalCloseTextLight]}>✕</Text>
               </TouchableOpacity>
             </View>
 
@@ -5977,18 +5999,34 @@ export default function App() {
             <View style={styles.modalSubTabsRow}>
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={[styles.modalSubTab, pairModalTab === 'qr' && styles.modalSubTabActive]}
+                style={[
+                  styles.modalSubTab,
+                  !isDarkMode && styles.modalSubTabLight,
+                  pairModalTab === 'qr' && styles.modalSubTabActive,
+                ]}
                 onPress={() => setPairModalTab('qr')}>
-                <Text style={[styles.modalSubTabText, pairModalTab === 'qr' && styles.modalSubTabTextActive]}>
+                <Text style={[
+                  styles.modalSubTabText,
+                  !isDarkMode && styles.modalSubTabTextLight,
+                  pairModalTab === 'qr' && styles.modalSubTabTextActive,
+                ]}>
                   Scan PC QR
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={[styles.modalSubTab, pairModalTab === 'manual' && styles.modalSubTabActive]}
+                style={[
+                  styles.modalSubTab,
+                  !isDarkMode && styles.modalSubTabLight,
+                  pairModalTab === 'manual' && styles.modalSubTabActive,
+                ]}
                 onPress={() => setPairModalTab('manual')}>
-                <Text style={[styles.modalSubTabText, pairModalTab === 'manual' && styles.modalSubTabTextActive]}>
+                <Text style={[
+                  styles.modalSubTabText,
+                  !isDarkMode && styles.modalSubTabTextLight,
+                  pairModalTab === 'manual' && styles.modalSubTabTextActive,
+                ]}>
                   Manual IP
                 </Text>
               </TouchableOpacity>
@@ -6014,9 +6052,9 @@ export default function App() {
                 </View>
 
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, !isDarkMode && styles.modalInputLight]}
                   placeholder="Paste QR Code String (e.g. http://192.168.1.5:3000/?auth=...)"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
                   value={qrInputText}
                   onChangeText={setQrInputText}
                   autoCapitalize="none"
@@ -6046,9 +6084,9 @@ export default function App() {
                 <View style={styles.modalBtnRow}>
                   <TouchableOpacity
                     activeOpacity={0.75}
-                    style={styles.modalCancelBtn}
+                    style={[styles.modalCancelBtn, !isDarkMode && styles.modalCancelBtnLight]}
                     onPress={() => setShowPairModal(false)}>
-                    <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                    <Text style={[styles.modalCancelBtnText, !isDarkMode && styles.modalCancelBtnTextLight]}>Cancel</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -6061,23 +6099,23 @@ export default function App() {
               </View>
             ) : (
               <View>
-                <Text style={styles.modalSubtitle}>
+                <Text style={[styles.modalSubtitle, !isDarkMode && styles.modalSubtitleLight]}>
                   Enter the Host IP and Port displayed in your Fylo PC application:
                 </Text>
 
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, !isDarkMode && styles.modalInputLight]}
                   placeholder="e.g. 192.168.1.5:3000"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
                   value={manualPcIp}
                   onChangeText={setManualPcIp}
                   autoCapitalize="none"
                 />
 
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, !isDarkMode && styles.modalInputLight]}
                   placeholder="Auth Token (optional if on same LAN)"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
                   value={manualAuthToken}
                   onChangeText={setManualAuthToken}
                   autoCapitalize="none"
@@ -6101,9 +6139,9 @@ export default function App() {
                 <View style={styles.modalBtnRow}>
                   <TouchableOpacity
                     activeOpacity={0.75}
-                    style={styles.modalCancelBtn}
+                    style={[styles.modalCancelBtn, !isDarkMode && styles.modalCancelBtnLight]}
                     onPress={() => setShowPairModal(false)}>
-                    <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                    <Text style={[styles.modalCancelBtnText, !isDarkMode && styles.modalCancelBtnTextLight]}>Cancel</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -6124,16 +6162,16 @@ export default function App() {
       {/* ========================================================= */}
       <Modal visible={adminModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Admin Security Protection</Text>
-            <Text style={styles.modalSubtitle}>
+          <View style={[styles.modalContent, !isDarkMode && styles.modalContentLight]}>
+            <Text style={[styles.modalTitle, !isDarkMode && styles.modalTitleLight]}>Admin Security Protection</Text>
+            <Text style={[styles.modalSubtitle, !isDarkMode && styles.modalSubtitleLight]}>
               {adminActionTitle || 'This action requires the Admin Security Password.'}
             </Text>
 
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, !isDarkMode && styles.modalInputLight]}
               placeholder="Enter Admin Password (default: admin)"
-              placeholderTextColor="#64748b"
+              placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
               secureTextEntry
               value={adminPasswordInput}
               onChangeText={setAdminPasswordInput}
@@ -6143,12 +6181,12 @@ export default function App() {
             <View style={styles.modalBtnRow}>
               <TouchableOpacity
                 activeOpacity={0.75}
-                style={styles.modalCancelBtn}
+                style={[styles.modalCancelBtn, !isDarkMode && styles.modalCancelBtnLight]}
                 onPress={() => {
                   setAdminModalVisible(false);
                   setAdminPasswordInput('');
                 }}>
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                <Text style={[styles.modalCancelBtnText, !isDarkMode && styles.modalCancelBtnTextLight]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -8923,7 +8961,7 @@ const styles = StyleSheet.create({
   drawerPanel: {
     width: 300,
     height: '100%',
-    backgroundColor: '#0a1020',
+    backgroundColor: '#0A0A0A',
     borderRightWidth: 1,
     borderRightColor: 'rgba(37, 99, 235, 0.25)',
     paddingTop: 16,
@@ -10366,5 +10404,80 @@ const styles = StyleSheet.create({
   },
   shareHubClearBtnTextLight: {
     color: '#64748b',
+  },
+  pcEmptyTitleLight: {
+    color: '#0f172a',
+  },
+  pcEmptyDescLight: {
+    color: '#64748b',
+  },
+  modalInputLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
+  },
+  modalSubTabLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
+  },
+  modalSubTabTextLight: {
+    color: '#475569',
+  },
+  modalSubtitleLight: {
+    color: '#64748b',
+  },
+  stepTitleLight: {
+    color: '#0f172a',
+  },
+  stepDescLight: {
+    color: '#475569',
+  },
+  beaconHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  beaconRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  beaconGlowConnected: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  beaconGlowIdle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  beaconStatusLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#10b981',
+    letterSpacing: 0.5,
+  },
+  beaconStatusLabelIdle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#60a5fa',
+    letterSpacing: 0.5,
+  },
+  beaconHostTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#ffffff',
+    marginTop: 2,
+  },
+  beaconHostTitleLight: {
+    color: '#0f172a',
   },
 });
