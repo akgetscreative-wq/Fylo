@@ -616,33 +616,59 @@ const FileBadgeIcon = ({ ext, isDir, size = 28 }) => {
   return (
     <View style={{
       width: 30 * scale,
-      height: 34 * scale,
-      borderRadius: 6 * scale,
-      backgroundColor: badgeColor + '18',
-      borderColor: badgeColor + '55',
-      borderWidth: 1.5,
-      alignItems: 'center',
-      justifyContent: 'center',
+      height: 36 * scale,
+      borderRadius: 5 * scale,
+      backgroundColor: badgeColor + '14',
+      borderColor: badgeColor,
+      borderWidth: 1.8 * scale,
       position: 'relative',
+      overflow: 'hidden',
+      justifyContent: 'space-between',
+      paddingTop: 5 * scale,
+      paddingHorizontal: 3 * scale,
+      paddingBottom: 2 * scale,
     }}>
+      {/* Folded Flap Corner at Top-Right */}
       <View style={{
         position: 'absolute',
-        top: 0,
-        right: 0,
+        top: -1,
+        right: -1,
         width: 9 * scale,
         height: 9 * scale,
         backgroundColor: badgeColor + '35',
-        borderBottomLeftRadius: 5 * scale,
-        borderTopRightRadius: 5 * scale,
+        borderBottomLeftRadius: 4 * scale,
+        borderLeftWidth: 1.2 * scale,
+        borderBottomWidth: 1.2 * scale,
+        borderColor: badgeColor,
       }} />
-      <Text style={{
-        fontSize: Math.max(8, 8.5 * scale),
-        fontWeight: '800',
-        color: badgeColor,
-        letterSpacing: 0.3,
+
+      {/* Document Text Lines (Image 2 & 3 likeness) */}
+      <View style={{ width: '70%', marginTop: 2 * scale }}>
+        <View style={{ height: 1.8 * scale, width: '75%', backgroundColor: badgeColor + '50', borderRadius: 1, marginBottom: 2 * scale }} />
+        <View style={{ height: 1.8 * scale, width: '100%', backgroundColor: badgeColor + '50', borderRadius: 1, marginBottom: 2 * scale }} />
+        <View style={{ height: 1.8 * scale, width: '85%', backgroundColor: badgeColor + '40', borderRadius: 1 }} />
+      </View>
+
+      {/* Bold Vibrant Extension Badge Pill (Image 2 style) */}
+      <View style={{
+        backgroundColor: badgeColor,
+        borderRadius: 3 * scale,
+        paddingHorizontal: 2.5 * scale,
+        paddingVertical: 1 * scale,
+        alignSelf: 'flex-start',
+        minWidth: 16 * scale,
+        alignItems: 'center',
+        justifyContent: 'center',
       }}>
-        {label}
-      </Text>
+        <Text style={{
+          fontSize: Math.max(6.5, 7.5 * scale),
+          fontWeight: '900',
+          color: '#ffffff',
+          letterSpacing: 0.3,
+        }}>
+          {label}
+        </Text>
+      </View>
     </View>
   );
 };
