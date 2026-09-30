@@ -3088,10 +3088,11 @@ export default function App() {
   const GRID_TILE_WIDTH = (SCREEN_WIDTH - 32 - 16) / 3;
 
   return (
-    <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
+    <View style={[styles.container, !isDarkMode && styles.containerLight]}>
       <StatusBar
+        translucent={true}
+        backgroundColor="transparent"
         barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={isDarkMode ? "#000000" : "#F7F6F2"}
       />
 
       {/* ========================================================= */}
@@ -5071,7 +5072,7 @@ export default function App() {
       {lightboxItem && (
         <Modal
           visible={!!lightboxItem}
-          transparent
+          transparent={false}
           statusBarTranslucent={true}
           animationType="fade"
           onRequestClose={() => {
@@ -5531,7 +5532,7 @@ export default function App() {
       {/* ========================================================= */}
       {/* COLLAPSIBLE NAVIGATION SIDEBAR DRAWER                     */}
       {/* ========================================================= */}
-      <Modal visible={sidebarOpen} transparent animationType="fade" onRequestClose={closeSidebar}>
+      <Modal visible={sidebarOpen} transparent statusBarTranslucent={true} animationType="fade" onRequestClose={closeSidebar}>
         <View style={styles.drawerBackdrop}>
           <Animated.View
             style={[
@@ -5847,7 +5848,7 @@ export default function App() {
       {/* ========================================================= */}
       {/* DIRECT SHARE DEVICE PICKER MODAL (INSTANT ICONS & NAMES) */}
       {/* ========================================================= */}
-      <Modal visible={directShareModalVisible} transparent animationType="fade">
+      <Modal visible={directShareModalVisible} transparent statusBarTranslucent={true} animationType="fade">
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={styles.modalDismissArea}
@@ -6042,7 +6043,7 @@ export default function App() {
       {/* ========================================================= */}
       {/* DEDICATED SORT OPTIONS MODAL DROPDOWN                     */}
       {/* ========================================================= */}
-      <Modal visible={!!sortModalTarget} transparent animationType="fade">
+      <Modal visible={!!sortModalTarget} transparent statusBarTranslucent={true} animationType="fade">
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={styles.modalDismissArea}
@@ -6101,7 +6102,7 @@ export default function App() {
       {/* ========================================================= */}
       {/* PAIRING MODAL: SCAN QR / MANUAL IP                        */}
       {/* ========================================================= */}
-      <Modal visible={showPairModal} transparent animationType="slide">
+      <Modal visible={showPairModal} transparent statusBarTranslucent={true} animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, !isDarkMode && styles.modalContentLight]}>
             <View style={styles.modalHeaderRow}>
@@ -6352,7 +6353,7 @@ export default function App() {
       {/* ========================================================= */}
       {/* ADMIN SECURITY PASSWORD MODAL                             */}
       {/* ========================================================= */}
-      <Modal visible={adminModalVisible} transparent animationType="slide">
+      <Modal visible={adminModalVisible} transparent statusBarTranslucent={true} animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, !isDarkMode && styles.modalContentLight]}>
             <Text style={[styles.modalTitle, !isDarkMode && styles.modalTitleLight]}>Admin Security Protection</Text>
@@ -6395,7 +6396,7 @@ export default function App() {
       {/* ========================================================= */}
       {/* 1-CLICK DIAGNOSTICS MODAL                                 */}
       {/* ========================================================= */}
-      <Modal visible={diagVisible} transparent animationType="fade">
+      <Modal visible={diagVisible} transparent statusBarTranslucent={true} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, !isDarkMode && styles.modalContentLight]}>
             <View style={styles.modalHeaderRow}>
@@ -6439,6 +6440,7 @@ export default function App() {
       <Modal
         visible={showStorageAccessPrompt}
         transparent
+        statusBarTranslucent={true}
         animationType="fade"
         onRequestClose={() => handleSetStorageAccess(false)}>
         <View style={styles.modalOverlay}>
@@ -6491,6 +6493,7 @@ export default function App() {
       <Modal
         visible={showSettingsModal}
         transparent
+        statusBarTranslucent={true}
         animationType="fade"
         onRequestClose={() => setShowSettingsModal(false)}>
         <View style={styles.modalOverlay}>
@@ -6809,7 +6812,7 @@ export default function App() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -6820,9 +6823,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
   },
   containerLight: {
     backgroundColor: '#F7F6F2',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
   },
 
   /* Auto-Discovered PC on Home Hero */
@@ -8890,13 +8895,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   lightboxHeader: {
-    height: 52,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
+    minHeight: 52 + (Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0),
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#000000',
   },
   lightboxFileName: {
     color: '#ffffff',
@@ -8982,11 +8989,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   lightboxFooter: {
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'android' ? 28 : 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
     flexDirection: 'row',
     gap: 8,
+    backgroundColor: '#000000',
   },
   lightboxDlBtn: {
     flex: 1,
@@ -9102,7 +9112,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: Platform.OS === 'android' ? ((StatusBar.currentHeight || 24) + 8) : 14,
     paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -9202,7 +9212,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 20,
+    paddingBottom: Platform.OS === 'android' ? 28 : 20,
     backgroundColor: 'rgba(0, 0, 0, 0.82)',
     zIndex: 35,
   },
@@ -9558,7 +9568,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A0A0A',
     borderRightWidth: 1,
     borderRightColor: 'rgba(37, 99, 235, 0.25)',
-    paddingTop: 16,
+    paddingTop: Platform.OS === 'android' ? ((StatusBar.currentHeight || 24) + 12) : 16,
     paddingBottom: 24,
     paddingHorizontal: 16,
     display: 'flex',
