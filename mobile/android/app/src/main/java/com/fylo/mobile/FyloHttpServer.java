@@ -848,16 +848,35 @@ public class FyloHttpServer {
             dir.mkdirs();
         }
 
-        File dest = new File(dir, name);
-        if (dest.exists()) {
-            String base = name;
-            String ext = "";
-            int dot = name.lastIndexOf('.');
-            if (dot > 0) {
-                base = name.substring(0, dot);
-                ext = name.substring(dot);
+        String relPath = queryParams.get("relPath");
+        File dest;
+        if (relPath != null && !relPath.trim().isEmpty()) {
+            String safeRel = relPath.replace("\\", "/").replaceAll("^(/|\\.\\./)+", "");
+            dest = new File(dir, safeRel);
+            try {
+                if (!dest.getCanonicalPath().startsWith(dir.getCanonicalPath())) {
+                    dest = new File(dir, name);
+                }
+            } catch (Throwable ignored) {
+                dest = new File(dir, name);
             }
-            dest = new File(dir, base + "_" + System.currentTimeMillis() + ext);
+        } else {
+            dest = new File(dir, name);
+        }
+
+        if (dest.getParentFile() != null && !dest.getParentFile().exists()) {
+            dest.getParentFile().mkdirs();
+        }
+
+        if (dest.exists()) {
+            String base = dest.getName();
+            String ext = "";
+            int dot = base.lastIndexOf('.');
+            if (dot > 0) {
+                base = base.substring(0, dot);
+                ext = dest.getName().substring(dot);
+            }
+            dest = new File(dest.getParentFile(), base + "_" + System.currentTimeMillis() + ext);
         }
 
         try (FileOutputStream fos = new FileOutputStream(dest)) {

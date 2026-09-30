@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const qrcode = require('qrcode');
 const archiver = require('archiver');
 const http = require('http');
+const dgram = require('dgram');
 const { app: electronApp, BrowserWindow, ipcMain, dialog, clipboard, shell } = require('electron');
 
 const app = express();
@@ -2321,9 +2322,69 @@ function createWindow() {
     });
 }
 
+const DISCOVERY_PORT = 41234;
+let udpServer = null;
+
+function startUdpDiscovery() {
+    try {
+        udpServer = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+
+        udpServer.on('error', (err) => {
+            console.warn('[UDP Discovery] Socket error:', err.message);
+            try { udpServer.close(); } catch(e) {}
+        });
+
+        udpServer.on('message', (msg, rinfo) => {
+            try {
+                const str = msg.toString('utf8');
+                if (str.includes('FYLO_DISCOVERY_PING')) {
+                    const beacon = JSON.stringify({
+                        type: 'FYLO_PC_BEACON',
+                        name: os.hostname() || 'Windows Host',
+                        ip: getActiveIp(),
+                        port: PORT,
+                        token: secretToken,
+                        version: '4.0.0'
+                    });
+                    const buf = Buffer.from(beacon, 'utf8');
+                    udpServer.send(buf, 0, buf.length, rinfo.port, rinfo.address, () => {});
+                }
+            } catch (e) {}
+        });
+
+        udpServer.bind(DISCOVERY_PORT, () => {
+            try {
+                udpServer.setBroadcast(true);
+                console.log(`[UDP Discovery] Active and broadcasting on port ${DISCOVERY_PORT}`);
+            } catch (e) {}
+        });
+
+        // Periodic beacon broadcast every 3.5s for zero-config auto discovery
+        setInterval(() => {
+            if (!udpServer) return;
+            try {
+                const beacon = JSON.stringify({
+                    type: 'FYLO_PC_BEACON',
+                    name: os.hostname() || 'Windows Host',
+                    ip: getActiveIp(),
+                    port: PORT,
+                    token: secretToken,
+                    version: '4.0.0'
+                });
+                const buf = Buffer.from(beacon, 'utf8');
+                udpServer.send(buf, 0, buf.length, DISCOVERY_PORT, '255.255.255.255', () => {});
+            } catch (e) {}
+        }, 3500);
+
+    } catch (e) {
+        console.warn('[UDP Discovery] Initialization error:', e.message);
+    }
+}
+
 if (electronApp && typeof electronApp.whenReady === 'function') {
     electronApp.whenReady().then(() => {
         app.listen(PORT, () => {
+            startUdpDiscovery();
             createWindow();
         });
         electronApp.on('activate', () => {
@@ -2341,6 +2402,7 @@ if (electronApp && typeof electronApp.whenReady === 'function') {
     });
 } else if (!module.parent) {
     app.listen(PORT, () => {
+        startUdpDiscovery();
         console.log(`Fylo server running on http://127.0.0.1:${PORT}`);
     });
 }

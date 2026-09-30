@@ -797,7 +797,10 @@ export default function App() {
   const [pingLatency, setPingLatency] = useState(null); // Real measured latency in ms
   const [isPcReachable, setIsPcReachable] = useState(false); // True only when heartbeat succeeds
   const [showPairModal, setShowPairModal] = useState(false);
-  const [pairModalTab, setPairModalTab] = useState('qr'); // 'qr' | 'manual'
+  const [pairModalTab, setPairModalTab] = useState('auto'); // 'auto' | 'qr' | 'manual'
+  const [discoveredDevices, setDiscoveredDevices] = useState([]);
+  const [transferProgress, setTransferProgress] = useState(null); // { fileName, percent, transferred, total }
+  const lastBackPressTimeRef = useRef(0);
   const [qrInputText, setQrInputText] = useState('');
   const [manualPcIp, setManualPcIp] = useState('');
   const [manualAuthToken, setManualAuthToken] = useState('');
@@ -1795,8 +1798,15 @@ export default function App() {
         return true;
       }
 
-      // 7. On Home tab with no modal: exit/background app
-      return false;
+      // 7. On Home tab with no modal: double tap back navigation to exit app completely
+      const now = Date.now();
+      if (now - lastBackPressTimeRef.current < 2000) {
+        BackHandler.exitApp();
+        return true;
+      }
+      lastBackPressTimeRef.current = now;
+      showToast('Press back again to exit Fylo');
+      return true;
     };
 
     const backSubscription = BackHandler.addEventListener('hardwareBackPress', handleHardwareBackPress);
@@ -2427,6 +2437,43 @@ export default function App() {
       sub.remove();
     };
   }, [pairedPc, pcAuthToken]);
+
+  // Auto-Discovery of PC on local Wi-Fi & Resumable Transfer Progress Listeners
+  useEffect(() => {
+    const subDiscovery = DeviceEventEmitter.addListener('onDeviceDiscovered', (device) => {
+      if (!device || !device.ip) return;
+      setDiscoveredDevices((prev) => {
+        const key = `${device.ip}:${device.port || 3000}`;
+        const exists = prev.some((d) => `${d.ip}:${d.port || 3000}` === key);
+        if (!exists) {
+          addLog(`Discovered PC: ${device.name || 'Windows PC'} (${device.ip}:${device.port || 3000})`);
+          return [...prev, device];
+        }
+        return prev;
+      });
+    });
+
+    const subProgress = DeviceEventEmitter.addListener('onTransferProgress', (prog) => {
+      if (prog) {
+        setTransferProgress(prog);
+        if (prog.percent >= 100) {
+          setTimeout(() => setTransferProgress(null), 2500);
+        }
+      }
+    });
+
+    if (FyloModule && FyloModule.startDiscovery) {
+      FyloModule.startDiscovery().catch(() => {});
+    }
+
+    return () => {
+      subDiscovery.remove();
+      subProgress.remove();
+      if (FyloModule && FyloModule.stopDiscovery) {
+        FyloModule.stopDiscovery().catch(() => {});
+      }
+    };
+  }, []);
 
   // Directory Breadcrumb navigation helper
   const renderBreadcrumbs = (currentPath, onSelectPath, isPc = false) => {
@@ -3108,6 +3155,23 @@ export default function App() {
         </View>
       )}
 
+      {/* Live Chunked Resumable Transfer Progress Banner */}
+      {transferProgress && (
+        <View style={[styles.transferProgressWrap, !isDarkMode && styles.transferProgressWrapLight]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={[styles.transferProgressTitle, !isDarkMode && styles.transferProgressTitleLight]} numberOfLines={1}>
+              📥 {transferProgress.fileName}
+            </Text>
+            <Text style={styles.transferProgressPct}>
+              {transferProgress.percent}%
+            </Text>
+          </View>
+          <View style={styles.transferProgressBarBg}>
+            <View style={[styles.transferProgressBarFill, { width: `${Math.min(100, Math.max(2, transferProgress.percent))}%` }]} />
+          </View>
+        </View>
+      )}
+
       {/* ========================================================= */}
       {/* TAB 1: STREAMLINED BENTO HOME DASHBOARD (Matching Image 2) */}
       {/* ========================================================= */}
@@ -3216,23 +3280,51 @@ export default function App() {
                   Pair with Fylo desktop app to browse Windows drives, stream media, and sync clipboard without cables.
                 </Text>
 
-                <View style={styles.heroBtnRow}>
+                {/* Auto-Discovered PC on local Wi-Fi */}
+                {discoveredDevices.length > 0 && (
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
-                    onPress={handleStartQrScan}>
-                    <Text style={styles.heroPrimaryBtnText}>Scan PC QR Code</Text>
+                    style={[styles.heroDiscoveredBanner, !isDarkMode && styles.heroDiscoveredBannerLight]}
+                    onPress={() => handleConnectToPc(`${discoveredDevices[0].ip}:${discoveredDevices[0].port || 3000}`, discoveredDevices[0].token)}>
+                    <View style={styles.heroDiscoveredDot} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.heroDiscoveredTitle, !isDarkMode && styles.heroDiscoveredTitleLight]} numberOfLines={1}>
+                        ✨ Found {discoveredDevices[0].name || 'PC'} on Wi-Fi
+                      </Text>
+                      <Text style={[styles.heroDiscoveredSub, !isDarkMode && styles.heroDiscoveredSubLight]}>
+                        {discoveredDevices[0].ip}:{discoveredDevices[0].port || 3000} • Tap to link instantly ⚡
+                      </Text>
+                    </View>
+                    <Text style={styles.heroDiscoveredBtnText}>Connect →</Text>
                   </TouchableOpacity>
+                )}
+
+                <View style={styles.heroBtnRow}>
+                  {discoveredDevices.length > 0 ? (
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
+                      onPress={() => handleConnectToPc(`${discoveredDevices[0].ip}:${discoveredDevices[0].port || 3000}`, discoveredDevices[0].token)}>
+                      <Text style={styles.heroPrimaryBtnText}>⚡ Link to {discoveredDevices[0].name || 'PC'}</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
+                      onPress={handleStartQrScan}>
+                      <Text style={styles.heroPrimaryBtnText}>Scan PC QR Code</Text>
+                    </TouchableOpacity>
+                  )}
 
                   <TouchableOpacity
                     activeOpacity={0.75}
                     style={[styles.heroSecondaryBtn, !isDarkMode && styles.heroSecondaryBtnLight]}
                     onPress={() => {
-                      setPairModalTab('manual');
+                      setPairModalTab(discoveredDevices.length > 0 ? 'auto' : 'manual');
                       setShowPairModal(true);
                     }}>
                     <Text style={[styles.heroSecondaryBtnText, !isDarkMode && styles.heroSecondaryBtnTextLight]}>
-                      Manual IP
+                      {discoveredDevices.length > 0 ? `Devices (${discoveredDevices.length})` : 'Manual IP'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -4102,6 +4194,7 @@ export default function App() {
                       activeOpacity={0.75}
                       style={[
                         styles.gridTile,
+                        !isDarkMode && styles.gridTileLight,
                         { width: GRID_TILE_WIDTH },
                         isSelected && styles.gridTileSelected,
                       ]}
@@ -4403,32 +4496,46 @@ export default function App() {
 
                   <View style={[styles.ribbonDivider, !isDarkMode && { backgroundColor: '#cbd5e1' }]} />
 
-                  {/* Windows Folder Shortcuts */}
+                  {/* Windows Folder Shortcuts (PC Quick Jump) */}
                   {[
-                    { name: 'Downloads', path: 'Downloads' },
-                    { name: 'Desktop', path: 'Desktop' },
-                    { name: 'Pictures', path: 'Pictures' },
-                    { name: 'Screenshots', path: 'Screenshots' },
-                    { name: 'Documents', path: 'Documents' },
-                    { name: 'Videos', path: 'Videos' },
-                  ].map((sc, i) => (
-                    <TouchableOpacity
-                      key={'pcsc-' + i}
-                      activeOpacity={0.75}
-                      style={[styles.pcShortcutPill, !isDarkMode && styles.pcShortcutPillLight]}
-                      onPress={() => {
-                        const match = Array.isArray(pcQuickAccess?.shortcuts)
-                          ? pcQuickAccess.shortcuts.find((s) =>
-                              s?.name && sc?.name && s.name.toLowerCase().includes(sc.name.toLowerCase())
-                            )
-                          : null;
-                        loadPcFolder(match?.path || sc.path);
-                      }}>
-                      <Text style={[styles.pcShortcutPillText, !isDarkMode && styles.pcShortcutPillTextLight]}>
-                        {sc.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                    { name: 'Downloads', icon: '📥', path: 'Downloads' },
+                    { name: 'Videos', icon: '🎬', path: 'Videos' },
+                    { name: 'Desktop', icon: '🖥️', path: 'Desktop' },
+                    { name: 'Pictures', icon: '🖼️', path: 'Pictures' },
+                    { name: 'Documents', icon: '📄', path: 'Documents' },
+                    { name: 'Screenshots', icon: '📸', path: 'Screenshots' },
+                  ].map((sc, i) => {
+                    const match = Array.isArray(pcQuickAccess?.shortcuts)
+                      ? pcQuickAccess.shortcuts.find((s) =>
+                          s?.name && sc?.name && s.name.toLowerCase().includes(sc.name.toLowerCase())
+                        )
+                      : null;
+                    const targetPath = match?.path || sc.path;
+                    const isActive = pcCurrentPath && (
+                      pcCurrentPath.toLowerCase().endsWith(sc.name.toLowerCase()) ||
+                      pcCurrentPath.toLowerCase().includes(sc.name.toLowerCase())
+                    );
+                    return (
+                      <TouchableOpacity
+                        key={'pcsc-' + i}
+                        activeOpacity={0.75}
+                        style={[
+                          styles.pcShortcutPill,
+                          !isDarkMode && styles.pcShortcutPillLight,
+                          isActive && styles.pcShortcutPillActive,
+                        ]}
+                        onPress={() => loadPcFolder(targetPath)}>
+                        <Text style={{ fontSize: 13, marginRight: 4 }}>{sc.icon}</Text>
+                        <Text style={[
+                          styles.pcShortcutPillText,
+                          !isDarkMode && styles.pcShortcutPillTextLight,
+                          isActive && styles.pcShortcutPillTextActive,
+                        ]}>
+                          {sc.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
               </View>
 
@@ -6011,6 +6118,23 @@ export default function App() {
                 style={[
                   styles.modalSubTab,
                   !isDarkMode && styles.modalSubTabLight,
+                  pairModalTab === 'auto' && styles.modalSubTabActive,
+                ]}
+                onPress={() => setPairModalTab('auto')}>
+                <Text style={[
+                  styles.modalSubTabText,
+                  !isDarkMode && styles.modalSubTabTextLight,
+                  pairModalTab === 'auto' && styles.modalSubTabTextActive,
+                ]}>
+                  ✨ Auto-Detect {discoveredDevices.length > 0 ? `(${discoveredDevices.length})` : ''}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[
+                  styles.modalSubTab,
+                  !isDarkMode && styles.modalSubTabLight,
                   pairModalTab === 'qr' && styles.modalSubTabActive,
                 ]}
                 onPress={() => setPairModalTab('qr')}>
@@ -6019,7 +6143,7 @@ export default function App() {
                   !isDarkMode && styles.modalSubTabTextLight,
                   pairModalTab === 'qr' && styles.modalSubTabTextActive,
                 ]}>
-                  Scan PC QR
+                  Scan QR
                 </Text>
               </TouchableOpacity>
 
@@ -6041,7 +6165,66 @@ export default function App() {
               </TouchableOpacity>
             </View>
 
-            {pairModalTab === 'qr' ? (
+            {pairModalTab === 'auto' ? (
+              <View>
+                <Text style={[styles.modalSubtitle, !isDarkMode && styles.modalSubtitleLight]}>
+                  Nearby Windows PCs running Fylo on this Wi-Fi network:
+                </Text>
+
+                {discoveredDevices.length === 0 ? (
+                  <View style={styles.autoDiscoverEmptyBox}>
+                    <ActivityIndicator size="small" color="#3b82f6" style={{ marginBottom: 10 }} />
+                    <Text style={[styles.autoDiscoverSearchingTitle, !isDarkMode && styles.autoDiscoverSearchingTitleLight]}>
+                      Listening on Wi-Fi for PC...
+                    </Text>
+                    <Text style={styles.autoDiscoverSearchingDesc}>
+                      Make sure Fylo is running on your PC and both devices are connected to the same Wi-Fi or hotspot.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={{ gap: 8, marginTop: 6, marginBottom: 14 }}>
+                    {discoveredDevices.map((dev, i) => (
+                      <View key={'disc-' + i} style={[styles.autoDiscoverPcCard, !isDarkMode && styles.autoDiscoverPcCardLight]}>
+                        <View style={styles.autoDiscoverIconWrap}>
+                          <Text style={{ fontSize: 22 }}>🖥️</Text>
+                          <View style={styles.autoDiscoverOnlineDot} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.autoDiscoverPcName, !isDarkMode && styles.autoDiscoverPcNameLight]} numberOfLines={1}>
+                            {dev.name || 'Windows Host'}
+                          </Text>
+                          <Text style={styles.autoDiscoverPcIp}>
+                            {dev.ip}:{dev.port || 3000} • Ready to Link
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          style={styles.autoDiscoverConnectBtn}
+                          onPress={() => handleConnectToPc(`${dev.ip}:${dev.port || 3000}`, dev.token)}>
+                          <Text style={styles.autoDiscoverConnectBtnText}>Link ⚡</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                <View style={styles.modalBtnRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={[styles.modalCancelBtn, !isDarkMode && styles.modalCancelBtnLight]}
+                    onPress={() => setShowPairModal(false)}>
+                    <Text style={[styles.modalCancelBtnText, !isDarkMode && styles.modalCancelBtnTextLight]}>Close</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.modalPrimaryBtn}
+                    onPress={() => setPairModalTab('qr')}>
+                    <Text style={styles.modalPrimaryBtnText}>Scan QR Instead →</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : pairModalTab === 'qr' ? (
               <View>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -6640,6 +6823,196 @@ const styles = StyleSheet.create({
   },
   containerLight: {
     backgroundColor: '#F7F6F2',
+  },
+
+  /* Auto-Discovered PC on Home Hero */
+  heroDiscoveredBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(37, 99, 235, 0.16)',
+    borderWidth: 1.5,
+    borderColor: '#3b82f6',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    gap: 10,
+  },
+  heroDiscoveredBannerLight: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#93c5fd',
+  },
+  heroDiscoveredDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#10b981',
+  },
+  heroDiscoveredTitle: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  heroDiscoveredTitleLight: {
+    color: '#1e3a8a',
+  },
+  heroDiscoveredSub: {
+    color: '#93c5fd',
+    fontSize: 10.5,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  heroDiscoveredSubLight: {
+    color: '#3b82f6',
+  },
+  heroDiscoveredBtnText: {
+    color: '#60a5fa',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+
+  /* Live Chunked Transfer Progress Floating Banner */
+  transferProgressWrap: {
+    position: 'absolute',
+    top: 58,
+    left: 16,
+    right: 16,
+    zIndex: 9999,
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#2563eb',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 12,
+  },
+  transferProgressWrapLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#3b82f6',
+  },
+  transferProgressTitle: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: 8,
+  },
+  transferProgressTitleLight: {
+    color: '#0f172a',
+  },
+  transferProgressPct: {
+    color: '#38bdf8',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  transferProgressBarBg: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginTop: 6,
+  },
+  transferProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#2563eb',
+    borderRadius: 3,
+  },
+
+  /* Auto-Discover Tab in Pair Modal */
+  autoDiscoverEmptyBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    marginVertical: 10,
+  },
+  autoDiscoverSearchingTitle: {
+    color: '#f8fafc',
+    fontSize: 13.5,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  autoDiscoverSearchingTitleLight: {
+    color: '#0f172a',
+  },
+  autoDiscoverSearchingDesc: {
+    color: '#64748b',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  autoDiscoverPcCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#121212',
+    borderWidth: 1.5,
+    borderColor: 'rgba(37, 99, 235, 0.4)',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  autoDiscoverPcCardLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#bfdbfe',
+  },
+  autoDiscoverIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  autoDiscoverOnlineDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+    borderWidth: 1.5,
+    borderColor: '#000000',
+  },
+  autoDiscoverPcName: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  autoDiscoverPcNameLight: {
+    color: '#0f172a',
+  },
+  autoDiscoverPcIp: {
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  autoDiscoverConnectBtn: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  autoDiscoverConnectBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  pcShortcutPillActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#3b82f6',
+  },
+  pcShortcutPillTextActive: {
+    color: '#ffffff',
   },
 
   /* Top Header & Horizontal Pill Navigation */

@@ -49,8 +49,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -58,6 +61,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import android.net.wifi.WifiManager;
+import android.os.PowerManager;
 
 public class FyloServerModule extends ReactContextBaseJavaModule implements ActivityEventListener {
     private static final String TAG = "FyloServerModule";
@@ -65,6 +72,12 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
     private static final List<WritableMap> sPendingSharedFiles = Collections.synchronizedList(new ArrayList<>());
     private final ReactApplicationContext reactContext;
     private SafePromise mScanPromise;
+
+    private static final int UDP_DISCOVERY_PORT = 41234;
+    private DatagramSocket mDiscoverySocket;
+    private Thread mDiscoveryThread;
+    private volatile boolean mIsDiscovering = false;
+    private WifiManager.MulticastLock mMulticastLock;
 
     /**
      * Safe wrapper around React Native Promise to guarantee resolve() or reject()
@@ -1055,10 +1068,136 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
     }
 
     @ReactMethod
+    public void startDiscovery(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            if (mIsDiscovering) {
+                safePromise.resolve(true);
+                return;
+            }
+            mIsDiscovering = true;
+
+            try {
+                WifiManager wm = (WifiManager) reactContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                if (wm != null) {
+                    mMulticastLock = wm.createMulticastLock("FyloDiscoveryLock");
+                    mMulticastLock.setReferenceCounted(true);
+                    mMulticastLock.acquire();
+                }
+            } catch (Throwable ignored) {}
+
+            mDiscoveryThread = new Thread(() -> {
+                try {
+                    mDiscoverySocket = new DatagramSocket(null);
+                    mDiscoverySocket.setReuseAddress(true);
+                    mDiscoverySocket.setBroadcast(true);
+                    mDiscoverySocket.bind(new InetSocketAddress(UDP_DISCOVERY_PORT));
+                    mDiscoverySocket.setSoTimeout(3000);
+
+                    // Send initial ping broadcast
+                    sendDiscoveryPing();
+
+                    byte[] buffer = new byte[2048];
+                    while (mIsDiscovering && !Thread.currentThread().isInterrupted()) {
+                        try {
+                            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                            mDiscoverySocket.receive(packet);
+                            String data = new String(packet.getData(), 0, packet.getLength(), StandardCharsets.UTF_8);
+                            if (data.contains("FYLO_PC_BEACON")) {
+                                org.json.JSONObject obj = new org.json.JSONObject(data);
+                                WritableMap map = Arguments.createMap();
+                                map.putString("name", obj.optString("name", "Windows PC"));
+                                String ip = obj.optString("ip", packet.getAddress().getHostAddress());
+                                if (ip == null || ip.isEmpty() || ip.equals("127.0.0.1")) {
+                                    ip = packet.getAddress().getHostAddress();
+                                }
+                                map.putString("ip", ip);
+                                map.putInt("port", obj.optInt("port", 3000));
+                                map.putString("token", obj.optString("token", ""));
+                                map.putString("version", obj.optString("version", "4.0.0"));
+
+                                if (reactContext != null) {
+                                    reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                                        .emit("onDeviceDiscovered", map);
+                                }
+                            }
+                        } catch (java.net.SocketTimeoutException ste) {
+                            if (mIsDiscovering) {
+                                sendDiscoveryPing();
+                            }
+                        } catch (Throwable e) {
+                            if (!mIsDiscovering) break;
+                        }
+                    }
+                } catch (Throwable t) {
+                    Log.w(TAG, "Discovery socket error: " + t.getMessage());
+                } finally {
+                    closeDiscoverySocket();
+                }
+            });
+            mDiscoveryThread.start();
+            safePromise.resolve(true);
+        } catch (Throwable t) {
+            safePromise.reject("DISCOVERY_ERROR", t.getMessage());
+        }
+    }
+
+    private void sendDiscoveryPing() {
+        try {
+            if (mDiscoverySocket != null && !mDiscoverySocket.isClosed()) {
+                String ping = "{\"type\":\"FYLO_DISCOVERY_PING\"}";
+                byte[] pingBytes = ping.getBytes(StandardCharsets.UTF_8);
+                DatagramPacket pingPacket = new DatagramPacket(
+                    pingBytes,
+                    pingBytes.length,
+                    InetAddress.getByName("255.255.255.255"),
+                    UDP_DISCOVERY_PORT
+                );
+                mDiscoverySocket.send(pingPacket);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    @ReactMethod
+    public void stopDiscovery(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        mIsDiscovering = false;
+        closeDiscoverySocket();
+        safePromise.resolve(true);
+    }
+
+    private void closeDiscoverySocket() {
+        try {
+            if (mDiscoverySocket != null && !mDiscoverySocket.isClosed()) {
+                mDiscoverySocket.close();
+            }
+        } catch (Throwable ignored) {}
+        try {
+            if (mMulticastLock != null && mMulticastLock.isHeld()) {
+                mMulticastLock.release();
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    @ReactMethod
     public void downloadFileFromUrl(String fileUrl, String fileName, Promise promise) {
         SafePromise safePromise = new SafePromise(promise);
         new Thread(() -> {
+            PowerManager.WakeLock wakeLock = null;
+            WifiManager.WifiLock wifiLock = null;
             try {
+                // Keep CPU and Wi-Fi active in background / screen locked mode
+                PowerManager pm = (PowerManager) reactContext.getSystemService(Context.POWER_SERVICE);
+                if (pm != null) {
+                    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Fylo:TransferWakeLock");
+                    wakeLock.acquire(15 * 60 * 1000L); // 15 min safety timeout
+                }
+                WifiManager wm = (WifiManager) reactContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                if (wm != null) {
+                    wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Fylo:TransferWifiLock");
+                    wifiLock.acquire();
+                }
+
                 if (fileUrl == null || fileUrl.trim().isEmpty()) {
                     safePromise.reject("INVALID_URL", "File URL is empty");
                     return;
@@ -1076,25 +1215,90 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                 }
 
                 File destFile = new File(fyloDir, cleanName);
+                File partFile = new File(fyloDir, cleanName + ".part");
+
                 if (destFile.exists() && destFile.length() > 0) {
                     safePromise.resolve(destFile.getAbsolutePath());
                     return;
                 }
 
+                long existingBytes = partFile.exists() ? partFile.length() : 0;
+
                 java.net.URL url = new java.net.URL(fileUrl);
                 java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                conn.setConnectTimeout(8000);
-                conn.setReadTimeout(30000);
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(60000);
+
+                if (existingBytes > 0) {
+                    conn.setRequestProperty("Range", "bytes=" + existingBytes + "-");
+                }
+
                 conn.connect();
+                int responseCode = conn.getResponseCode();
+
+                boolean isPartial = (responseCode == 206);
+                boolean append = isPartial && existingBytes > 0;
+
+                if (responseCode != 200 && responseCode != 206) {
+                    if (responseCode == 416) {
+                        // Range not satisfiable, file might have changed or finished
+                        partFile.delete();
+                        existingBytes = 0;
+                        conn.disconnect();
+                        conn = (java.net.HttpURLConnection) url.openConnection();
+                        conn.setConnectTimeout(10000);
+                        conn.setReadTimeout(60000);
+                        conn.connect();
+                        responseCode = conn.getResponseCode();
+                    } else {
+                        safePromise.reject("HTTP_ERR", "Server responded with HTTP " + responseCode);
+                        return;
+                    }
+                }
+
+                long contentLength = conn.getContentLengthLong();
+                long totalExpected = isPartial ? (existingBytes + (contentLength > 0 ? contentLength : 0)) : (contentLength > 0 ? contentLength : 0);
 
                 try (InputStream in = conn.getInputStream();
-                     FileOutputStream out = new FileOutputStream(destFile)) {
+                     FileOutputStream out = new FileOutputStream(partFile, append)) {
                     byte[] buf = new byte[65536];
                     int len;
+                    long bytesTransferred = append ? existingBytes : 0;
+                    long lastEmitTime = 0;
+
                     while ((len = in.read(buf)) > 0) {
                         out.write(buf, 0, len);
+                        bytesTransferred += len;
+
+                        long now = System.currentTimeMillis();
+                        if (now - lastEmitTime > 300) {
+                            lastEmitTime = now;
+                            WritableMap progressMap = Arguments.createMap();
+                            progressMap.putString("fileName", cleanName);
+                            progressMap.putDouble("transferred", (double) bytesTransferred);
+                            progressMap.putDouble("total", (double) totalExpected);
+                            int pct = totalExpected > 0 ? (int) ((bytesTransferred * 100) / totalExpected) : 0;
+                            progressMap.putInt("percent", Math.min(100, Math.max(0, pct)));
+                            if (reactContext != null) {
+                                reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                                    .emit("onTransferProgress", progressMap);
+                            }
+                        }
                     }
                     out.flush();
+                }
+
+                // If folder archive (streamed zip from folder download), extract folder maintaining structure
+                if (cleanName.toLowerCase().endsWith(".zip") && (cleanName.startsWith("folder_") || fileUrl.contains("/api/download/"))) {
+                    String folderBase = cleanName.substring(0, cleanName.length() - 4).replaceFirst("^folder_", "");
+                    File folderDest = new File(fyloDir, folderBase);
+                    folderDest.mkdirs();
+                    unzipArchive(partFile, folderDest);
+                    partFile.delete();
+                    destFile = folderDest;
+                } else {
+                    if (destFile.exists()) destFile.delete();
+                    partFile.renameTo(destFile);
                 }
 
                 try {
@@ -1110,8 +1314,43 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
             } catch (Throwable t) {
                 Log.e(TAG, "downloadFileFromUrl error: " + t.getMessage(), t);
                 safePromise.reject("DL_ERROR", t.getMessage() != null ? t.getMessage() : t.toString());
+            } finally {
+                if (wakeLock != null && wakeLock.isHeld()) {
+                    try { wakeLock.release(); } catch (Throwable ignored) {}
+                }
+                if (wifiLock != null && wifiLock.isHeld()) {
+                    try { wifiLock.release(); } catch (Throwable ignored) {}
+                }
             }
         }).start();
+    }
+
+    private void unzipArchive(File zipFile, File targetDir) {
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
+            ZipEntry entry;
+            byte[] buffer = new byte[65536];
+            while ((entry = zis.getNextEntry()) != null) {
+                File file = new File(targetDir, entry.getName());
+                // Protect against Zip Slip directory traversal
+                if (!file.getCanonicalPath().startsWith(targetDir.getCanonicalPath())) {
+                    continue;
+                }
+                if (entry.isDirectory()) {
+                    file.mkdirs();
+                } else {
+                    file.getParentFile().mkdirs();
+                    try (FileOutputStream fos = new FileOutputStream(file)) {
+                        int count;
+                        while ((count = zis.read(buffer)) > 0) {
+                            fos.write(buffer, 0, count);
+                        }
+                    }
+                }
+                zis.closeEntry();
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, "unzipArchive error: " + e.getMessage(), e);
+        }
     }
 
     public static WritableMap copySingleUri(Uri uri, Context context, File sharedDir) {
