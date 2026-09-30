@@ -879,8 +879,6 @@ export default function App() {
 
   // Native External File & Player Chooser Prompt State
   const [externalFilePrompt, setExternalFilePrompt] = useState(null); // { file, source: 'phone' | 'pc' }
-  const [audioChoiceModal, setAudioChoiceModal] = useState(null); // { file, source: 'phone' | 'pc' }
-  const [videoChoiceModal, setVideoChoiceModal] = useState(null); // { file, source: 'phone' | 'pc', playlist: Array }
 
   // Universal Media Lightbox State with Pinch-to-Zoom & Pan & Carousel Playlist
   const [lightboxItem, setLightboxItem] = useState(null); // { item, source: 'phone' | 'pc', index: number, playlist: Array }
@@ -2700,6 +2698,20 @@ export default function App() {
     return map[e] || '*/*';
   };
 
+  const playInbuiltAudio = (file, source = 'phone') => {
+    if (!file) return;
+    const pathOrUrl = source === 'pc'
+      ? (file.downloadUrl
+          ? file.downloadUrl
+          : (pairedPc ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(file.path || '')}&auth=${pcAuthToken || ''}` : null))
+      : file.path;
+    if (pathOrUrl && FyloModule && FyloModule.openVideoPlayer) {
+      FyloModule.openVideoPlayer(pathOrUrl, 'audio/*');
+    } else {
+      setLightboxItem({ item: file, source, index: 0, playlist: [file] });
+    }
+  };
+
   const openExternalFileOrChooser = async (file, source = 'phone', mode = 'auto') => {
     if (!file) return;
     const fileName = file.name || file.path?.split(/[\\/]/).pop() || 'file';
@@ -2880,12 +2892,22 @@ export default function App() {
     if (!file) return;
     const ext = file.ext || (file.name || '').split('.').pop().toLowerCase();
     if (isAudioFile(ext)) {
-      setAudioChoiceModal({ file, source: 'pc' });
+      playInbuiltAudio(file, 'pc');
       return;
     }
     if (isVideoFile(ext)) {
       const mediaFiles = sharedHubFiles.filter((f) => isVideoFile(f.ext));
-      setVideoChoiceModal({ file, source: 'pc', playlist: mediaFiles.length > 0 ? mediaFiles : [file] });
+      const idx = mediaFiles.findIndex((f) => (f.id && file.id && f.id === file.id) || f.name === file.name || (f.path && file.path && f.path === file.path));
+      const activeIdx = idx >= 0 ? idx : 0;
+      setLightboxItem({
+        item: {
+          ...file,
+          path: file.path || file.name,
+        },
+        source: 'pc',
+        index: activeIdx,
+        playlist: mediaFiles.length > 0 ? mediaFiles : [file],
+      });
       return;
     }
     const isImg = isImageFile(ext);
@@ -4207,10 +4229,16 @@ export default function App() {
                         } else if (item.isDir) {
                           loadPhoneFolder(item.path);
                         } else if (isAudioFile(item.ext)) {
-                          setAudioChoiceModal({ file: item, source: 'phone' });
+                          playInbuiltAudio(item, 'phone');
                         } else if (isVideoFile(item.ext)) {
                           const playlist = filteredPhoneItems.filter((f) => !f.isDir && isVideoFile(f.ext));
-                          setVideoChoiceModal({ file: item, source: 'phone', playlist: playlist.length > 0 ? playlist : [item] });
+                          const idx = playlist.findIndex((f) => f.path === item.path);
+                          setLightboxItem({
+                            item,
+                            source: 'phone',
+                            index: idx >= 0 ? idx : 0,
+                            playlist: playlist.length > 0 ? playlist : [item],
+                          });
                         } else if (isViewableMedia(item.ext)) {
                           const playlist = filteredPhoneItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                           const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4289,10 +4317,16 @@ export default function App() {
                       } else if (item.isDir) {
                         loadPhoneFolder(item.path);
                       } else if (isAudioFile(item.ext)) {
-                        setAudioChoiceModal({ file: item, source: 'phone' });
+                        playInbuiltAudio(item, 'phone');
                       } else if (isVideoFile(item.ext)) {
                         const playlist = filteredPhoneItems.filter((f) => !f.isDir && isVideoFile(f.ext));
-                        setVideoChoiceModal({ file: item, source: 'phone', playlist: playlist.length > 0 ? playlist : [item] });
+                        const idx = playlist.findIndex((f) => f.path === item.path);
+                        setLightboxItem({
+                          item,
+                          source: 'phone',
+                          index: idx >= 0 ? idx : 0,
+                          playlist: playlist.length > 0 ? playlist : [item],
+                        });
                       } else if (isViewableMedia(item.ext)) {
                         const playlist = filteredPhoneItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                         const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4691,10 +4725,16 @@ export default function App() {
                             } else if (item.isDir) {
                               loadPcFolder(item.path);
                             } else if (isAudioFile(item.ext)) {
-                              setAudioChoiceModal({ file: item, source: 'pc' });
+                              playInbuiltAudio(item, 'pc');
                             } else if (isVideoFile(item.ext)) {
                               const playlist = filteredPcItems.filter((f) => !f.isDir && isVideoFile(f.ext));
-                              setVideoChoiceModal({ file: item, source: 'pc', playlist: playlist.length > 0 ? playlist : [item] });
+                              const idx = playlist.findIndex((f) => f.path === item.path);
+                              setLightboxItem({
+                                item,
+                                source: 'pc',
+                                index: idx >= 0 ? idx : 0,
+                                playlist: playlist.length > 0 ? playlist : [item],
+                              });
                             } else if (isViewableMedia(item.ext)) {
                               const playlist = filteredPcItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                               const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4759,10 +4799,16 @@ export default function App() {
                           } else if (item.isDir) {
                             loadPcFolder(item.path);
                           } else if (isAudioFile(item.ext)) {
-                            setAudioChoiceModal({ file: item, source: 'pc' });
+                            playInbuiltAudio(item, 'pc');
                           } else if (isVideoFile(item.ext)) {
                             const playlist = filteredPcItems.filter((f) => !f.isDir && isVideoFile(f.ext));
-                            setVideoChoiceModal({ file: item, source: 'pc', playlist: playlist.length > 0 ? playlist : [item] });
+                            const idx = playlist.findIndex((f) => f.path === item.path);
+                            setLightboxItem({
+                              item,
+                              source: 'pc',
+                              index: idx >= 0 ? idx : 0,
+                              playlist: playlist.length > 0 ? playlist : [item],
+                            });
                           } else if (isViewableMedia(item.ext)) {
                             const playlist = filteredPcItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                             const idx = playlist.findIndex((f) => f.path === item.path);
@@ -5426,13 +5472,17 @@ export default function App() {
                     activeOpacity={0.8}
                     style={styles.lightboxOpenExternalBtn}
                     onPress={() => {
-                      openExternalFileOrChooser(lightboxItem.item, lightboxItem.source);
+                      if (isAudioFile(lightboxItem?.item?.ext)) {
+                        playInbuiltAudio(lightboxItem.item, lightboxItem.source);
+                      } else {
+                        openExternalFileOrChooser(lightboxItem.item, lightboxItem.source);
+                      }
                     }}>
                     <Text style={styles.lightboxOpenExternalBtnIcon}>
                       {isAudioFile(lightboxItem?.item?.ext) ? '🎵' : '↗'}
                     </Text>
                     <Text style={styles.lightboxOpenExternalBtnText}>
-                      {isAudioFile(lightboxItem?.item?.ext) ? 'Play in Phone Music Player' : 'Open in External App / Player ↗'}
+                      {isAudioFile(lightboxItem?.item?.ext) ? 'Play in Built-in Player' : 'Open in External App / Player ↗'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -5461,7 +5511,11 @@ export default function App() {
                   activeOpacity={0.75}
                   style={styles.lightboxOpenInAppBtn}
                   onPress={() => {
-                    openExternalFileOrChooser(lightboxItem.item, lightboxItem.source);
+                    if (isAudioFile(lightboxItem?.item?.ext)) {
+                      playInbuiltAudio(lightboxItem.item, lightboxItem.source);
+                    } else {
+                      openExternalFileOrChooser(lightboxItem.item, lightboxItem.source);
+                    }
                   }}>
                   <Text style={styles.lightboxOpenInAppBtnText}>
                     {isAudioFile(lightboxItem?.item?.ext) ? 'Play Track 🎵' : 'Open with App ↗'}
@@ -6597,217 +6651,6 @@ export default function App() {
               style={[styles.modalPrimaryBtn, { marginTop: 14 }]}
               onPress={() => setShowSettingsModal(false)}>
               <Text style={styles.modalPrimaryBtnText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-      {/* Sleek Audio Player Selector Modal */}
-      <Modal
-        visible={!!audioChoiceModal}
-        transparent
-        animationType="fade"
-        statusBarTranslucent={true}
-        onRequestClose={() => setAudioChoiceModal(null)}>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalDismissArea}
-            activeOpacity={1}
-            onPress={() => setAudioChoiceModal(null)}
-          />
-          <View style={[styles.modalContent, !isDarkMode && styles.modalContentLight, { maxWidth: 360, padding: 22, borderRadius: 24 }]}>
-            <View style={{ alignItems: 'center', marginBottom: 16 }}>
-              <View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(37, 99, 235, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 26 }}>🎵</Text>
-              </View>
-              <Text style={[styles.modalTitle, !isDarkMode && styles.modalTitleLight, { textAlign: 'center', fontSize: 16, marginBottom: 4 }]} numberOfLines={1}>
-                {audioChoiceModal?.file?.name || 'Audio Track'}
-              </Text>
-              <Text style={{ color: !isDarkMode ? '#64748b' : '#94a3b8', fontSize: 12, textAlign: 'center' }}>
-                Play in Fylo preinstalled player or choose an app from your phone:
-              </Text>
-            </View>
-
-            {/* Option 1: In-App Player (Preinstalled) */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={{
-                backgroundColor: '#2563eb',
-                paddingVertical: 13,
-                paddingHorizontal: 16,
-                borderRadius: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                marginBottom: 10,
-              }}
-              onPress={() => {
-                const choice = audioChoiceModal;
-                setAudioChoiceModal(null);
-                if (choice) {
-                  const pathOrUrl = choice.source === 'pc'
-                    ? (choice.file?.downloadUrl
-                        ? choice.file.downloadUrl
-                        : `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(choice.file?.path || '')}&auth=${pcAuthToken || ''}`)
-                    : choice.file?.path;
-                  if (FyloModule && FyloModule.openVideoPlayer) {
-                    FyloModule.openVideoPlayer(pathOrUrl, 'audio/*');
-                  } else {
-                    setLightboxItem({ item: choice.file, source: choice.source, index: 0, playlist: [choice.file] });
-                  }
-                }
-              }}>
-              <Text style={{ fontSize: 15, color: '#fff' }}>▶</Text>
-              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 14 }}>
-                Play in In-App Player (Preinstalled)
-              </Text>
-            </TouchableOpacity>
-
-            {/* Option 2: Choose App from Phone */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={{
-                backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
-                paddingVertical: 13,
-                paddingHorizontal: 16,
-                borderRadius: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                borderWidth: 1,
-                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
-                marginBottom: 12,
-              }}
-              onPress={() => {
-                const choice = audioChoiceModal;
-                setAudioChoiceModal(null);
-                if (choice) {
-                  openExternalFileOrChooser(choice.file, choice.source);
-                }
-              }}>
-              <Text style={{ fontSize: 15, color: '#3b82f6' }}>🎵</Text>
-              <Text style={{ color: isDarkMode ? '#f8fafc' : '#0f172a', fontWeight: '800', fontSize: 14 }}>
-                Choose App from Phone
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={{ paddingVertical: 8, alignItems: 'center' }}
-              onPress={() => setAudioChoiceModal(null)}>
-              <Text style={{ color: !isDarkMode ? '#64748b' : '#94a3b8', fontSize: 13, fontWeight: '700' }}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-      {/* Sleek Video Stream Selector Modal */}
-      <Modal
-        visible={!!videoChoiceModal}
-        transparent
-        animationType="fade"
-        statusBarTranslucent={true}
-        onRequestClose={() => setVideoChoiceModal(null)}>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalDismissArea}
-            activeOpacity={1}
-            onPress={() => setVideoChoiceModal(null)}
-          />
-          <View style={[styles.modalContent, !isDarkMode && styles.modalContentLight, { maxWidth: 360, padding: 22, borderRadius: 24 }]}>
-            <View style={{ alignItems: 'center', marginBottom: 16 }}>
-              <View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(37, 99, 235, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 26 }}>🎬</Text>
-              </View>
-              <Text style={[styles.modalTitle, !isDarkMode && styles.modalTitleLight, { textAlign: 'center', fontSize: 16, marginBottom: 4 }]} numberOfLines={1}>
-                {videoChoiceModal?.file?.name || 'Video Track'}
-              </Text>
-              <Text style={{ color: !isDarkMode ? '#64748b' : '#94a3b8', fontSize: 12, textAlign: 'center' }}>
-                Stream directly over Wi-Fi (instant click & watch, zero download):
-              </Text>
-            </View>
-
-            {/* Option 1: Stream in Phone App (VLC / MX Player) */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={{
-                backgroundColor: '#2563eb',
-                paddingVertical: 13,
-                paddingHorizontal: 16,
-                borderRadius: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                marginBottom: 10,
-              }}
-              onPress={() => {
-                const choice = videoChoiceModal;
-                setVideoChoiceModal(null);
-                if (choice) {
-                  if (choice.source === 'pc') {
-                    const downloadUrl = choice.file?.downloadUrl
-                      ? choice.file.downloadUrl
-                      : (pairedPc ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(choice.file?.path || '')}&auth=${pcAuthToken || ''}` : null);
-                    if (downloadUrl && FyloModule && FyloModule.openUrlWithChooser) {
-                      FyloModule.openUrlWithChooser(downloadUrl, 'video/*', `Stream ${choice.file?.name || 'Video'}`);
-                    } else if (downloadUrl && FyloModule && FyloModule.openVideoPlayer) {
-                      FyloModule.openVideoPlayer(downloadUrl, 'video/*');
-                    }
-                  } else {
-                    if (choice.file?.path && FyloModule && FyloModule.openFileWithChooser) {
-                      FyloModule.openFileWithChooser(choice.file.path, 'video/*');
-                    }
-                  }
-                }
-              }}>
-              <Text style={{ fontSize: 15, color: '#fff' }}>⚡</Text>
-              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 14 }}>
-                Stream in Phone App (VLC / MX Player)
-              </Text>
-            </TouchableOpacity>
-
-            {/* Option 2: Play in In-App Player */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={{
-                backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
-                paddingVertical: 13,
-                paddingHorizontal: 16,
-                borderRadius: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                borderWidth: 1,
-                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
-                marginBottom: 12,
-              }}
-              onPress={() => {
-                const choice = videoChoiceModal;
-                setVideoChoiceModal(null);
-                if (choice) {
-                  const playlist = choice.playlist || [choice.file];
-                  const idx = playlist.findIndex((f) => f.path === choice.file?.path);
-                  setLightboxItem({
-                    item: choice.file,
-                    source: choice.source,
-                    index: idx >= 0 ? idx : 0,
-                    playlist,
-                  });
-                }
-              }}>
-              <Text style={{ fontSize: 15, color: '#3b82f6' }}>▶</Text>
-              <Text style={{ color: isDarkMode ? '#f8fafc' : '#0f172a', fontWeight: '800', fontSize: 14 }}>
-                Play in In-App Player
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={{ paddingVertical: 8, alignItems: 'center' }}
-              onPress={() => setVideoChoiceModal(null)}>
-              <Text style={{ color: !isDarkMode ? '#64748b' : '#94a3b8', fontSize: 13, fontWeight: '700' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
