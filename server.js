@@ -48,6 +48,87 @@ let streamRequests = new Set();
 let webrtcSessions = {};
 let downloadFolder = path.join(os.homedir(), 'Downloads');
 
+const SAVED_DEVICES_PATH = path.join(os.homedir(), '.fylo-devices.json');
+let savedDevices = {};
+
+function loadSavedDevices() {
+    try {
+        if (fs.existsSync(SAVED_DEVICES_PATH)) {
+            const data = fs.readFileSync(SAVED_DEVICES_PATH, 'utf8');
+            savedDevices = JSON.parse(data) || {};
+        }
+    } catch (e) {
+        console.warn('[Saved Devices] Error reading .fylo-devices.json:', e.message);
+        savedDevices = {};
+    }
+}
+
+function persistSavedDevices() {
+    try {
+        fs.writeFileSync(SAVED_DEVICES_PATH, JSON.stringify(savedDevices, null, 2), 'utf8');
+    } catch (e) {
+        console.warn('[Saved Devices] Error writing .fylo-devices.json:', e.message);
+    }
+}
+
+loadSavedDevices();
+
+function probeAndActivateDevice(device) {
+    return new Promise((resolve) => {
+        if (!device || !device.ip || !device.port) return resolve(false);
+        const probeUrl = `http://${device.ip}:${device.port}/api/info?auth=${secretToken}`;
+        const probeReq = http.get(probeUrl, (pRes) => {
+            if (pRes.statusCode === 200) {
+                let pData = '';
+                pRes.on('data', c => pData += c);
+                pRes.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(pData);
+                        const phoneName = parsed.name || device.name || device.model || 'Android Phone';
+                        const phoneModel = parsed.model || device.model || 'Android Device';
+                        mobileDevices[device.id] = {
+                            id: device.id,
+                            name: phoneName,
+                            model: phoneModel,
+                            ip: device.ip,
+                            port: device.port,
+                            readOnly: parsed.readOnly !== undefined ? parsed.readOnly : (device.readOnly !== undefined ? device.readOnly : false),
+                            allowFullPhoneAccess: parsed.allowFullPhoneAccess !== undefined ? !!parsed.allowFullPhoneAccess : true,
+                            storage: parsed.storage || device.storage || { total: 0, free: 0 },
+                            battery: parsed.battery !== undefined ? parsed.battery : null,
+                            lastActive: Date.now()
+                        };
+                        devices[device.id] = {
+                            id: device.id,
+                            name: phoneName,
+                            kind: 'android',
+                            isHost: false,
+                            lastActive: Date.now()
+                        };
+                        if (savedDevices[device.id]) {
+                            savedDevices[device.id].name = phoneName;
+                            savedDevices[device.id].model = phoneModel;
+                            savedDevices[device.id].lastSeen = Date.now();
+                            persistSavedDevices();
+                        }
+                        console.log(`[AutoConnect] Successfully linked device: ${phoneName} (${device.ip}:${device.port})`);
+                        resolve(true);
+                    } catch (e) {
+                        resolve(false);
+                    }
+                });
+            } else {
+                resolve(false);
+            }
+        });
+        probeReq.on('error', () => resolve(false));
+        probeReq.setTimeout(2500, () => {
+            probeReq.destroy();
+            resolve(false);
+        });
+    });
+}
+
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
     
@@ -1146,6 +1227,18 @@ app.post('/api/mobile/connect', (req, res) => {
         lastActive: Date.now()
     };
 
+    // Persist to saved devices
+    savedDevices[deviceId] = {
+        id: deviceId,
+        name: phoneName,
+        model: model || 'Android Device',
+        ip: resolvedIp,
+        port: phonePort,
+        lastSeen: Date.now(),
+        autoConnect: savedDevices[deviceId]?.autoConnect !== undefined ? savedDevices[deviceId].autoConnect : true
+    };
+    persistSavedDevices();
+
     console.log(`[Fylo v4] Mobile connected: ${phoneName} (${resolvedIp}:${phonePort}), Read-Only: ${readOnly}, Full Phone Access: ${mobileDevices[deviceId].allowFullPhoneAccess}`);
     res.json({ 
         success: true, 
@@ -1218,6 +1311,75 @@ app.get('/api/mobile/devices', (req, res) => {
 
     res.json(list);
 });
+
+// Saved / Remembered Devices Endpoints
+app.get('/api/devices/saved', (req, res) => {
+    const now = Date.now();
+    const list = Object.values(savedDevices).map(d => {
+        const active = mobileDevices[d.id];
+        const isOnline = active && ((now - active.lastActive) <= 35000);
+        return {
+            id: d.id,
+            name: d.name,
+            model: d.model,
+            ip: (d.ip || '').replace(/^::ffff:/, ''),
+            port: d.port,
+            lastSeen: d.lastSeen,
+            autoConnect: d.autoConnect !== false,
+            online: !!isOnline
+        };
+    });
+    res.json(list);
+});
+
+app.post('/api/devices/saved/:id/forget', (req, res) => {
+    const { id } = req.params;
+    if (savedDevices[id]) {
+        delete savedDevices[id];
+        persistSavedDevices();
+    }
+    res.json({ success: true, message: 'Device forgotten' });
+});
+
+app.post('/api/devices/saved/:id/connect', async (req, res) => {
+    const { id } = req.params;
+    const device = savedDevices[id];
+    if (!device) {
+        return res.status(404).json({ error: 'Device not found in saved list' });
+    }
+    const success = await probeAndActivateDevice(device);
+    if (success) {
+        return res.json({ success: true, message: `Connected to ${device.name || 'device'}` });
+    } else {
+        return res.status(502).json({ error: `Could not reach ${device.name || 'device'} at ${device.ip}:${device.port}. Ensure phone is on the same Wi-Fi with Fylo running.` });
+    }
+});
+
+app.post('/api/devices/saved/:id/toggle-autoconnect', (req, res) => {
+    const { id } = req.params;
+    if (!savedDevices[id]) {
+        return res.status(404).json({ error: 'Device not found' });
+    }
+    savedDevices[id].autoConnect = !savedDevices[id].autoConnect;
+    persistSavedDevices();
+    res.json({ success: true, autoConnect: savedDevices[id].autoConnect });
+});
+
+// Active auto-connect daemon:
+// Every 10 seconds, for any saved device marked autoConnect: true that is not currently active, probe it and automatically re-link it
+setInterval(async () => {
+    const now = Date.now();
+    for (const id in savedDevices) {
+        const d = savedDevices[id];
+        if (d.autoConnect !== false) {
+            const active = mobileDevices[id];
+            const isCurrentlyActive = active && ((now - active.lastActive) <= 35000);
+            if (!isCurrentlyActive && d.ip && d.port) {
+                probeAndActivateDevice(d).catch(() => {});
+            }
+        }
+    }
+}, 10000);
 
 // Update mobile device capabilities (e.g. storage access permission)
 app.post(['/api/device/update-capabilities', '/api/mobile/update-capabilities'], (req, res) => {
@@ -2142,6 +2304,55 @@ app.post('/api/pc/trash-file', async (req, res) => {
     }
 });
 
+// Open PC file with default system application (HOST ONLY)
+app.post('/api/pc/open-file', async (req, res) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host only' });
+    }
+    const { filePath } = req.body;
+    if (!filePath || !fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File not found' });
+    }
+    try {
+        if (shell && typeof shell.openPath === 'function') {
+            const errStr = await shell.openPath(filePath);
+            if (errStr) {
+                return res.status(500).json({ error: errStr });
+            }
+            return res.json({ success: true, message: 'Opened file with default application' });
+        } else {
+            const { exec } = require('child_process');
+            exec(`start "" "${filePath}"`);
+            return res.json({ success: true, message: 'Opened file' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to open file: ' + err.message });
+    }
+});
+
+// Reveal PC file in File Explorer (HOST ONLY)
+app.post('/api/pc/reveal-file', (req, res) => {
+    if (!isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: '403 Forbidden: Host only' });
+    }
+    const { filePath } = req.body;
+    if (!filePath || !fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File not found' });
+    }
+    try {
+        if (shell && typeof shell.showItemInFolder === 'function') {
+            shell.showItemInFolder(filePath);
+            return res.json({ success: true, message: 'Revealed file in File Explorer' });
+        } else {
+            const { exec } = require('child_process');
+            exec(`explorer.exe /select,"${filePath}"`);
+            return res.json({ success: true, message: 'Revealed file in File Explorer' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to reveal file: ' + err.message });
+    }
+});
+
 // Safely move Phone file to Mobile .trash Recycle Bin (HOST ONLY)
 app.post('/api/mobile/fs/trash-file', (req, res) => {
     if (!isLocalHostIp(req.ip)) {
@@ -2337,7 +2548,12 @@ function startUdpDiscovery() {
         udpServer.on('message', (msg, rinfo) => {
             try {
                 const str = msg.toString('utf8');
-                if (str.includes('FYLO_DISCOVERY_PING')) {
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(str);
+                } catch(e) {}
+
+                if (str.includes('FYLO_DISCOVERY_PING') || (parsed && (parsed.type === 'FYLO_DISCOVERY_PING' || parsed.type === 'FYLO_PHONE_BEACON'))) {
                     const beacon = JSON.stringify({
                         type: 'FYLO_PC_BEACON',
                         name: os.hostname() || 'Windows Host',
@@ -2348,6 +2564,39 @@ function startUdpDiscovery() {
                     });
                     const buf = Buffer.from(beacon, 'utf8');
                     udpServer.send(buf, 0, buf.length, rinfo.port, rinfo.address, () => {});
+
+                    const senderIp = (rinfo.address || '').replace(/^::ffff:/, '');
+                    const phoneId = parsed?.deviceId || parsed?.id;
+                    const phonePort = parsed?.port ? parseInt(parsed.port, 10) : 8080;
+
+                    if (phoneId && savedDevices[phoneId] && savedDevices[phoneId].autoConnect !== false) {
+                        savedDevices[phoneId].ip = senderIp;
+                        if (phonePort) savedDevices[phoneId].port = phonePort;
+                        probeAndActivateDevice(savedDevices[phoneId]).catch(() => {});
+                    } else if (senderIp) {
+                        // Check if senderIp matches any saved device
+                        let matched = false;
+                        for (const sId in savedDevices) {
+                            if (savedDevices[sId].ip === senderIp && savedDevices[sId].autoConnect !== false) {
+                                matched = true;
+                                probeAndActivateDevice(savedDevices[sId]).catch(() => {});
+                                break;
+                            }
+                        }
+                        // If only 1 saved device exists with autoConnect true, and its IP might have changed, probe this senderIp
+                        if (!matched) {
+                            const savedList = Object.values(savedDevices).filter(d => d.autoConnect !== false);
+                            if (savedList.length === 1 && !mobileDevices[savedList[0].id]) {
+                                const candidate = { ...savedList[0], ip: senderIp, port: phonePort || savedList[0].port || 8080 };
+                                probeAndActivateDevice(candidate).then(ok => {
+                                    if (ok && savedDevices[candidate.id]) {
+                                        savedDevices[candidate.id].ip = senderIp;
+                                        persistSavedDevices();
+                                    }
+                                }).catch(() => {});
+                            }
+                        }
+                    }
                 }
             } catch (e) {}
         });

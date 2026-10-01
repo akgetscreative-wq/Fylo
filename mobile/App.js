@@ -949,8 +949,8 @@ export default function App() {
   const directShareModalVisibleRef = useRef(directShareModalVisible);
   directShareModalVisibleRef.current = directShareModalVisible;
 
-  // Native External File & Player Chooser Prompt State
-  const [externalFilePrompt, setExternalFilePrompt] = useState(null); // { file, source: 'phone' | 'pc' }
+  // Native PC File Action & Chooser Prompt State (Download to Phone vs Open in App)
+  const [pcFileActionPrompt, setPcFileActionPrompt] = useState(null); // { file, source: 'pc' | 'sharehub' }
 
   // Universal Media Lightbox State with Pinch-to-Zoom & Pan & Carousel Playlist
   const [lightboxItem, setLightboxItem] = useState(null); // { item, source: 'phone' | 'pc', index: number, playlist: Array }
@@ -2833,33 +2833,50 @@ export default function App() {
         }
       }
 
-      // First try opening directly via URL with Android native chooser (VLC, MX Player, Office, Drive, browsers)
+      if (mode === 'download') {
+        await handleDownloadPcFile(file.path, file.name);
+        return;
+      }
+
+      // Try opening directly via URL with Android native chooser (VLC, MX Player, Office, Drive, browsers)
       if (FyloModule && FyloModule.openUrlWithChooser) {
         try {
           await FyloModule.openUrlWithChooser(downloadUrl, mimeType, `Open ${fileName}`);
           return;
         } catch (err) {
-          console.warn('openUrlWithChooser failed, falling back to silent cache & open:', err);
+          console.warn('openUrlWithChooser failed:', err);
+          showToast('⚠️ No app found to stream this file directly. Please use "Download to Phone".');
+          return;
         }
+      } else {
+        showToast('⚠️ Native app chooser is not available');
       }
+    }
+  };
 
-      // If openUrlWithChooser throws/unsupported, silently cache to temp/cache and open via chooser
-      showToast(`Opening ${fileName}...`);
+  const handleOpenPcFileInApp = async (file) => {
+    if (!file) return;
+    const fileName = file.name || file.path?.split(/[\\/]/).pop() || 'file';
+    const fileExt = file.ext || (fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '');
+    const mimeType = getMimeTypeForExt(fileExt);
+    const downloadUrl = file.downloadUrl
+      ? file.downloadUrl
+      : (pairedPc ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(file.path || '')}${pcAuthToken ? `&auth=${pcAuthToken}` : ''}` : null);
+
+    if (!downloadUrl) {
+      showToast('⚠️ Cannot access PC file without connection');
+      return;
+    }
+
+    if (FyloModule && FyloModule.openUrlWithChooser) {
       try {
-        if (FyloModule && FyloModule.downloadFileFromUrl) {
-          const localPath = await FyloModule.downloadFileFromUrl(downloadUrl, fileName);
-          if (localPath && FyloModule.openFileWithChooser) {
-            await FyloModule.openFileWithChooser(localPath, mimeType);
-          } else {
-            showToast(`✓ File saved to ${localPath || 'Downloads/Fylo'}`);
-          }
-        } else {
-          await handleDownloadPcFile(file.path, file.name);
-        }
-      } catch (dlErr) {
-        console.warn('Download & open error:', dlErr);
-        showToast(dlErr?.message || '⚠️ Failed to open file');
+        await FyloModule.openUrlWithChooser(downloadUrl, mimeType, `Open ${fileName}`);
+      } catch (err) {
+        console.warn('openUrlWithChooser failed:', err);
+        showToast('⚠️ No app found to stream this file directly. Please use "Download to Phone".');
       }
+    } else {
+      showToast('⚠️ Native app chooser is not available');
     }
   };
 
@@ -2888,6 +2905,7 @@ export default function App() {
               sizeLabel: f.sizeLabel || (f.size ? formatFileSize(f.size) : 'Ready'),
               ext: f.ext || (f.name ? f.name.split('.').pop().toLowerCase() : ''),
               path: f.path,
+              phonePath: f.phonePath || (isSentByPhone && f.path && !f.path.includes('\\') ? f.path : null),
               downloadUrl: fullDlUrl,
               direction: isSentByPhone ? 'sent' : 'received',
               uploadedBy: f.uploadedBy || (isSentByPhone ? 'Mobile Phone' : 'Host PC'),
@@ -2962,11 +2980,15 @@ export default function App() {
 
   const handleSharedHubItemPress = (file) => {
     if (!file) return;
+    const isSentByPhone = file.direction === 'sent' || file.uploadedBy === 'Mobile Phone' || file.ownerSessionId === 'mobile';
     const ext = file.ext || (file.name || '').split('.').pop().toLowerCase();
+    const resolvedPath = file.phonePath || file.path || file.name;
+
     if (isAudioFile(ext)) {
-      playInbuiltAudio(file, 'pc');
+      playInbuiltAudio(file, isSentByPhone ? 'phone' : 'pc');
       return;
     }
+
     if (isVideoFile(ext)) {
       const mediaFiles = sharedHubFiles.filter((f) => isVideoFile(f.ext));
       const idx = mediaFiles.findIndex((f) => (f.id && file.id && f.id === file.id) || f.name === file.name || (f.path && file.path && f.path === file.path));
@@ -2974,14 +2996,15 @@ export default function App() {
       setLightboxItem({
         item: {
           ...file,
-          path: file.path || file.name,
+          path: resolvedPath,
         },
-        source: 'pc',
+        source: isSentByPhone ? 'phone' : 'pc',
         index: activeIdx,
         playlist: mediaFiles.length > 0 ? mediaFiles : [file],
       });
       return;
     }
+
     const isImg = isImageFile(ext);
 
     if (isImg) {
@@ -2991,14 +3014,28 @@ export default function App() {
       setLightboxItem({
         item: {
           ...file,
-          path: file.path || file.name,
+          path: resolvedPath,
         },
-        source: 'pc',
+        source: isSentByPhone ? 'phone' : 'pc',
         index: activeIdx,
         playlist: mediaFiles.length > 0 ? mediaFiles : [file],
       });
+      return;
+    }
+
+    // Non-media files (PDF, DOCX, APK, ZIP, etc.)
+    if (isSentByPhone) {
+      // If the file was sent from the phone (already on the phone): opens with phone app chooser.
+      openExternalFileOrChooser({
+        ...file,
+        path: resolvedPath,
+      }, 'phone');
     } else {
-      openExternalFileOrChooser(file, 'pc');
+      // If the file is from PC and non-media: shows the sleek file action prompt with "⬇️ Save to Phone", "↗ Open with App", and "Cancel".
+      setPcFileActionPrompt({
+        file,
+        source: 'sharehub',
+      });
     }
   };
 
@@ -4817,7 +4854,10 @@ export default function App() {
                                 playlist: playlist.length > 0 ? playlist : [item],
                               });
                             } else {
-                              openExternalFileOrChooser(item, 'pc');
+                              setPcFileActionPrompt({
+                                file: item,
+                                source: 'pc',
+                              });
                             }
                           }}>
                           {item.isDir ? (
@@ -4891,7 +4931,10 @@ export default function App() {
                               playlist: playlist.length > 0 ? playlist : [item],
                             });
                           } else {
-                            openExternalFileOrChooser(item, 'pc');
+                            setPcFileActionPrompt({
+                              file: item,
+                              source: 'pc',
+                            });
                           }
                         }}>
                         {item.isDir ? (
@@ -6079,36 +6122,36 @@ export default function App() {
       </Modal>
 
       {/* ========================================================= */}
-      {/* NATIVE EXTERNAL FILE & PLAYER CHOOSER MODAL               */}
+      {/* PC FILE ACTION PROMPT MODAL (DOWNLOAD / OPEN IN APP)      */}
       {/* ========================================================= */}
       <Modal
-        visible={false}
+        visible={!!pcFileActionPrompt}
         transparent
         animationType="fade"
-        onRequestClose={() => setExternalFilePrompt(null)}>
+        onRequestClose={() => setPcFileActionPrompt(null)}>
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={styles.modalDismissArea}
             activeOpacity={1}
-            onPress={() => setExternalFilePrompt(null)}
+            onPress={() => setPcFileActionPrompt(null)}
           />
           <View style={[styles.externalPromptCard, !isDarkMode && styles.externalPromptCardLight]}>
             {/* Header */}
             <View style={styles.externalPromptHeader}>
               <View style={styles.externalPromptBadgeRow}>
-                <FileBadgeIcon ext={externalFilePrompt?.file?.ext} isDir={false} size={36} />
+                <FileBadgeIcon ext={pcFileActionPrompt?.file?.ext || (pcFileActionPrompt?.file?.name ? pcFileActionPrompt.file.name.split('.').pop() : '')} isDir={false} size={36} />
                 <View style={{ marginLeft: 10, flex: 1 }}>
                   <Text style={[styles.externalPromptHeading, !isDarkMode && styles.externalPromptHeadingLight]}>
-                    {isAudioFile(externalFilePrompt?.file?.ext) ? 'Play with Native Player' : 'Open with Phone App'}
+                    {pcFileActionPrompt?.source === 'sharehub' ? 'Shared PC File' : 'Remote PC File'}
                   </Text>
                   <Text style={styles.externalPromptBadgeSub}>
-                    {externalFilePrompt?.source === 'pc' ? 'Windows PC' : 'Local Phone'} • {formatFileSize(externalFilePrompt?.file?.size)}
+                    Windows PC • {formatFileSize(pcFileActionPrompt?.file?.size)}
                   </Text>
                 </View>
               </View>
               <TouchableOpacity
                 activeOpacity={0.75}
-                onPress={() => setExternalFilePrompt(null)}
+                onPress={() => setPcFileActionPrompt(null)}
                 style={styles.externalPromptCloseBtn}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
@@ -6119,18 +6162,18 @@ export default function App() {
               <Text
                 style={[styles.externalPromptFileName, !isDarkMode && styles.externalPromptFileNameLight]}
                 numberOfLines={2}>
-                {externalFilePrompt?.file?.name || 'File'}
+                {pcFileActionPrompt?.file?.name || 'File'}
               </Text>
               <Text style={styles.externalPromptFileFormat}>
-                Format: {(externalFilePrompt?.file?.ext || 'Unknown').toUpperCase()}
+                Format: {(pcFileActionPrompt?.file?.ext || (pcFileActionPrompt?.file?.name ? pcFileActionPrompt.file.name.split('.').pop() : 'Unknown')).toUpperCase()}
               </Text>
             </View>
 
             {/* Informative text */}
             <Text style={[styles.externalPromptDesc, !isDarkMode && styles.externalPromptDescLight]}>
-              {isAudioFile(externalFilePrompt?.file?.ext)
-                ? 'Choose your favorite music or media player installed on this phone to listen to this audio track.'
-                : 'Select an app installed on your phone (PDF reader, Docs, Office, browser, etc.) to view or edit this file.'}
+              {pcFileActionPrompt?.source === 'sharehub'
+                ? 'Save this file from PC to your phone Downloads/Fylo folder, or open directly in an installed app.'
+                : 'Download this file from your PC to phone Downloads/Fylo folder, or open directly in an installed app.'}
             </Text>
 
             {/* Action Buttons */}
@@ -6139,38 +6182,40 @@ export default function App() {
                 activeOpacity={0.8}
                 style={styles.externalPromptPrimaryBtn}
                 onPress={async () => {
-                  const prompt = externalFilePrompt;
-                  setExternalFilePrompt(null);
+                  const prompt = pcFileActionPrompt;
+                  setPcFileActionPrompt(null);
                   if (prompt?.file) {
-                    await openExternalFileOrChooser(prompt.file, prompt.source, 'auto');
+                    if (prompt.source === 'sharehub') {
+                      await handleDownloadSharedHubFile(prompt.file);
+                    } else {
+                      await handleDownloadPcFile(prompt.file.path, prompt.file.name);
+                    }
                   }
                 }}>
                 <Text style={styles.externalPromptPrimaryBtnText}>
-                  {isAudioFile(externalFilePrompt?.file?.ext) ? '▶ Choose Player from Phone' : '↗ Open in App / Player'}
+                  {pcFileActionPrompt?.source === 'sharehub' ? '⬇️ Save to Phone' : '⬇️ Download to Phone'}
                 </Text>
               </TouchableOpacity>
 
-              {externalFilePrompt?.source === 'pc' && (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={[styles.externalPromptSecondaryBtn, !isDarkMode && styles.externalPromptSecondaryBtnLight]}
-                  onPress={async () => {
-                    const prompt = externalFilePrompt;
-                    setExternalFilePrompt(null);
-                    if (prompt?.file) {
-                      await openExternalFileOrChooser(prompt.file, 'pc', 'download');
-                    }
-                  }}>
-                  <Text style={[styles.externalPromptSecondaryBtnText, !isDarkMode && styles.externalPromptSecondaryBtnTextLight]}>
-                    📥 Download to Phone & Open
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.externalPromptSecondaryBtn, !isDarkMode && styles.externalPromptSecondaryBtnLight]}
+                onPress={async () => {
+                  const prompt = pcFileActionPrompt;
+                  setPcFileActionPrompt(null);
+                  if (prompt?.file) {
+                    await handleOpenPcFileInApp(prompt.file);
+                  }
+                }}>
+                <Text style={[styles.externalPromptSecondaryBtnText, !isDarkMode && styles.externalPromptSecondaryBtnTextLight]}>
+                  {pcFileActionPrompt?.source === 'sharehub' ? '↗ Open with App' : '↗ Open in Phone App'}
+                </Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.75}
                 style={styles.externalPromptCancelBtn}
-                onPress={() => setExternalFilePrompt(null)}>
+                onPress={() => setPcFileActionPrompt(null)}>
                 <Text style={styles.externalPromptCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             </View>

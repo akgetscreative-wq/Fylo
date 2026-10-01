@@ -2781,6 +2781,184 @@
             max-width: 100% !important;
         }
 
+        /* Desktop Sidebar Expand / Restore Floating Button */
+        #desktop-sidebar-toggle-btn {
+            position: fixed;
+            top: 14px;
+            left: 16px;
+            z-index: 999;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--card-bg, #1a1a24);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        #desktop-sidebar-toggle-btn:hover {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 22px rgba(99, 102, 241, 0.4);
+        }
+
+        .app-layout.sidebar-collapsed #desktop-sidebar-toggle-btn {
+            display: inline-flex !important;
+        }
+
+        @media (max-width: 768px) {
+            #desktop-sidebar-toggle-btn {
+                display: none !important;
+            }
+        }
+
+        /* Sleek Remembered Device Cards & Switch */
+        .saved-device-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .saved-device-card:hover {
+            border-color: rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .saved-device-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .saved-device-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #64748b;
+            flex-shrink: 0;
+        }
+
+        .saved-device-dot.online {
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        .saved-device-info {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .saved-device-name-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .saved-device-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .saved-device-meta {
+            font-size: 0.74rem;
+            color: var(--text-light);
+            font-family: monospace;
+        }
+
+        .saved-device-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .fylo-switch {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .fylo-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+
+        .fylo-slider {
+            position: relative;
+            display: inline-block;
+            width: 32px;
+            height: 18px;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: .2s ease;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .fylo-slider:before {
+            position: absolute;
+            content: "";
+            height: 12px;
+            width: 12px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .2s ease;
+            border-radius: 50%;
+        }
+
+        .fylo-switch input:checked + .fylo-slider {
+            background-color: #22c55e;
+            border-color: #22c55e;
+        }
+
+        .fylo-switch input:checked + .fylo-slider:before {
+            transform: translateX(14px);
+        }
+
+        .auto-connected-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 8px;
+        }
+
         /* Prominent Back to Dashboard Buttons */
         .btn-back-dashboard {
             display: inline-flex;
@@ -5252,6 +5430,16 @@
         </sidebar>
 
         <main class="main-content">
+            <!-- Persistent Sidebar Expand / Restore Button (Visible when Sidebar is Collapsed) -->
+            <button id="desktop-sidebar-toggle-btn" class="desktop-sidebar-toggle-btn" title="Expand Sidebar (☰)">
+                <svg viewBox="0 0 24 24" style="width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round;">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+                <span>Sidebar</span>
+            </button>
+
             <!-- Mobile Web Companion Top Header Bar (< 768px) -->
             <header class="mobile-companion-header" id="mobile-companion-header">
                 <div class="mobile-top-bar">
@@ -5486,6 +5674,20 @@
                             </button>
                         </div>
 
+                        <!-- Remembered Devices Card -->
+                        <div class="bento-card" id="dash-saved-devices-card" style="padding: 18px 20px;">
+                            <div class="bento-card-header">
+                                <div class="bento-card-title">
+                                    <span class="card-header-icon">💾</span>
+                                    <span>Remembered Devices</span>
+                                </div>
+                                <span class="dash-stat-badge" id="dash-saved-badge" style="font-size: 0.72rem;">0 Saved</span>
+                            </div>
+                            <div id="dash-saved-devices-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                                <span style="font-size: 0.8rem; color: var(--text-light); opacity: 0.7;">No remembered devices yet. Scan QR code from phone to pair.</span>
+                            </div>
+                        </div>
+
                         <!-- Local Hotspot Quick Access -->
                         <div class="bento-card" style="padding: 18px 20px;">
                             <div class="bento-card-header">
@@ -5614,6 +5816,18 @@
                             style="width: 100%; justify-content: center; border-radius: 16px;">Show Blocked
                             Devices</button>
                         <ul id="blocked-list" class="hidden" style="margin-top: 12px; padding: 0;"></ul>
+                    </div>
+                </div>
+
+                <!-- Remembered / Saved Devices Card -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <span>💾 Remembered Devices</span>
+                        <span id="saved-devices-count" class="badge" style="margin-left: 8px; font-size: 0.8rem; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 10px;">0</span>
+                    </div>
+                    <p class="panel-desc">Paired phones remembered by this PC. Auto-reconnects on local Wi-Fi without scanning QR code.</p>
+                    <div id="view-devices-saved-list" style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
+                        <span style="font-size: 0.85rem; color: var(--text-light); opacity: 0.7;">No remembered devices yet. Scan QR code to link.</span>
                     </div>
                 </div>
             </div>
@@ -6314,8 +6528,8 @@
         </div>
         <div class="selection-actions">
             <button id="pc-download-selected-btn" class="btn btn-accent">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px; height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span>Download Selected</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px; height:16px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                <span>Send Selected to Phone</span>
             </button>
             <button id="pc-trash-selected-btn" class="btn" style="background: rgba(255, 71, 87, 0.2); color: var(--danger-text); border-radius: 12px; border:none; padding:8px 14px; font-weight:700; cursor:pointer;">
                 🗑️ Move to Recycle Bin
@@ -6554,6 +6768,82 @@
             <div class="admin-modal-actions">
                 <button id="admin-cancel-btn" class="btn" style="flex: 1; border-radius: 12px; justify-content: center;">Cancel</button>
                 <button id="admin-confirm-trash-btn" class="btn" style="flex: 1; border-radius: 12px; justify-content: center; background: var(--danger); color: var(--danger-text); border: none;">🗑️ Move to Trash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PC File Actions Modal (Prevents unwanted downloads, gives rich PC file options) -->
+    <div id="pc-file-actions-modal" class="admin-security-modal">
+        <div class="admin-modal-card" style="max-width: 480px; width: 92%; text-align: left; padding: 26px;">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
+                    <div id="pc-file-modal-icon" style="font-size: 2.2rem; flex-shrink: 0;">📄</div>
+                    <div style="overflow: hidden;">
+                        <div id="pc-file-modal-name" style="font-weight: 800; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">File Name</div>
+                        <div id="pc-file-modal-meta" style="font-size: 0.8rem; color: var(--text-light); margin-top: 2px;">Size & Type</div>
+                    </div>
+                </div>
+                <button type="button" class="btn" onclick="closePCFileModal()" style="padding: 4px 8px; min-height: unset; border-radius: 8px; border: none; background: rgba(255,255,255,0.06); color: var(--text-light); font-size: 1.1rem; cursor: pointer;">&times;</button>
+            </div>
+            
+            <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin-bottom: 18px; word-break: break-all; font-family: monospace; font-size: 0.74rem; color: var(--text-light);" id="pc-file-modal-path">C:\Path\To\File</div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn btn-accent" id="pc-file-modal-open-btn" style="width: 100%; justify-content: center; padding: 11px 16px; border-radius: 12px; font-weight: 700;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    Open with Default App
+                </button>
+                <button class="btn" id="pc-file-modal-reveal-btn" style="width: 100%; justify-content: center; padding: 11px 16px; border-radius: 12px; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    Show in File Explorer
+                </button>
+                <button class="btn" id="pc-file-modal-send-phone-btn" style="width: 100%; justify-content: center; padding: 11px 16px; border-radius: 12px; font-weight: 700; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                    Send to Connected Phone
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" id="pc-file-modal-copy-path-btn" style="flex: 1; justify-content: center; padding: 9px 12px; border-radius: 12px; font-size: 0.82rem; background: rgba(255,255,255,0.06); color: var(--text);">
+                        📋 Copy Full Path
+                    </button>
+                    <button class="btn" id="pc-file-modal-trash-btn" style="flex: 1; justify-content: center; padding: 9px 12px; border-radius: 12px; font-size: 0.82rem; background: rgba(255, 71, 87, 0.15); color: var(--danger-text, #ff4757); border: 1px solid rgba(255, 71, 87, 0.3);">
+                        🗑️ Move to Recycle Bin
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phone File Options Modal (Prevents direct download on click) -->
+    <div id="phone-file-options-modal" class="admin-security-modal">
+        <div class="admin-modal-card" style="max-width: 440px; width: 92%; text-align: left; padding: 26px;">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
+                    <div id="phone-file-modal-icon" style="font-size: 2.2rem; flex-shrink: 0;">📱</div>
+                    <div style="overflow: hidden;">
+                        <div id="phone-file-modal-name" style="font-weight: 800; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">Phone File</div>
+                        <div id="phone-file-modal-meta" style="font-size: 0.8rem; color: var(--text-light); margin-top: 2px;">File Info</div>
+                    </div>
+                </div>
+                <button type="button" class="btn" onclick="closePhoneFileModal()" style="padding: 4px 8px; min-height: unset; border-radius: 8px; border: none; background: rgba(255,255,255,0.06); color: var(--text-light); font-size: 1.1rem; cursor: pointer;">&times;</button>
+            </div>
+
+            <p style="font-size: 0.82rem; color: var(--text-light); margin-bottom: 18px; line-height: 1.4;">
+                This file is stored on your phone. Choose an action below:
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn btn-accent" id="phone-file-modal-download-btn" style="width: 100%; justify-content: center; padding: 11px 16px; border-radius: 12px; font-weight: 700; font-size: 0.9rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width: 18px; height: 18px; margin-right: 6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    ⬇️ Download to PC
+                </button>
+                <div style="display: flex; gap: 8px; margin-top: 4px;">
+                    <button class="btn" id="phone-file-modal-delete-btn" style="flex: 1; justify-content: center; padding: 9px 12px; border-radius: 12px; font-size: 0.82rem; background: rgba(255, 71, 87, 0.15); color: var(--danger-text, #ff4757); border: 1px solid rgba(255, 71, 87, 0.3);">
+                        🗑️ Delete from Phone
+                    </button>
+                    <button class="btn" onclick="closePhoneFileModal()" style="flex: 1; justify-content: center; padding: 9px 12px; border-radius: 12px; font-size: 0.82rem; background: rgba(255,255,255,0.06); color: var(--text);">
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -7153,6 +7443,9 @@
                     }
                 }
 
+                // Load Remembered Devices
+                loadSavedDevicesList();
+
                 // 5. Populate Connected Devices Count
                 const devRes = await apiFetch('/api/devices');
                 const mDevRes = await apiFetch('/api/mobile/devices');
@@ -7199,10 +7492,15 @@
             }
         }
 
-        function toggleSidebar() {
+        function toggleSidebar(forceExpand) {
             const appEl = $('#app');
             if (appEl) {
-                appEl.classList.toggle('sidebar-collapsed');
+                if (typeof forceExpand === 'boolean') {
+                    if (forceExpand) appEl.classList.remove('sidebar-collapsed');
+                    else appEl.classList.add('sidebar-collapsed');
+                } else {
+                    appEl.classList.toggle('sidebar-collapsed');
+                }
                 const isCollapsed = appEl.classList.contains('sidebar-collapsed');
                 localStorage.setItem('fylo_sidebar_collapsed', isCollapsed ? '1' : '0');
             }
@@ -7258,6 +7556,7 @@
         // Top Header Bar Event Bindings
         $('#sidebar-toggle-btn')?.addEventListener('click', toggleSidebar);
         $('#sidebar-hide-btn')?.addEventListener('click', toggleSidebar);
+        $('#desktop-sidebar-toggle-btn')?.addEventListener('click', () => toggleSidebar(true));
         $('#top-back-dashboard-btn')?.addEventListener('click', returnToDashboard);
 
         $('#top-ip-pill')?.addEventListener('click', () => {
@@ -9602,14 +9901,14 @@ function iconLabel(ext, type) {
                     };
                 }
 
-                // Handle Card Click: Folders navigate, Media opens in Google Photos gallery instantly!
+                // Handle Card Click: Folders navigate, Media opens in gallery, Non-media prompts options!
                 card.onclick = () => {
                     if (item.isDir) {
                         fetchPhoneFolder(item.path);
                     } else if (isMedia) {
                         openGallery(item);
                     } else {
-                        downloadPhoneFile(item);
+                        openPhoneFileModal(item);
                     }
                 };
 
@@ -10865,20 +11164,15 @@ function iconLabel(ext, type) {
                 actions.className = 'phone-item-actions';
 
                 if (!item.isDir) {
-                    const dlBtn = document.createElement('button');
-                    dlBtn.className = 'phone-action-btn';
-                    dlBtn.title = 'Download';
-                    dlBtn.innerHTML = '⬇️';
-                    dlBtn.onclick = (e) => {
+                    const actBtn = document.createElement('button');
+                    actBtn.className = 'phone-action-btn';
+                    actBtn.title = 'File Actions';
+                    actBtn.innerHTML = '⚡';
+                    actBtn.onclick = (e) => {
                         e.stopPropagation();
-                        const link = document.createElement('a');
-                        link.href = `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}&download=1`;
-                        link.download = item.name;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                        openPCFileModal(item);
                     };
-                    actions.appendChild(dlBtn);
+                    actions.appendChild(actBtn);
                 }
 
                 // Recycle Bin Trash button (Admin Protected)
@@ -10898,7 +11192,7 @@ function iconLabel(ext, type) {
                 actions.appendChild(trashBtn);
                 card.appendChild(actions);
 
-                // Card Click handling
+                // Card Click handling (NEVER directly download PC files)
                 card.onclick = (e) => {
                     if (e.target === check) return;
                     if (item.isDir) {
@@ -10906,12 +11200,7 @@ function iconLabel(ext, type) {
                     } else if (isImage || isVideo || isAudio) {
                         openGallery(item, 'pc');
                     } else {
-                        const link = document.createElement('a');
-                        link.href = `/api/pc/explorer/file?path=${encodeURIComponent(item.path)}&download=1`;
-                        link.download = item.name;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                        openPCFileModal(item);
                     }
                 };
 
@@ -11018,16 +11307,31 @@ function iconLabel(ext, type) {
             renderPCFiles();
         });
 
-        $('#pc-download-selected-btn')?.addEventListener('click', () => {
+        $('#pc-download-selected-btn')?.addEventListener('click', async () => {
             if (pcSelectedPaths.size === 0) return;
-            pcSelectedPaths.forEach(p => {
-                const link = document.createElement('a');
-                link.href = `/api/pc/explorer/file?path=${encodeURIComponent(p)}&download=1`;
-                link.download = p.substring(p.lastIndexOf('\\') + 1);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
+            const targetPhone = (mobileDeviceList || []).find(d => d.id === currentPhoneId && d.online && !d.isWebClient) ||
+                                (mobileDeviceList || []).find(d => d.online && !d.isWebClient);
+            if (!targetPhone) {
+                showToast('PC files are already stored on this computer. Connect a phone to send files to mobile.', 'info');
+                return;
+            }
+            const paths = Array.from(pcSelectedPaths);
+            showToast(`📤 Sending ${paths.length} file(s) to ${targetPhone.name}...`, 'upload');
+            let successCount = 0;
+            for (const p of paths) {
+                try {
+                    const res = await apiFetch('/api/mobile/fs/upload-direct', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ deviceId: targetPhone.id, path: p })
+                    });
+                    if (res.ok) successCount++;
+                } catch (e) {}
+            }
+            showToast(`✅ Transferred ${successCount} of ${paths.length} file(s) to ${targetPhone.name}!`, 'success');
+            pcSelectedPaths.clear();
+            updatePCSelectionBar();
+            renderPCFiles();
         });
 
         $('#pc-trash-selected-btn')?.addEventListener('click', async () => {
@@ -11184,6 +11488,344 @@ function iconLabel(ext, type) {
             });
         }
 
+
+        // ==========================================
+        // REMEMBERED / SAVED DEVICES MANAGEMENT
+        // ==========================================
+        let savedDevicesList = [];
+
+        async function loadSavedDevicesList() {
+            try {
+                const res = await apiFetch('/api/devices/saved');
+                if (!res.ok) return;
+                const devices = await res.json();
+                savedDevicesList = Array.isArray(devices) ? devices : [];
+
+                renderDashSavedDevices(savedDevicesList);
+                renderViewDevicesSaved(savedDevicesList);
+            } catch (e) {
+                console.warn('loadSavedDevicesList error:', e);
+            }
+        }
+
+        function renderDashSavedDevices(devices) {
+            const listEl = $('#dash-saved-devices-list');
+            const badgeEl = $('#dash-saved-badge');
+            if (!listEl) return;
+
+            if (badgeEl) badgeEl.textContent = `${devices.length} Saved`;
+
+            if (devices.length === 0) {
+                listEl.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-light); opacity: 0.7;">No remembered devices yet. Scan QR code from phone to pair.</span>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            devices.forEach(d => {
+                const item = document.createElement('div');
+                item.className = 'saved-device-card';
+                item.innerHTML = `
+                    <div class="saved-device-left">
+                        <span class="saved-device-dot ${d.online ? 'online' : ''}"></span>
+                        <div class="saved-device-info">
+                            <div class="saved-device-name-row">
+                                <span class="saved-device-title" title="${escapeHtml(d.name || d.model)}">${escapeHtml(d.name || d.model)}</span>
+                                ${d.online ? '<span class="auto-connected-badge">⚡ Auto-Connected</span>' : ''}
+                            </div>
+                            <span class="saved-device-meta">${escapeHtml(d.ip)}:${d.port} · ${escapeHtml(d.model || 'Phone')}</span>
+                        </div>
+                    </div>
+                    <div class="saved-device-actions">
+                        <label class="fylo-switch" title="Auto-Connect over LAN">
+                            <input type="checkbox" ${d.autoConnect ? 'checked' : ''} onchange="toggleAutoConnect('${escapeHtml(d.id)}')">
+                            <span class="fylo-slider"></span>
+                        </label>
+                        ${!d.online ? `<button class="btn btn-accent" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 8px;" onclick="connectSavedDevice('${escapeHtml(d.id)}')">Connect</button>` : ''}
+                        <button class="btn" style="padding: 5px 8px; font-size: 0.75rem; border-radius: 8px; background: rgba(255, 71, 87, 0.12); color: var(--danger-text, #ff4757); border: none;" onclick="forgetSavedDevice('${escapeHtml(d.id)}')" title="Forget device">✕</button>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        function renderViewDevicesSaved(devices) {
+            const listEl = $('#view-devices-saved-list');
+            const badgeEl = $('#saved-devices-count');
+            if (!listEl) return;
+
+            if (badgeEl) badgeEl.textContent = `${devices.length}`;
+
+            if (devices.length === 0) {
+                listEl.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-light); opacity: 0.7;">No remembered devices yet. Scan QR code to link.</span>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            devices.forEach(d => {
+                const item = document.createElement('div');
+                item.className = 'saved-device-card';
+                item.style.padding = '14px 16px';
+                item.innerHTML = `
+                    <div class="saved-device-left">
+                        <span class="saved-device-dot ${d.online ? 'online' : ''}"></span>
+                        <div class="saved-device-info">
+                            <div class="saved-device-name-row">
+                                <span class="saved-device-title" style="font-size: 0.95rem;">${escapeHtml(d.name || d.model)}</span>
+                                ${d.online ? '<span class="auto-connected-badge">⚡ Auto-Connected</span>' : ''}
+                            </div>
+                            <span class="saved-device-meta" style="font-size: 0.8rem;">IP: ${escapeHtml(d.ip)}:${d.port} · Model: ${escapeHtml(d.model || 'Android Phone')}</span>
+                        </div>
+                    </div>
+                    <div class="saved-device-actions">
+                        <label class="fylo-switch" title="Auto-Connect over LAN">
+                            <input type="checkbox" ${d.autoConnect ? 'checked' : ''} onchange="toggleAutoConnect('${escapeHtml(d.id)}')">
+                            <span class="fylo-slider"></span>
+                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-light); margin-left: 2px;">Auto-Connect</span>
+                        </label>
+                        ${!d.online ? `<button class="btn btn-accent" style="padding: 6px 12px; font-size: 0.78rem; border-radius: 8px;" onclick="connectSavedDevice('${escapeHtml(d.id)}')">🔗 Connect Now</button>` : ''}
+                        <button class="btn" style="padding: 6px 10px; font-size: 0.78rem; border-radius: 8px; background: rgba(255, 71, 87, 0.15); color: var(--danger-text, #ff4757); border: 1px solid rgba(255, 71, 87, 0.3);" onclick="forgetSavedDevice('${escapeHtml(d.id)}')">Forget</button>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        async function toggleAutoConnect(id) {
+            try {
+                const res = await apiFetch(`/api/devices/saved/${encodeURIComponent(id)}/toggle-autoconnect`, { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast(data.autoConnect ? 'Auto-connect enabled for device' : 'Auto-connect disabled', 'info');
+                    loadSavedDevicesList();
+                }
+            } catch (e) {
+                showToast('Failed to toggle auto-connect', 'error');
+            }
+        }
+
+        async function connectSavedDevice(id) {
+            try {
+                showToast('Probing saved device over Wi-Fi...', 'info');
+                const res = await apiFetch(`/api/devices/saved/${encodeURIComponent(id)}/connect`, { method: 'POST' });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(`Connected to ${data.message || 'phone'}!`, 'success');
+                    await loadSavedDevicesList();
+                    await loadMobileDevices();
+                    await loadDevices();
+                } else {
+                    showToast(data.error || 'Could not connect to device', 'error');
+                }
+            } catch (e) {
+                showToast('Error connecting: ' + e.message, 'error');
+            }
+        }
+
+        async function forgetSavedDevice(id) {
+            if (!confirm('Forget this remembered device? You will need to scan QR code again to link it.')) return;
+            try {
+                const res = await apiFetch(`/api/devices/saved/${encodeURIComponent(id)}/forget`, { method: 'POST' });
+                if (res.ok) {
+                    showToast('Device forgotten', 'info');
+                    loadSavedDevicesList();
+                }
+            } catch (e) {
+                showToast('Error forgetting device', 'error');
+            }
+        }
+
+        // ==========================================
+        // PC & PHONE FILE ACTIONS MODALS
+        // ==========================================
+        let currentPCModalItem = null;
+        function openPCFileModal(item) {
+            currentPCModalItem = item;
+            const modal = $('#pc-file-actions-modal');
+            if (!modal) return;
+
+            const ext = (item.ext || '').toLowerCase();
+            const iconEl = $('#pc-file-modal-icon');
+            if (iconEl) {
+                if (['pdf'].includes(ext)) iconEl.textContent = '📕';
+                else if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) iconEl.textContent = '📄';
+                else if (['xls', 'xlsx', 'csv'].includes(ext)) iconEl.textContent = '📊';
+                else if (['ppt', 'pptx'].includes(ext)) iconEl.textContent = '📈';
+                else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) iconEl.textContent = '📦';
+                else if (['exe', 'msi', 'bat', 'cmd'].includes(ext)) iconEl.textContent = '⚙️';
+                else iconEl.textContent = '📁';
+            }
+
+            const nameEl = $('#pc-file-modal-name');
+            if (nameEl) nameEl.textContent = item.name;
+
+            const metaEl = $('#pc-file-modal-meta');
+            if (metaEl) metaEl.textContent = `${formatBytes(item.size)} · ${ext.toUpperCase() || 'File'}`;
+
+            const pathEl = $('#pc-file-modal-path');
+            if (pathEl) pathEl.textContent = item.path;
+
+            const sendPhoneBtn = $('#pc-file-modal-send-phone-btn');
+            if (sendPhoneBtn) {
+                const hasOnlinePhone = mobileDeviceList && mobileDeviceList.some(d => d.online && !d.isWebClient);
+                sendPhoneBtn.style.display = hasOnlinePhone ? 'inline-flex' : 'none';
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closePCFileModal() {
+            const modal = $('#pc-file-actions-modal');
+            if (modal) modal.classList.remove('active');
+            currentPCModalItem = null;
+        }
+
+        let currentPhoneModalItem = null;
+        function openPhoneFileModal(item) {
+            currentPhoneModalItem = item;
+            const modal = $('#phone-file-options-modal');
+            if (!modal) return;
+
+            const ext = (item.ext || (item.name.includes('.') ? item.name.split('.').pop() : '')).toLowerCase();
+            const iconEl = $('#phone-file-modal-icon');
+            if (iconEl) {
+                if (['pdf'].includes(ext)) iconEl.textContent = '📕';
+                else if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) iconEl.textContent = '📄';
+                else if (['xls', 'xlsx', 'csv'].includes(ext)) iconEl.textContent = '📊';
+                else if (['ppt', 'pptx'].includes(ext)) iconEl.textContent = '📈';
+                else if (['apk'].includes(ext)) iconEl.textContent = '🤖';
+                else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) iconEl.textContent = '📦';
+                else iconEl.textContent = '📱';
+            }
+
+            const nameEl = $('#phone-file-modal-name');
+            if (nameEl) nameEl.textContent = item.name;
+
+            const metaEl = $('#phone-file-modal-meta');
+            if (metaEl) metaEl.textContent = `${formatBytes(item.size || 0)} · ${ext.toUpperCase() || 'Phone File'}`;
+
+            modal.classList.add('active');
+        }
+
+        function closePhoneFileModal() {
+            const modal = $('#phone-file-options-modal');
+            if (modal) modal.classList.remove('active');
+            currentPhoneModalItem = null;
+        }
+
+        // Bind File Modal Actions
+        $('#pc-file-modal-open-btn')?.addEventListener('click', async () => {
+            if (!currentPCModalItem) return;
+            const filePath = currentPCModalItem.path;
+            const fileName = currentPCModalItem.name;
+            closePCFileModal();
+            try {
+                showToast(`Opening ${fileName}...`, 'info');
+                const res = await apiFetch('/api/pc/open-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filePath })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showToast(data.error || 'Failed to open file', 'error');
+                }
+            } catch (err) {
+                showToast('Error opening file: ' + err.message, 'error');
+            }
+        });
+
+        $('#pc-file-modal-reveal-btn')?.addEventListener('click', async () => {
+            if (!currentPCModalItem) return;
+            const filePath = currentPCModalItem.path;
+            closePCFileModal();
+            try {
+                await apiFetch('/api/pc/reveal-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filePath })
+                });
+            } catch (err) {
+                showToast('Error revealing file: ' + err.message, 'error');
+            }
+        });
+
+        $('#pc-file-modal-send-phone-btn')?.addEventListener('click', async () => {
+            if (!currentPCModalItem) return;
+            const item = currentPCModalItem;
+            closePCFileModal();
+            const targetPhone = (mobileDeviceList || []).find(d => d.id === currentPhoneId && d.online && !d.isWebClient) ||
+                                (mobileDeviceList || []).find(d => d.online && !d.isWebClient);
+            if (!targetPhone) {
+                showToast('No online phone connected to receive file.', 'error');
+                return;
+            }
+            try {
+                showToast(`📤 Sending ${item.name} to ${targetPhone.name}...`, 'upload');
+                const res = await apiFetch('/api/mobile/fs/upload-direct', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceId: targetPhone.id, path: item.path })
+                });
+                const data = await res.json();
+                if (res.ok && (data.success !== false)) {
+                    showToast(`✅ Sent ${item.name} to ${targetPhone.name}!`, 'success');
+                } else {
+                    showToast(`Failed to send: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (err) {
+                showToast('Error sending file to phone: ' + err.message, 'error');
+            }
+        });
+
+        $('#pc-file-modal-copy-path-btn')?.addEventListener('click', () => {
+            if (!currentPCModalItem) return;
+            navigator.clipboard.writeText(currentPCModalItem.path);
+            showToast('📋 File path copied to clipboard', 'info');
+            closePCFileModal();
+        });
+
+        $('#pc-file-modal-trash-btn')?.addEventListener('click', () => {
+            if (!currentPCModalItem) return;
+            const itemToTrash = currentPCModalItem;
+            closePCFileModal();
+            promptAdminTrash({
+                type: 'pc',
+                filePath: itemToTrash.path,
+                fileName: itemToTrash.name,
+                onDone: () => fetchPCFolder(currentPCPath, false)
+            });
+        });
+
+        $('#phone-file-modal-download-btn')?.addEventListener('click', () => {
+            if (!currentPhoneModalItem) return;
+            const item = currentPhoneModalItem;
+            closePhoneFileModal();
+            downloadPhoneFile(item);
+        });
+
+        $('#phone-file-modal-delete-btn')?.addEventListener('click', () => {
+            if (!currentPhoneModalItem) return;
+            const item = currentPhoneModalItem;
+            closePhoneFileModal();
+            promptAdminTrash({
+                type: 'phone',
+                filePath: item.path,
+                fileName: item.name,
+                deviceId: currentPhoneId,
+                onDone: () => {
+                    if (currentPhonePath) fetchPhoneFolder(currentPhonePath, false);
+                }
+            });
+        });
+
+        $('#pc-file-actions-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'pc-file-actions-modal') closePCFileModal();
+        });
+
+        $('#phone-file-options-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'phone-file-options-modal') closePhoneFileModal();
+        });
+
         async function init() {
             initCustomSortDropdowns();
             if (isElectron) {
@@ -11207,6 +11849,7 @@ function iconLabel(ext, type) {
                 await loadFiles();
                 await loadDevices();
                 await loadMobileDevices();
+                await loadSavedDevicesList();
                 await loadClipboard();
                 await loadPCQuickAccess();
                 await loadDashboardData();
@@ -11226,6 +11869,7 @@ function iconLabel(ext, type) {
             setInterval(loadFiles, 4000);
             setInterval(loadDevices, 2000);
             setInterval(loadMobileDevices, 2000);
+            setInterval(loadSavedDevicesList, 3000);
             setInterval(loadDashboardData, 3000);
             setInterval(loadClipboard, 4000);
             setInterval(checkStreamRequests, 1500);
