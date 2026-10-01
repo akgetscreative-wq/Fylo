@@ -639,22 +639,43 @@
         }
 
         .kick-btn {
-            background: var(--danger);
-            color: var(--danger-text);
-            border: none;
-            padding: 10px 16px;
-            border-radius: 14px;
+            background: rgba(239, 68, 68, 0.12);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 8px 14px;
+            border-radius: 12px;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 700;
-            transition: all 0.25s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             flex-shrink: 0;
         }
 
         .kick-btn:hover {
-            background: var(--danger-text);
-            color: white;
+            background: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+        }
+
+        .kick-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .phone-card-item {
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .phone-card-item:hover {
             transform: translateY(-2px);
+            border-color: rgba(59, 130, 246, 0.45) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 0 16px rgba(59, 130, 246, 0.12);
         }
 
         /* Buttons & QR */
@@ -5949,130 +5970,153 @@
 
             <!-- Fylo v4: Phone Explorer View (Default Active) -->
             <div id="view-phone" class="view-panel hidden">
-                <!-- Web Companion Active Status Card (Shown when phone links via mobile web) -->
-                <div id="phone-web-companion-container" class="hidden" style="margin-bottom: 20px;">
+                <!-- LEVEL 1: Connected Android Phones List View (Default) -->
+                <div id="phone-list-view">
                     <div class="feature-focus-header">
                         <button class="btn-back-dashboard" onclick="returnToDashboard()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
                             <span>← Back to Dashboard</span>
                         </button>
-                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">📱 Connected Mobile Web Companion</span>
+                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">📱 Connected Android Phones</span>
                     </div>
 
-                    <div class="card" style="padding: 28px 24px; border-radius: 24px; background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.12) 0%, rgba(15, 23, 42, 0.3) 100%), var(--card-bg); border: 1px solid rgba(59, 130, 246, 0.35); box-shadow: var(--glass-shadow);">
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 22px;">
-                            <div style="display: flex; align-items: center; gap: 16px;">
-                                <div style="width: 56px; height: 56px; border-radius: 18px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(14, 165, 233, 0.2)); border: 1px solid rgba(59, 130, 246, 0.4); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2); flex-shrink: 0;">
-                                    📱
-                                </div>
-                                <div>
-                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                        <h2 style="font-size: 1.35rem; font-weight: 900; color: var(--text); margin: 0;" id="phone-web-device-title">
-                                            📱 Mobile Phone (Web Linked)
-                                        </h2>
-                                        <span class="mobile-beacon" style="padding: 3px 10px; font-size: 0.75rem;">
-                                            <span class="pill-dot live-pulse"></span>
-                                            <span>Web Linked</span>
-                                        </span>
-                                    </div>
-                                    <div style="font-size: 0.82rem; color: var(--text-light); margin-top: 4px;" id="phone-web-device-sub">
-                                        Connected via Web Browser • Ready for Transfers & Sync
-                                    </div>
-                                </div>
+                    <div style="margin-bottom: 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                        <div>
+                            <h2 style="font-size: 1.45rem; font-weight: 900; color: var(--text); margin: 0; letter-spacing: -0.5px;">Connected Android Phones</h2>
+                            <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 4px; margin-bottom: 0;">Select a phone to explore its folders, photos, and files.</p>
                         </div>
-
-
-                        <div style="font-size: 0.84rem; color: var(--text-light); line-height: 1.5; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px;">
-                            Connected via browser. To browse your phone's files & storage from this PC, install the Fylo Android app.
-                            <a href="/fylo.apk" download="fylo-v4.0.0.apk" style="color: var(--accent); font-weight: 700; text-decoration: underline; margin-left: 4px;">Download APK</a>
-                        </div>
-
-                        <div style="text-align: right; margin-top: 12px;">
-                            <a href="#" id="web-companion-show-qr-link" style="color: var(--text-light); font-size: 0.78rem; text-decoration: underline; cursor: pointer;">
-                                Show QR code to pair another device
-                            </a>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="btn" style="padding: 8px 16px; border-radius: 12px; font-size: 0.82rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);" onclick="showQRModal()">
+                                <span>📱 Pair Another Phone</span>
+                            </button>
+                            <button class="btn" style="padding: 8px 14px; border-radius: 12px; font-size: 0.82rem; font-weight: 700;" onclick="loadMobileDevices()">
+                                <span>↻ Refresh</span>
+                            </button>
                         </div>
                     </div>
-                </div>
-            </div>
 
-                <!-- Empty State: Interactive Pairing Studio -->
-                <div id="phone-empty-container" class="phone-empty-state" style="padding: 0; background: transparent; border: none;">
-                    <div class="pairing-studio-card">
-                        <!-- Left: QR Code & Address -->
-                        <div class="pairing-qr-box">
-                            <div class="pairing-status-beacon" style="margin-bottom: 14px;">
-                                <span class="pill-dot live-pulse"></span>
-                                <span>Ready to Connect</span>
-                            </div>
-                            <div class="pairing-qr-wrapper">
-                                <div id="phone-pairing-qrcode"></div>
-                            </div>
-                            <div style="font-weight: 800; font-size: 0.95rem; color: var(--text); margin-bottom: 4px;" id="pairing-studio-url">Loading...</div>
-                            <div style="font-size: 0.78rem; color: var(--text-light); margin-bottom: 14px;">Scan with Android camera or Fylo App</div>
-                            <div style="display: flex; gap: 8px; width: 100%;">
-                                <button class="btn btn-accent" id="pairing-copy-btn" style="flex: 1; padding: 8px 12px; font-size: 0.82rem; border-radius: 12px; justify-content: center;">
-                                    📋 Copy Link
-                                </button>
-                                <button class="btn" id="pairing-hotspot-btn" style="padding: 8px 12px; font-size: 0.82rem; border-radius: 12px; justify-content: center;" title="Open Hotspot Settings">
-                                    🔥 Hotspot
-                                </button>
-                            </div>
+                    <!-- Connected Phones Cards Grid (Shown when 1 or more phones connected) -->
+                    <div id="phone-cards-grid-wrap" class="hidden">
+                        <div id="phone-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                            <!-- Dynamically rendered phone cards -->
                         </div>
+                    </div>
 
-                        <!-- Right: 3-Step Guide -->
-                        <div class="pairing-guide">
-                            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                                <div>
-                                    <h3 style="font-size: 1.35rem; font-weight: 900; color: var(--text); letter-spacing: -0.5px;">Phone Explorer Studio</h3>
-                                    <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 2px;">Peer-to-peer connection over local Wi-Fi or Hotspot</p>
-                                </div>
-                                <div class="phone-readonly-badge">🔒 Read-Only Protected</div>
-                            </div>
-
-                            <div class="pairing-steps-list">
-                                <div class="pairing-step-item">
-                                    <div class="step-num">1</div>
-                                    <div class="step-content">
-                                        <strong>Same Wi-Fi:</strong> Connect this PC and your Android phone to the same local Wi-Fi network (or turn on PC Hotspot).
-                                    </div>
-                                </div>
-                                <div class="pairing-step-item">
-                                    <div class="step-num">2</div>
-                                    <div class="step-content">
-                                        <strong>Open Fylo on Phone:</strong> Launch the Fylo Mobile App on Android and tap <em>"Scan PC QR Code"</em>, or scan the QR code on the left with any camera app.
-                                    </div>
-                                </div>
-                                <div class="pairing-step-item">
-                                    <div class="step-num">3</div>
-                                    <div class="step-content">
-                                        <strong>Instant Explorer:</strong> Camera photos, screenshots, downloads, and storage will appear automatically right here!
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px;">
-                                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-light);">
+                    <!-- Empty State: Interactive Pairing Studio (Shown when 0 phones connected) -->
+                    <div id="phone-empty-container" class="phone-empty-state" style="padding: 0; background: transparent; border: none;">
+                        <div class="pairing-studio-card">
+                            <!-- Left: QR Code & Address -->
+                            <div class="pairing-qr-box">
+                                <div class="pairing-status-beacon" style="margin-bottom: 14px;">
                                     <span class="pill-dot live-pulse"></span>
-                                    <span>Listening for Android phone...</span>
+                                    <span>Ready to Connect</span>
                                 </div>
-                                <button class="btn" id="pairing-explore-pc-btn" style="padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; gap: 6px;">
-                                    💻 Browse PC Drives Instead →
-                                </button>
+                                <div class="pairing-qr-wrapper">
+                                    <div id="phone-pairing-qrcode"></div>
+                                </div>
+                                <div style="font-weight: 800; font-size: 0.95rem; color: var(--text); margin-bottom: 4px;" id="pairing-studio-url">Loading...</div>
+                                <div style="font-size: 0.78rem; color: var(--text-light); margin-bottom: 14px;">Scan with Android camera or Fylo App</div>
+                                <div style="display: flex; gap: 8px; width: 100%;">
+                                    <button class="btn btn-accent" id="pairing-copy-btn" style="flex: 1; padding: 8px 12px; font-size: 0.82rem; border-radius: 12px; justify-content: center;">
+                                        📋 Copy Link
+                                    </button>
+                                    <button class="btn" id="pairing-hotspot-btn" style="padding: 8px 12px; font-size: 0.82rem; border-radius: 12px; justify-content: center;" title="Open Hotspot Settings">
+                                        🔥 Hotspot
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Right: 3-Step Guide -->
+                            <div class="pairing-guide">
+                                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                                    <div>
+                                        <h3 style="font-size: 1.35rem; font-weight: 900; color: var(--text); letter-spacing: -0.5px;">Phone Explorer Studio</h3>
+                                        <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 2px;">Peer-to-peer connection over local Wi-Fi or Hotspot</p>
+                                    </div>
+                                    <div class="phone-readonly-badge">🔒 Read-Only Protected</div>
+                                </div>
+
+                                <div class="pairing-steps-list">
+                                    <div class="pairing-step-item">
+                                        <div class="step-num">1</div>
+                                        <div class="step-content">
+                                            <strong>Same Wi-Fi:</strong> Connect this PC and your Android phone to the same local Wi-Fi network (or turn on PC Hotspot).
+                                        </div>
+                                    </div>
+                                    <div class="pairing-step-item">
+                                        <div class="step-num">2</div>
+                                        <div class="step-content">
+                                            <strong>Open Fylo on Phone:</strong> Launch the Fylo Mobile App on Android and tap <em>"Scan PC QR Code"</em>, or scan the QR code on the left with any camera app.
+                                        </div>
+                                    </div>
+                                    <div class="pairing-step-item">
+                                        <div class="step-num">3</div>
+                                        <div class="step-content">
+                                            <strong>Instant Explorer:</strong> Camera photos, screenshots, downloads, and storage will appear automatically right here!
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-light);">
+                                        <span class="pill-dot live-pulse"></span>
+                                        <span>Listening for Android phone...</span>
+                                    </div>
+                                    <button class="btn" id="pairing-explore-pc-btn" style="padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; gap: 6px;">
+                                        💻 Browse PC Drives Instead →
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Active Phone Explorer Interface -->
+                <!-- LEVEL 2: Active Phone Explorer Interface (Folders & Files) -->
                 <div id="phone-active-container" class="hidden">
-                    <div class="feature-focus-header">
-                        <button class="btn-back-dashboard" onclick="returnToDashboard()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
-                            <span>← Back to Dashboard</span>
-                        </button>
+                    <div class="feature-focus-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="btn-back-dashboard" id="btn-back-phone-list" onclick="returnToPhoneList()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="15 18 9 12 15 6"/></svg>
+                                <span>← Back to Phones List</span>
+                            </button>
+                            <button class="btn-back-dashboard" onclick="returnToDashboard()" title="Return to Dashboard">
+                                <span>🏠 Dashboard</span>
+                            </button>
+                        </div>
                         <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">📱 Connected Android Phone Workspace</span>
                     </div>
+
+                    <!-- Web Companion Active Status Card (Shown when phone links via mobile web) -->
+                    <div id="phone-web-companion-container" class="hidden" style="margin-bottom: 20px;">
+                        <div class="card" style="padding: 24px 22px; border-radius: 20px; background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.12) 0%, rgba(15, 23, 42, 0.3) 100%), var(--card-bg); border: 1px solid rgba(59, 130, 246, 0.35); box-shadow: var(--glass-shadow);">
+                            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 18px;">
+                                <div style="display: flex; align-items: center; gap: 16px;">
+                                    <div style="width: 52px; height: 52px; border-radius: 16px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(14, 165, 233, 0.2)); border: 1px solid rgba(59, 130, 246, 0.4); display: flex; align-items: center; justify-content: center; font-size: 1.7rem; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2); flex-shrink: 0;">
+                                        📱
+                                    </div>
+                                    <div>
+                                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                            <h2 style="font-size: 1.3rem; font-weight: 900; color: var(--text); margin: 0;" id="phone-web-device-title">
+                                                📱 Mobile Phone (Web Linked)
+                                            </h2>
+                                            <span class="mobile-beacon" style="padding: 3px 10px; font-size: 0.75rem;">
+                                                <span class="pill-dot live-pulse"></span>
+                                                <span>Web Linked</span>
+                                            </span>
+                                        </div>
+                                        <div style="font-size: 0.82rem; color: var(--text-light); margin-top: 4px;" id="phone-web-device-sub">
+                                            Connected via Web Browser • Ready for Transfers & Sync
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.84rem; color: var(--text-light); line-height: 1.5; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px;">
+                                Connected via browser. To browse your phone's files & storage from this PC, install the Fylo Android app.
+                                <a href="/fylo.apk" download="fylo-v4.0.0.apk" style="color: var(--accent); font-weight: 700; text-decoration: underline; margin-left: 4px;">Download APK</a>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Phone Info Bar -->
                     <div class="phone-device-card" id="phone-device-header-card" style="cursor: pointer;" title="Click to toggle common folders">
                         <div class="phone-device-left">
@@ -6105,6 +6149,7 @@
                             </button>
                             <select id="phone-device-selector" style="padding: 8px 12px; border-radius: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); font-weight: 700; font-size: 0.85rem; outline: none; cursor: pointer; display: none;"></select>
                             <button class="btn" id="phone-refresh-btn" style="padding: 8px 14px; border-radius: 12px; font-size: 0.85rem;">↻ Refresh</button>
+                            <button class="kick-btn" id="phone-header-kick-btn" style="padding: 8px 14px; border-radius: 12px; font-size: 0.85rem;" onclick="kickDevice(currentPhoneId)" title="Disconnect this phone"><span>🚫 Kick</span></button>
                         </div>
                     </div>
 
@@ -7301,6 +7346,12 @@
                 loadDashboardData();
             }
 
+            if (targetId === 'view-phone') {
+                if (!isBrowsingPhone) {
+                    returnToPhoneList();
+                }
+            }
+
             if (targetId === 'view-clipboard') {
                 loadClipboard();
             }
@@ -7329,11 +7380,8 @@
                 showQRModal();
                 return;
             }
-            if (typeof currentPhoneId !== 'undefined' && !currentPhoneId) {
-                currentPhoneId = onlineDev.id;
-                if (typeof updatePhoneHeader === 'function') updatePhoneHeader(onlineDev);
-            }
             switchView('view-phone');
+            selectPhoneToBrowse(onlineDev);
             if (typeof fetchPhoneFolder === 'function') {
                 fetchPhoneFolder(targetPath || '/storage/emulated/0', true);
             }
@@ -7529,37 +7577,65 @@
                 // Load Remembered Devices
                 loadSavedDevicesList();
 
-                // 5. Populate Connected Devices Count
+                // 5. Populate Connected Devices Count & List
                 const devRes = await apiFetch('/api/devices');
                 const mDevRes = await apiFetch('/api/mobile/devices');
-                let totalDevices = 0;
-                let deviceNames = [];
+                let remoteList = [];
+                const seenIps = new Set();
+                const seenIds = new Set();
 
+                // 1. Add online native phones first
                 if (mDevRes.ok) {
                     const mData = await mDevRes.json();
                     const mDevs = (Array.isArray(mData) ? mData : Object.values(mData || {})).filter(d => d.online);
+                    // Sort native over web clients
+                    mDevs.sort((a, b) => (a.isWebClient ? 1 : 0) - (b.isWebClient ? 1 : 0));
                     mDevs.forEach(d => {
-                        const name = d.name || d.model || 'Android Phone';
-                        if (!deviceNames.includes(name)) {
-                            deviceNames.push(name);
-                            totalDevices++;
+                        const cleanIp = (d.ip || '').replace(/^::ffff:/, '').trim();
+                        if (cleanIp && cleanIp !== '127.0.0.1') {
+                            if (seenIps.has(cleanIp)) return;
+                            seenIps.add(cleanIp);
                         }
-                    });
-                }
-                if (devRes.ok) {
-                    const dData = await devRes.json();
-                    const devs = Array.isArray(dData) ? dData : (dData.devices || []);
-                    // Filter out PC self / host so we only count remote connected clients
-                    const remoteDevs = devs.filter(d => !d.isSelf && !d.isHost && d.online);
-                    remoteDevs.forEach(d => {
-                        const name = d.name || 'Remote Client';
-                        if (!deviceNames.includes(name)) {
-                            deviceNames.push(name);
-                            totalDevices++;
-                        }
+                        if (d.id && seenIds.has(d.id)) return;
+                        if (d.id) seenIds.add(d.id);
+                        remoteList.push({
+                            id: d.id,
+                            name: d.name || d.model || 'Android Phone',
+                            model: d.model,
+                            ip: cleanIp,
+                            kind: 'android',
+                            battery: d.battery,
+                            isWebClient: !!d.isWebClient
+                        });
                     });
                 }
 
+                // 2. Add other remote devices from /api/devices (deduplicating by IP and ID)
+                if (devRes.ok) {
+                    const dData = await devRes.json();
+                    const devs = Array.isArray(dData) ? dData : (dData.devices || []);
+                    const remoteDevs = devs.filter(d => !d.isSelf && !d.isHost && d.online);
+                    remoteDevs.forEach(d => {
+                        const cleanIp = (d.ip || '').replace(/^::ffff:/, '').trim();
+                        if (cleanIp && cleanIp !== '127.0.0.1') {
+                            if (seenIps.has(cleanIp)) return;
+                            seenIps.add(cleanIp);
+                        }
+                        if (d.id && seenIds.has(d.id)) return;
+                        if (d.id) seenIds.add(d.id);
+                        remoteList.push({
+                            id: d.id,
+                            name: d.name || 'Remote Client',
+                            model: d.model,
+                            ip: cleanIp,
+                            kind: d.kind,
+                            battery: null,
+                            isWebClient: !!d.isWebClient
+                        });
+                    });
+                }
+
+                const totalDevices = remoteList.length;
                 const badgeEl = $('#dash-connected-badge');
                 const devListEl = $('#dash-devices-list');
                 if (badgeEl) badgeEl.textContent = `${totalDevices} Active`;
@@ -7567,7 +7643,24 @@
                     if (totalDevices === 0) {
                         devListEl.innerHTML = '<span style="opacity: 0.7;">No devices connected yet. Scan QR code from phone to link.</span>';
                     } else {
-                        devListEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 6px;">${deviceNames.map(name => `<span style="display: flex; align-items: center; gap: 8px; font-weight: 700;"><span class="pill-dot live-pulse"></span> ${escapeHtml(name)}</span>`).join('')}</div>`;
+                        devListEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 8px;">${remoteList.map(d => `
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden;">
+                                    <span class="pill-dot live-pulse" style="flex-shrink: 0;"></span>
+                                    <div style="display: flex; flex-direction: column; min-width: 0;">
+                                        <span style="font-weight: 700; font-size: 0.82rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            ${d.kind === 'android' ? '📱 ' : '🌐 '}${escapeHtml(d.name)}
+                                        </span>
+                                        <span style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">
+                                            ${d.ip ? escapeHtml(d.ip) : 'LAN Connected'}${d.battery != null ? ` • 🔋${d.battery}%` : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button class="kick-btn" style="padding: 4px 10px; font-size: 0.72rem; border-radius: 8px;" onclick="kickDevice('${escapeHtml(d.id)}')" title="Disconnect device">
+                                    🚫 Kick
+                                </button>
+                            </div>
+                        `).join('')}</div>`;
                     }
                 }
             } catch (err) {
@@ -9210,6 +9303,28 @@ function iconLabel(ext, type) {
             setTimeout(() => { $('#clipboard-copy').textContent = '📋 Copy to Device'; }, 1200);
         }
 
+        async function kickDevice(id) {
+            if (!id) return;
+            try {
+                const res = await apiFetch(`/api/devices/${encodeURIComponent(id)}/kick`, { method: 'POST' });
+                if (!res.ok) {
+                    await apiFetch(`/api/mobile/devices/${encodeURIComponent(id)}/kick`, { method: 'POST' });
+                }
+            } catch (e) {
+                console.error('Kick device error:', e);
+            }
+            if (typeof currentPhoneId !== 'undefined' && currentPhoneId === id) {
+                currentPhoneId = null;
+                if (typeof returnToPhoneList === 'function') {
+                    returnToPhoneList();
+                }
+            }
+            showToast('Device disconnected', 'info');
+            if (typeof loadDevices === 'function') loadDevices();
+            if (typeof loadMobileDevices === 'function') loadMobileDevices();
+            if (typeof loadDashboardData === 'function') loadDashboardData();
+        }
+
         async function loadDevices() {
             try {
                 const res = await apiFetch('/api/devices');
@@ -9217,15 +9332,37 @@ function iconLabel(ext, type) {
                 const data = await res.json();
                 if (!data || !Array.isArray(data.devices)) return;
 
+                // Deduplicate devices by IP/ID, prioritizing native phones over web companions
+                const seenIps = new Set();
+                const dedupedDevices = [];
+                const sorted = [...data.devices].sort((a, b) => {
+                    if (a.isHost) return -1;
+                    if (b.isHost) return 1;
+                    if (!a.isWebClient && b.isWebClient) return -1;
+                    if (a.isWebClient && !b.isWebClient) return 1;
+                    return 0;
+                });
+
+                for (const d of sorted) {
+                    const cleanIp = (d.ip || '').replace(/^::ffff:/, '').trim();
+                    if (!d.isHost && cleanIp && cleanIp !== '127.0.0.1') {
+                        if (seenIps.has(cleanIp)) continue;
+                        seenIps.add(cleanIp);
+                    }
+                    if (!dedupedDevices.some(x => x.id === d.id)) {
+                        dedupedDevices.push(d);
+                    }
+                }
+
                 const devCountEl = $('#device-count');
                 if (devCountEl) {
-                    devCountEl.textContent = data.devices.filter(d => d.online).length;
+                    devCountEl.textContent = dedupedDevices.filter(d => !d.isHost && d.online).length;
                 }
 
                 const list = $('#device-list');
                 if (list) {
                     list.innerHTML = '';
-                    if (data.devices.length === 0) {
+                    if (dedupedDevices.length === 0) {
                         list.innerHTML = `
                             <li style="padding: 32px 16px; text-align: center; color: var(--text-light); font-size: 0.85rem; list-style: none;">
                                 <div style="font-size: 2rem; margin-bottom: 8px;">📡</div>
@@ -9234,23 +9371,28 @@ function iconLabel(ext, type) {
                             </li>
                         `;
                     } else {
-                        for (const d of data.devices) {
+                        for (const d of dedupedDevices) {
                             const li = document.createElement('li');
                             li.className = 'device-item';
+                            li.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); margin-bottom: 8px; gap: 12px;';
+
+                            const icon = d.isHost ? '💻' : (d.kind === 'android' ? '📱' : '🌐');
+                            const subText = d.isHost ? 'Host Computer (This PC)' : `${d.ip ? escapeHtml(d.ip) : 'LAN Client'}${d.model ? ' • ' + escapeHtml(d.model) : ''}`;
+
                             li.innerHTML = `
-                                <div class="device-meta">
-                                    <span class="device-dot ${d.online ? 'online' : ''}"></span>
-                                    <span class="device-title">${escapeHtml(d.name)}${d.isSelf ? ' (you)' : ''}${d.isHost ? ' · host' : ''}</span>
+                                <div class="device-meta" style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                                    <span class="device-dot ${d.online ? 'online' : ''}" style="flex-shrink: 0;"></span>
+                                    <div style="display: flex; flex-direction: column; min-width: 0;">
+                                        <span class="device-title" style="font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            ${icon} ${escapeHtml(d.name)}${d.isSelf ? ' (you)' : ''}${d.isHost ? ' · host' : ''}
+                                        </span>
+                                        <span style="font-size: 0.75rem; color: var(--text-light); margin-top: 2px;">
+                                            ${subText}
+                                        </span>
+                                    </div>
                                 </div>
-                                ${(!d.isSelf && !d.isHost) ? `<button class="kick-btn" data-id="${d.id}">kick</button>` : ''}
+                                ${(!d.isSelf && !d.isHost) ? `<button class="kick-btn" onclick="kickDevice('${escapeHtml(d.id)}')">🚫 Kick</button>` : ''}
                             `;
-                            const kickBtn = li.querySelector('.kick-btn');
-                            if (kickBtn) {
-                                kickBtn.addEventListener('click', async () => {
-                                    await apiFetch(`/api/devices/${encodeURIComponent(d.id)}/kick`, { method: 'POST' });
-                                    loadDevices();
-                                });
-                            }
                             list.appendChild(li);
                         }
                     }
@@ -9394,6 +9536,7 @@ function iconLabel(ext, type) {
         // ==========================================
         let mobileDeviceList = [];
         let currentPhoneId = null;
+        let isBrowsingPhone = false;
         let currentPhonePath = '/storage/emulated/0';
         let currentPhoneItems = [];
         let currentPhoneFilter = 'all';
@@ -9466,16 +9609,159 @@ function iconLabel(ext, type) {
             applyGalleryTransform(true);
         }
 
+        function renderPhoneCardsGrid(devices) {
+            const grid = $('#phone-cards-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            devices.forEach(d => {
+                const phoneName = d.name || d.model || 'Android Phone';
+                const modelName = d.model || (d.isWebClient ? 'Web Browser Companion' : 'Android Device');
+                const isOnline = d.online !== false;
+                const batteryStr = (d.battery !== undefined && d.battery !== null && d.battery >= 0)
+                    ? `🔋 ${d.battery}%`
+                    : '🔋 Connected';
+
+                let storageStr = '💾 Storage: Active';
+                if (d.storage) {
+                    if (typeof d.storage.freeGB === 'string' && d.storage.freeGB !== '--') {
+                        storageStr = `💾 ${d.storage.freeGB} free of ${d.storage.totalGB}`;
+                    } else if (d.storage.total > 0) {
+                        const freeGB = (d.storage.free / (1024 * 1024 * 1024)).toFixed(1);
+                        const totalGB = (d.storage.total / (1024 * 1024 * 1024)).toFixed(1);
+                        storageStr = `💾 ${freeGB} GB free of ${totalGB} GB`;
+                    }
+                }
+
+                const card = document.createElement('div');
+                card.className = 'phone-card-item card';
+                card.style.cssText = 'padding: 22px; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--border); box-shadow: var(--glass-shadow); cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; gap: 16px;';
+
+                card.innerHTML = `
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
+                            <div style="width: 52px; height: 52px; border-radius: 16px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(99, 102, 241, 0.2)); border: 1px solid rgba(59, 130, 246, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.7rem; flex-shrink: 0; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);">
+                                📱
+                            </div>
+                            <div style="min-width: 0;">
+                                <div style="font-size: 1.15rem; font-weight: 800; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    ${escapeHtml(phoneName)}
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    ${escapeHtml(modelName)}
+                                </div>
+                            </div>
+                        </div>
+                        <span class="phone-status-pill ${isOnline ? '' : 'offline'}" style="flex-shrink: 0; font-size: 0.72rem; padding: 3px 10px; border-radius: 9999px;">
+                            <span class="pill-dot ${isOnline ? 'live-pulse' : ''}"></span>
+                            ${isOnline ? 'Online' : 'Offline'}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.78rem;">
+                        <div style="padding: 4px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; color: var(--text-light); display: flex; align-items: center; gap: 6px;">
+                            🌐 <span>${d.ip ? escapeHtml(d.ip) : 'LAN IP'}</span>
+                        </div>
+                        <div style="padding: 4px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; color: var(--text-light); display: flex; align-items: center; gap: 6px;">
+                            ${escapeHtml(batteryStr)}
+                        </div>
+                        <div style="padding: 4px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; color: var(--text-light); display: flex; align-items: center; gap: 6px;">
+                            ${escapeHtml(storageStr)}
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border);">
+                        <button class="btn btn-accent btn-browse-phone" style="flex: 1; padding: 9px 16px; border-radius: 12px; font-size: 0.82rem; font-weight: 700; justify-content: center; gap: 6px;">
+                            <span>📂 Browse Folders & Files →</span>
+                        </button>
+                        <button class="kick-btn" style="padding: 8px 14px; border-radius: 12px; font-size: 0.82rem; font-weight: 700;">
+                            <span>🚫 Kick</span>
+                        </button>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    selectPhoneToBrowse(d);
+                });
+
+                card.querySelector('.btn-browse-phone')?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectPhoneToBrowse(d);
+                });
+
+                card.querySelector('.kick-btn')?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    kickDevice(d.id);
+                });
+
+                grid.appendChild(card);
+            });
+        }
+
+        function selectPhoneToBrowse(deviceOrId) {
+            const id = typeof deviceOrId === 'object' ? deviceOrId?.id : deviceOrId;
+            const device = (mobileDeviceList || []).find(d => d.id === id) || (typeof deviceOrId === 'object' ? deviceOrId : null);
+            if (!device) return;
+
+            currentPhoneId = device.id;
+            isBrowsingPhone = true;
+
+            const listView = $('#phone-list-view');
+            const activeContainer = $('#phone-active-container');
+            const webCompanionContainer = $('#phone-web-companion-container');
+
+            if (listView) listView.classList.add('hidden');
+            if (activeContainer) activeContainer.classList.remove('hidden');
+
+            if (device.isWebClient) {
+                if (webCompanionContainer) webCompanionContainer.classList.remove('hidden');
+            } else {
+                if (webCompanionContainer) webCompanionContainer.classList.add('hidden');
+            }
+
+            updatePhoneHeader(device);
+            fetchPhoneFolder(currentPhonePath || '/storage/emulated/0', false);
+        }
+
+        function returnToPhoneList() {
+            isBrowsingPhone = false;
+            const listView = $('#phone-list-view');
+            const activeContainer = $('#phone-active-container');
+
+            if (activeContainer) activeContainer.classList.add('hidden');
+            if (listView) listView.classList.remove('hidden');
+            loadMobileDevices();
+        }
+
         async function loadMobileDevices() {
             try {
                 const res = await apiFetch('/api/mobile/devices');
                 if (!res.ok) return;
                 const devices = await res.json();
-                mobileDeviceList = Array.isArray(devices) ? devices : [];
+
+                // Deduplicate devices by IP/ID, prioritizing native mobile device over web companion
+                const seenIps = new Set();
+                const deduped = [];
+                const sorted = [...(Array.isArray(devices) ? devices : [])].sort((a, b) => {
+                    if (!a.isWebClient && b.isWebClient) return -1;
+                    if (a.isWebClient && !b.isWebClient) return 1;
+                    return 0;
+                });
+
+                for (const d of sorted) {
+                    const cleanIp = (d.ip || '').replace(/^::ffff:/, '').trim();
+                    if (cleanIp && cleanIp !== '127.0.0.1') {
+                        if (seenIps.has(cleanIp)) continue; // Skip duplicate IP!
+                        seenIps.add(cleanIp);
+                    }
+                    if (!deduped.some(x => x.id === d.id)) {
+                        deduped.push(d);
+                    }
+                }
+                mobileDeviceList = deduped;
 
                 const onlineDevices = mobileDeviceList.filter(d => d.online);
                 const nativeOnlineDevices = onlineDevices.filter(d => !d.isWebClient);
-                const webOnlineDevices = onlineDevices.filter(d => d.isWebClient);
 
                 // Update sync badges across sidebar and top nav pill
                 const badges = [$('#phone-nav-badge'), $('#top-phone-sync-badge')];
@@ -9490,138 +9776,73 @@ function iconLabel(ext, type) {
                     }
                 });
 
-                const emptyContainer = $('#phone-empty-container');
-                const activeContainer = $('#phone-active-container');
-                const webCompanionContainer = $('#phone-web-companion-container');
                 const topPhoneVal = $('#top-phone-val');
                 const topPhoneDot = $('#top-phone-dot');
 
+                const listView = $('#phone-list-view');
+                const activeContainer = $('#phone-active-container');
+                const emptyContainer = $('#phone-empty-container');
+                const gridWrap = $('#phone-cards-grid-wrap');
+
                 if (onlineDevices.length === 0) {
-                    // Check if any known devices exist but are offline
-                    const offlineDevices = mobileDeviceList.filter(d => !d.online && !d.isWebClient);
-                    if (offlineDevices.length > 0) {
-                        // Device was connected but is now offline
-                        const offlineDev = offlineDevices[0];
-                        if (topPhoneVal) topPhoneVal.textContent = `${offlineDev.name || 'Phone'} (Offline)`;
-                        if (topPhoneDot) topPhoneDot.classList.remove('live-pulse');
-                        // Keep active container visible but update header to show offline
-                        if (activeContainer && !activeContainer.classList.contains('hidden')) {
-                            updatePhoneHeader(offlineDev);
-                        }
-                    } else {
-                        if (webCompanionContainer) webCompanionContainer.classList.add('hidden');
-                        if (emptyContainer) emptyContainer.classList.remove('hidden');
-                        if (activeContainer) activeContainer.classList.add('hidden');
-                        currentPhoneId = null;
-                        if (topPhoneVal) topPhoneVal.textContent = 'Phone Disconnected';
-                        if (topPhoneDot) topPhoneDot.classList.remove('live-pulse');
-                    }
-                    const webBanner = $('#phone-web-paired-banner');
-                    if (webBanner) webBanner.remove();
+                    // No devices connected: reset state
+                    currentPhoneId = null;
+                    isBrowsingPhone = false;
+                    if (topPhoneVal) topPhoneVal.textContent = 'Phone Disconnected';
+                    if (topPhoneDot) topPhoneDot.classList.remove('live-pulse');
+
+                    if (activeContainer) activeContainer.classList.add('hidden');
+                    if (listView) listView.classList.remove('hidden');
+                    if (gridWrap) gridWrap.classList.add('hidden');
+                    if (emptyContainer) emptyContainer.classList.remove('hidden');
+
                     if (typeof renderDashboardPhoneCard === 'function') renderDashboardPhoneCard();
                     return;
                 }
 
-                if (nativeOnlineDevices.length > 0) {
-                    // Native Fylo Android APK Connected: Full active workspace
-                    const primaryDevice = nativeOnlineDevices[0];
-                    if (topPhoneVal) topPhoneVal.textContent = `${primaryDevice.name || 'Phone'} (Connected)`;
-                    if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
+                // Phones connected!
+                const primaryDev = nativeOnlineDevices[0] || onlineDevices[0];
+                if (topPhoneVal) topPhoneVal.textContent = `${primaryDev.name || 'Phone'} (Connected)`;
+                if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
 
-                    if (webCompanionContainer) webCompanionContainer.classList.add('hidden');
-                    if (emptyContainer) emptyContainer.classList.add('hidden');
-                    if (activeContainer) activeContainer.classList.remove('hidden');
+                // Render the cards in #phone-cards-grid
+                renderPhoneCardsGrid(onlineDevices);
 
-                    // If no device currently selected, pick the first native device
-                    if (!currentPhoneId || !nativeOnlineDevices.some(d => d.id === currentPhoneId)) {
-                        currentPhoneId = primaryDevice.id;
-                        updatePhoneHeader(primaryDevice);
-                        fetchPhoneFolder(currentPhonePath || '/storage/emulated/0', false);
-                    } else {
-                        const currentDev = nativeOnlineDevices.find(d => d.id === currentPhoneId) || primaryDevice;
+                // Update device dropdown if multiple phones are connected
+                const selector = $('#phone-device-selector');
+                if (selector && onlineDevices.length > 1) {
+                    selector.style.display = 'block';
+                    selector.innerHTML = '';
+                    onlineDevices.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = `${d.name} (${d.model})`;
+                        opt.selected = (d.id === currentPhoneId);
+                        selector.appendChild(opt);
+                    });
+                } else if (selector) {
+                    selector.style.display = 'none';
+                }
+
+                if (isBrowsingPhone && currentPhoneId) {
+                    const currentDev = onlineDevices.find(d => d.id === currentPhoneId);
+                    if (currentDev) {
+                        // Phone is still online, stay in activeContainer
+                        if (listView) listView.classList.add('hidden');
+                        if (activeContainer) activeContainer.classList.remove('hidden');
                         updatePhoneHeader(currentDev);
-                    }
-
-                    // Update device dropdown if multiple phones
-                    const selector = $('#phone-device-selector');
-                    if (selector && nativeOnlineDevices.length > 1) {
-                        selector.style.display = 'block';
-                        selector.innerHTML = '';
-                        nativeOnlineDevices.forEach(d => {
-                            const opt = document.createElement('option');
-                            opt.value = d.id;
-                            opt.textContent = `${d.name} (${d.model})`;
-                            opt.selected = (d.id === currentPhoneId);
-                            selector.appendChild(opt);
-                        });
-                    } else if (selector) {
-                        selector.style.display = 'none';
-                    }
-                } else if (webOnlineDevices.length > 0) {
-                    // Mobile Web Client Connected (e.g. via Camera QR scan)
-                    const webDev = webOnlineDevices[0];
-                    if (topPhoneVal) topPhoneVal.textContent = `${webDev.name || 'Phone'} (Web Linked)`;
-                    if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
-
-                    // SHOW clean web companion status card
-                    if (webCompanionContainer) {
-                        webCompanionContainer.classList.remove('hidden');
-                        const deviceTitle = $('#phone-web-device-title');
-                        const deviceSub = $('#phone-web-device-sub');
-                        const statIp = $('#phone-web-stat-ip');
-                        if (deviceTitle) deviceTitle.textContent = `📱 ${escapeHtml(webDev.name || 'Mobile Phone')} (Web Linked)`;
-                        if (deviceSub) deviceSub.textContent = `Connected via Web Browser • ${webDev.ip ? 'IP: ' + escapeHtml(webDev.ip) : 'LAN Ready'}`;
-                        if (statIp) statIp.textContent = webDev.ip || 'LAN Connected';
-                    }
-
-                    // HIDE phone-empty-container and SHOW phone-active-container!
-                    if (emptyContainer) emptyContainer.classList.add('hidden');
-                    if (activeContainer) activeContainer.classList.remove('hidden');
-
-                    if (!currentPhoneId || !webOnlineDevices.some(d => d.id === currentPhoneId)) {
-                        currentPhoneId = webDev.id;
-                        updatePhoneHeader(webDev);
-                        fetchPhoneFolder(currentPhonePath || '/storage/emulated/0', false);
                     } else {
-                        const currentDev = webOnlineDevices.find(d => d.id === currentPhoneId) || webDev;
-                        updatePhoneHeader(currentDev);
+                        // The browsed phone went offline or was kicked! Return to list view
+                        returnToPhoneList();
+                        showToast('Phone disconnected', 'info');
                     }
-
-                    // Update device dropdown if multiple phones
-                    const selector = $('#phone-device-selector');
-                    if (selector && webOnlineDevices.length > 1) {
-                        selector.style.display = 'block';
-                        selector.innerHTML = '';
-                        webOnlineDevices.forEach(d => {
-                            const opt = document.createElement('option');
-                            opt.value = d.id;
-                            opt.textContent = `${d.name} (${d.model})`;
-                            opt.selected = (d.id === currentPhoneId);
-                            selector.appendChild(opt);
-                        });
-                    } else if (selector) {
-                        selector.style.display = 'none';
-                    }
-
-                    // Secondary link "Show QR code" toggle
-                    const qrToggleLink = $('#web-companion-show-qr-link');
-                    if (qrToggleLink && !qrToggleLink._bound) {
-                        qrToggleLink._bound = true;
-                        qrToggleLink.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            const emptyCont = $('#phone-empty-container');
-                            if (emptyCont) {
-                                const isHidden = emptyCont.classList.contains('hidden');
-                                if (isHidden) {
-                                    emptyCont.classList.remove('hidden');
-                                    qrToggleLink.textContent = 'Hide QR code';
-                                } else {
-                                    emptyCont.classList.add('hidden');
-                                    qrToggleLink.textContent = 'Show QR code';
-                                }
-                            }
-                        });
-                    }
+                } else {
+                    // User is on Phone List View (Level 1)
+                    // DO NOT automatically force-open phone folders!
+                    if (activeContainer) activeContainer.classList.add('hidden');
+                    if (listView) listView.classList.remove('hidden');
+                    if (emptyContainer) emptyContainer.classList.add('hidden');
+                    if (gridWrap) gridWrap.classList.remove('hidden');
                 }
 
                 if (typeof renderDashboardPhoneCard === 'function') {
@@ -10817,11 +11038,15 @@ function iconLabel(ext, type) {
                 return;
             }
 
-            // 5. In Phone Explorer view: go back one folder or to dashboard
+            // 5. In Phone Explorer view: go back one folder or to phone list / dashboard
             if (currentActivePanel === 'view-phone') {
-                const phoneBackBtn = $('#phone-back-btn');
-                if (phoneBackBtn && !phoneBackBtn.disabled) {
-                    phoneBackBtn.click();
+                if (isBrowsingPhone) {
+                    const phoneBackBtn = $('#phone-back-btn');
+                    if (phoneBackBtn && !phoneBackBtn.disabled) {
+                        phoneBackBtn.click();
+                    } else {
+                        returnToPhoneList();
+                    }
                 } else {
                     switchView('view-dashboard');
                 }

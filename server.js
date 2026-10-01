@@ -1049,21 +1049,65 @@ setInterval(() => {
 
 app.get('/api/devices', (req, res) => {
     const now = Date.now();
-    const deviceMap = { ...devices };
 
-    // Include native mobile devices if not already present
+    // Map of active native mobile device IPs
+    const nativeIps = new Set();
     Object.values(mobileDevices).forEach(m => {
-        if (!deviceMap[m.id]) {
-            deviceMap[m.id] = {
-                id: m.id,
-                name: m.name || m.model || 'Android Phone',
-                kind: 'android',
-                isHost: false,
-                lastActive: m.lastActive
-            };
-        } else {
-            deviceMap[m.id].lastActive = Math.max(deviceMap[m.id].lastActive || 0, m.lastActive || 0);
+        const cleanIp = (m.ip || '').replace(/^::ffff:/, '').trim();
+        if (cleanIp) nativeIps.add(cleanIp);
+    });
+
+    const deviceMap = {};
+
+    // 1. Add native mobile devices first (native phone takes highest priority)
+    Object.values(mobileDevices).forEach(m => {
+        const cleanIp = (m.ip || '').replace(/^::ffff:/, '').trim();
+        const key = m.id || cleanIp;
+        deviceMap[key] = {
+            id: m.id,
+            name: m.name || m.model || 'Android Phone',
+            kind: 'android',
+            ip: cleanIp,
+            model: m.model || 'Android Device',
+            isHost: false,
+            isWebClient: false,
+            lastActive: m.lastActive
+        };
+    });
+
+    // 2. Add other devices from `devices`, deduplicating by IP
+    Object.values(devices).forEach(d => {
+        const cleanIp = (d.ip || '').replace(/^::ffff:/, '').trim();
+
+        // If an IP has a native mobile device in mobileDevices, DO NOT list any web companion client for that same IP
+        if (cleanIp && nativeIps.has(cleanIp) && (d.isWebClient || d.name?.includes('Web Companion') || d.model?.includes('Web Companion'))) {
+            return;
         }
+
+        if (deviceMap[d.id]) {
+            deviceMap[d.id].lastActive = Math.max(deviceMap[d.id].lastActive || 0, d.lastActive || 0);
+            return;
+        }
+
+        // Deduplicate non-host remote devices by IP
+        if (!d.isHost && cleanIp && cleanIp !== '127.0.0.1' && cleanIp !== 'localhost') {
+            const existing = Object.values(deviceMap).find(x => !x.isHost && x.ip === cleanIp);
+            if (existing) {
+                existing.lastActive = Math.max(existing.lastActive || 0, d.lastActive || 0);
+                return;
+            }
+        }
+
+        deviceMap[d.id] = {
+            id: d.id,
+            name: d.name || (d.isHost ? 'Host Computer' : 'Remote Client'),
+            kind: d.kind,
+            ip: cleanIp,
+            model: d.model,
+            isHost: !!d.isHost,
+            isWebClient: !!d.isWebClient,
+            lastActive: d.lastActive
+        };
     });
 
     const deviceList = Object.values(deviceMap).map(d => {
@@ -1072,8 +1116,11 @@ app.get('/api/devices', (req, res) => {
             id: d.id,
             name: d.name,
             kind: d.kind,
+            ip: d.ip,
+            model: d.model,
             online: isOnline,
             isHost: d.isHost,
+            isWebClient: d.isWebClient,
             isSelf: d.id === req.sessionId
         };
     });
@@ -1131,22 +1178,47 @@ app.post('/api/heartbeat', (req, res) => {
     res.json({ success: true, lastActive: devices[sessionId].lastActive, device: devices[sessionId] });
 });
 
-app.post('/api/devices/:id/kick', (req, res) => {
+const handleKickDevice = (req, res) => {
     if (!isLocalHostIp(req.ip)) {
         return res.status(403).json({ error: '403 Forbidden: Host Only' });
     }
     const targetId = req.params.id;
-    if (targetId && targetId !== req.sessionId) {
-        const targetDevice = devices[targetId];
+    if (!targetId || targetId === req.sessionId) {
+        return res.status(400).json({ success: false, error: 'Invalid device ID' });
+    }
+
+    const targetMobile = mobileDevices[targetId];
+    const targetDevice = devices[targetId];
+    const targetIp = (targetMobile?.ip || targetDevice?.ip || '').replace(/^::ffff:/, '').trim();
+
+    if (targetDevice) {
         blockedDevices[targetId] = {
             id: targetId,
-            name: targetDevice ? targetDevice.name : "Unknown Device"
+            name: targetDevice.name || targetDevice.model || "Unknown Device"
         };
         delete devices[targetId];
-        return res.json({ success: true });
     }
-    res.status(400).json({ success: false });
-});
+    if (mobileDevices[targetId]) {
+        delete mobileDevices[targetId];
+    }
+
+    // Clean up any remaining records matching this ID or IP
+    for (const id of Object.keys(mobileDevices)) {
+        if (mobileDevices[id].id === targetId || (targetIp && (mobileDevices[id].ip || '').replace(/^::ffff:/, '').trim() === targetIp)) {
+            delete mobileDevices[id];
+        }
+    }
+    for (const id of Object.keys(devices)) {
+        if (devices[id].id === targetId || (targetIp && (devices[id].ip || '').replace(/^::ffff:/, '').trim() === targetIp)) {
+            delete devices[id];
+        }
+    }
+
+    return res.json({ success: true, message: 'Device disconnected' });
+};
+
+app.post('/api/devices/:id/kick', handleKickDevice);
+app.post('/api/mobile/devices/:id/kick', handleKickDevice);
 
 app.post('/api/devices/:id/unblock', (req, res) => {
     if (!isLocalHostIp(req.ip)) {
@@ -1275,29 +1347,43 @@ app.get('/api/mobile/devices', (req, res) => {
         }
     });
 
-    const list = Object.values(mobileDevices).map(d => ({
-        id: d.id,
-        name: d.name,
-        model: d.model,
-        ip: (d.ip || '').replace(/^::ffff:/, ''),
-        port: d.port,
-        readOnly: d.readOnly,
-        allowFullPhoneAccess: d.allowFullPhoneAccess !== false,
-        storage: d.storage,
-        battery: d.battery,
-        online: (now - d.lastActive) <= 35000,
-        isWebClient: false
-    }));
+    const nativeIps = new Set();
+    const list = Object.values(mobileDevices).map(d => {
+        const cleanIp = (d.ip || '').replace(/^::ffff:/, '').trim();
+        if (cleanIp) nativeIps.add(cleanIp);
+        return {
+            id: d.id,
+            name: d.name,
+            model: d.model,
+            ip: cleanIp,
+            port: d.port,
+            readOnly: d.readOnly,
+            allowFullPhoneAccess: d.allowFullPhoneAccess !== false,
+            storage: d.storage,
+            battery: d.battery,
+            online: (now - d.lastActive) <= 35000,
+            isWebClient: false
+        };
+    });
 
     // Include active remote web companion clients (e.g. mobile Chrome / Safari)
+    // ONLY IF that same IP is NOT already an active native phone in mobileDevices
     Object.values(devices).forEach(d => {
-        if (!d.isHost && (d.isWebClient || d.kind === 'android' || d.kind === 'mobile' || d.kind === 'ios') && !list.some(m => m.id === d.id)) {
+        if (!d.isHost && (d.isWebClient || d.kind === 'android' || d.kind === 'mobile' || d.kind === 'ios')) {
+            const cleanIp = (d.ip || '').replace(/^::ffff:/, '').trim();
+            // DO NOT include web companion entries if that same IP is already an active native phone in mobileDevices
+            if (cleanIp && nativeIps.has(cleanIp)) {
+                return;
+            }
+            if (list.some(m => m.id === d.id || (cleanIp && m.ip === cleanIp))) {
+                return;
+            }
             const isOnline = (now - d.lastActive) <= 35000;
             list.push({
                 id: d.id,
                 name: d.name || 'Mobile Phone',
                 model: d.model || 'Web Browser Companion',
-                ip: (d.ip || '').replace(/^::ffff:/, ''),
+                ip: cleanIp,
                 port: PORT,
                 readOnly: true,
                 allowFullPhoneAccess: false,
