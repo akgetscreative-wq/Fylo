@@ -922,13 +922,36 @@ app.get('/api/download/:id', (req, res) => {
                 const fileSize = stat.size;
                 const range = req.headers.range;
 
+                const ext = path.extname(meta.name || meta.path || '').toLowerCase();
+                const mimeMap = {
+                    '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif',
+                    '.webp': 'image/webp', '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+                    '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.mkv': 'video/x-matroska',
+                    '.avi': 'video/x-msvideo', '.wmv': 'video/x-ms-wmv', '.flv': 'video/x-flv', '.ts': 'video/mp2t',
+                    '.m4v': 'video/mp4', '.3gp': 'video/3gpp',
+                    '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.flac': 'audio/flac',
+                    '.aac': 'audio/aac', '.opus': 'audio/opus',
+                    '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8', '.json': 'application/json',
+                    '.zip': 'application/zip'
+                };
+                const contentType = mimeMap[ext] || 'application/octet-stream';
+                const isMedia = contentType.startsWith('video/') || contentType.startsWith('audio/');
+                const isExplicitDownload = req.query.download === '1' || req.query.dl === '1';
+
                 res.setHeader('Accept-Ranges', 'bytes');
                 res.setHeader('Cache-Control', 'no-cache, no-transform');
+                res.setHeader('Content-Type', contentType);
+
+                if (isExplicitDownload) {
+                    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(meta.name)}"; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
+                }
 
                 if (range) {
                     const parts = range.replace(/bytes=/, "").split("-");
                     const start = parseInt(parts[0], 10);
-                    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+                    // Bounded 16MB chunk for open-ended media ranges to ensure instant seeking without socket congestion
+                    const maxChunk = (isMedia && !isExplicitDownload) ? (16 * 1024 * 1024) : fileSize;
+                    const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + maxChunk - 1, fileSize - 1);
 
                     if (start >= fileSize || end >= fileSize || start > end) {
                         res.setHeader('Content-Range', `bytes */${fileSize}`);
@@ -939,17 +962,17 @@ app.get('/api/download/:id', (req, res) => {
                     res.status(206);
                     res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
                     res.setHeader('Content-Length', chunksize);
-                    res.setHeader('Content-Type', 'application/octet-stream');
-                    res.setHeader('Content-Disposition', `attachment; filename="${meta.name}"; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
 
                     const readStream = fs.createReadStream(meta.path, { start, end });
+                    res.on('close', () => { readStream.destroy(); });
+                    res.on('error', () => { readStream.destroy(); });
                     readStream.pipe(res);
                     return;
                 } else {
-                    res.setHeader('Content-Type', 'application/octet-stream');
                     res.setHeader('Content-Length', fileSize);
-                    res.setHeader('Content-Disposition', `attachment; filename="${meta.name}"; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
                     const readStream = fs.createReadStream(meta.path);
+                    res.on('close', () => { readStream.destroy(); });
+                    res.on('error', () => { readStream.destroy(); });
                     readStream.pipe(res);
                     return;
                 }
@@ -2250,7 +2273,10 @@ app.get('/api/pc/explorer/file', (req, res) => {
         if (range) {
             const parts = range.replace(/bytes=/, "").split("-");
             const start = parseInt(parts[0], 10);
-            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const isMedia = (mimeMap[ext] || '').startsWith('video/') || (mimeMap[ext] || '').startsWith('audio/');
+            // Bounded 16MB chunk for open-ended media streaming so seeking responds in milliseconds without pipe congestion
+            const maxChunk = (isMedia && !download) ? (16 * 1024 * 1024) : fileSize;
+            const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + maxChunk - 1, fileSize - 1);
 
             if (start >= fileSize || end >= fileSize || start > end) {
                 res.setHeader('Content-Range', `bytes */${fileSize}`);

@@ -560,7 +560,14 @@ public class FyloHttpServer {
                         if (!endStr.isEmpty()) {
                             end = Long.parseLong(endStr);
                         } else {
-                            end = fileLength - 1;
+                            // Bounded 16MB chunk for open-ended media streaming so seeking responds instantly over Wi-Fi
+                            boolean isMedia = (contentType != null) && (contentType.startsWith("video/") || contentType.startsWith("audio/"));
+                            if (isMedia && !download) {
+                                long maxChunk = 16L * 1024 * 1024;
+                                end = Math.min(start + maxChunk - 1, fileLength - 1);
+                            } else {
+                                end = fileLength - 1;
+                            }
                         }
                         if (start >= 0 && end >= start) {
                             isPartial = true;

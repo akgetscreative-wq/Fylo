@@ -5435,21 +5435,25 @@ export default function App() {
                           <Text style={[styles.ytTopActionBtnText, { color: '#93c5fd' }]}>⛶ Fullscreen</Text>
                         </TouchableOpacity>
 
-                        {lightboxItem?.source === 'pc' && (
-                          <TouchableOpacity
-                            activeOpacity={0.75}
-                            style={[styles.ytTopActionBtn, { backgroundColor: 'rgba(30, 41, 59, 0.75)', borderColor: 'rgba(255, 255, 255, 0.25)', borderWidth: 1 }]}
-                            onPress={() => {
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          style={[styles.ytTopActionBtn, { backgroundColor: 'rgba(30, 41, 59, 0.75)', borderColor: 'rgba(255, 255, 255, 0.25)', borderWidth: 1 }]}
+                          onPress={() => {
+                            if (lightboxItem?.source === 'pc') {
                               const streamUrl = lightboxItem?.item?.downloadUrl
                                 ? lightboxItem.item.downloadUrl
                                 : `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(lightboxItem?.item?.path || '')}&auth=${pcAuthToken || ''}`;
                               if (FyloModule && FyloModule.openUrlWithChooser) {
                                 FyloModule.openUrlWithChooser(streamUrl, 'video/*', `Stream ${lightboxItem?.item?.name || 'Video'}`);
                               }
-                            }}>
-                            <Text style={[styles.ytTopActionBtnText, { color: '#38bdf8' }]}>⚡ VLC/MX</Text>
-                          </TouchableOpacity>
-                        )}
+                            } else {
+                              if (lightboxItem?.item?.path && FyloModule && FyloModule.openFileWithChooser) {
+                                FyloModule.openFileWithChooser(lightboxItem.item.path, 'video/*');
+                              }
+                            }
+                          }}>
+                          <Text style={[styles.ytTopActionBtnText, { color: '#38bdf8' }]}>⚡ VLC/MX</Text>
+                        </TouchableOpacity>
                       </View>
 
                       {/* Center Controls (Rewind 10s, Big Play/Pause, Forward 10s) */}
