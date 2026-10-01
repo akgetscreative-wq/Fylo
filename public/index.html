@@ -4262,7 +4262,8 @@
             gap: 18px;
         }
 
-        .dash-card-drives {
+        .dash-card-drives,
+        .dash-card-phone-storage {
             flex: 1;
         }
 
@@ -5545,89 +5546,106 @@
                         </div>
                     </div>
 
-                    <!-- 2. PC STORAGE DRIVES & QUICK ACCESS -->
+                    <!-- 2. PHONE STORAGE & QUICK ACCESS -->
                     <div class="dash-col-center">
-                        <!-- Real PC Drives Card -->
-                        <div class="bento-card dash-card-drives">
+                        <!-- Dedicated Phone Storage & Drives Card -->
+                        <div class="bento-card dash-card-phone-storage" id="dash-card-phone-storage">
                             <div class="bento-card-header">
                                 <div class="bento-card-title">
-                                    <span class="card-header-icon">💻</span>
-                                    <span>My PC Drives</span>
+                                    <span class="card-header-icon">📱</span>
+                                    <span>Phone Storage</span>
+                                    <span id="dash-phone-model-label" class="dash-stat-badge" style="margin-left: 6px; font-size: 0.72rem; font-weight: 700; color: var(--text-light); background: rgba(255,255,255,0.06); border: 1px solid var(--border); padding: 2px 8px; border-radius: 9999px;">No Phone Linked</span>
                                 </div>
-                                <button class="bento-icon-btn" onclick="switchView('view-pc-explorer')" title="Browse All PC Drives">
+                                <button class="bento-icon-btn" onclick="switchView('view-phone')" title="Browse Phone Explorer">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><polyline points="9 18 15 12 9 6"/></svg>
                                 </button>
                             </div>
 
-                            <div class="bento-tiles-grid" style="grid-template-columns: 1fr 1fr;">
-                                <!-- Tile A: Drive (C:) -->
-                                <div class="bento-tile tile-sky" id="dash-tile-drive-c" title="Browse Drive (C:)">
+                            <!-- Phone Connected State: Storage Bento Tiles -->
+                            <div class="bento-tiles-grid" id="dash-phone-tiles" style="grid-template-columns: 1fr 1fr; display: none;">
+                                <!-- Tile A: Internal Storage (/storage/emulated/0) -->
+                                <div class="bento-tile tile-sky" id="dash-tile-phone-internal" title="Browse Phone Internal Storage">
                                     <div class="tile-header">
-                                        <span class="tile-title">Drive (C:)</span>
-                                        <span class="tile-icon-badge">💾</span>
+                                        <span class="tile-title" id="dash-phone-internal-title">Internal Storage</span>
+                                        <span class="tile-icon-badge">📱</span>
                                     </div>
                                     <div class="tile-graphic-wave">
-                                        <div class="tile-wave-fill" id="dash-drive-c-fill" style="width: 50%;"></div>
+                                        <div class="tile-wave-fill" id="dash-phone-internal-fill" style="width: 45%;"></div>
                                     </div>
                                     <div>
-                                        <div class="tile-stat-number" id="dash-drive-c-free">Checking...</div>
-                                        <div class="tile-subtext">Click to explore C:\</div>
+                                        <div class="tile-stat-number" id="dash-phone-internal-free">Checking...</div>
+                                        <div class="tile-subtext" id="dash-phone-internal-sub">Click to browse phone files</div>
                                     </div>
                                 </div>
 
-                                <!-- Tile B: Drive (D:) or Secondary -->
-                                <div class="bento-tile tile-peach" id="dash-tile-drive-d" title="Browse Secondary Drive">
+                                <!-- Tile B: Camera & Media (/storage/emulated/0/DCIM) -->
+                                <div class="bento-tile tile-peach" id="dash-tile-phone-media" title="Browse Camera & Media">
                                     <div class="tile-header">
-                                        <span class="tile-title" id="dash-drive-d-label">Drive (D:)</span>
-                                        <span class="tile-icon-badge">📂</span>
+                                        <span class="tile-title" id="dash-phone-media-title">Camera & Media</span>
+                                        <span class="tile-icon-badge">📸</span>
                                     </div>
                                     <div class="tile-graphic-wave">
-                                        <div class="tile-wave-fill" id="dash-drive-d-fill" style="width: 50%; background: #f59e0b;"></div>
+                                        <div class="tile-wave-fill" id="dash-phone-media-fill" style="width: 65%; background: linear-gradient(90deg, #fb923c, #ea580c);"></div>
                                     </div>
                                     <div>
-                                        <div class="tile-stat-number" id="dash-drive-d-free">Checking...</div>
-                                        <div class="tile-subtext" id="dash-drive-d-sub">Click to explore D:\</div>
+                                        <div class="tile-stat-number" id="dash-phone-media-stat">DCIM & Pictures</div>
+                                        <div class="tile-subtext" id="dash-phone-media-sub">Click to view gallery files</div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- Phone Disconnected State (Empty State) -->
+                            <div id="dash-phone-empty-state" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px; min-height: 130px; background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--border); border-radius: 18px;">
+                                <div style="font-size: 2rem; margin-bottom: 6px; opacity: 0.85;">📱</div>
+                                <div style="font-weight: 800; font-size: 0.95rem; color: var(--text); margin-bottom: 4px;">No Phone Connected</div>
+                                <div style="font-size: 0.78rem; color: var(--text-light); max-width: 320px; line-height: 1.4; margin-bottom: 12px;">
+                                    Link your Android phone running the Fylo app to browse phone storage and gallery files directly on your PC.
+                                </div>
+                                <button class="btn btn-primary" onclick="showQRModal()" style="padding: 7px 16px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                                    <span>📱 Connect Phone</span>
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Windows Quick Access Folders -->
-                        <div class="bento-card dash-card-quick-access">
+                        <!-- Phone Quick Access Folders -->
+                        <div class="bento-card dash-card-quick-access" id="dash-card-phone-shortcuts">
                             <div class="bento-card-header">
                                 <div class="bento-card-title">
-                                    <span class="card-header-icon">📁</span>
-                                    <span>Quick Access Folders</span>
+                                    <span class="card-header-icon">📂</span>
+                                    <span>Phone Quick Shortcuts</span>
                                 </div>
-                                <span class="bento-card-caption">Windows Shortcuts</span>
+                                <span class="bento-card-caption" id="dash-phone-shortcuts-caption">Offline</span>
                             </div>
-                            <div class="quick-access-chips" id="dash-quick-access-chips">
-                                <button class="quick-chip-btn" data-folder="Downloads" title="Open Downloads">
-                                    <span class="chip-emoji">📥</span>
-                                    <span class="chip-name">Downloads</span>
+                            <div class="quick-access-chips" id="dash-phone-quick-chips" style="display: none;">
+                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/DCIM" title="Open DCIM (Camera)">
+                                    <span class="chip-emoji">📸</span>
+                                    <span class="chip-name">DCIM</span>
                                 </button>
-                                <button class="quick-chip-btn" data-folder="Pictures" title="Open Pictures">
+                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Download" title="Open Downloads">
+                                    <span class="chip-emoji">📥</span>
+                                    <span class="chip-name">Download</span>
+                                </button>
+                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Pictures" title="Open Pictures">
                                     <span class="chip-emoji">🖼️</span>
                                     <span class="chip-name">Pictures</span>
                                 </button>
-                                <button class="quick-chip-btn" data-folder="Desktop" title="Open Desktop">
-                                    <span class="chip-emoji">🖥️</span>
-                                    <span class="chip-name">Desktop</span>
-                                </button>
-                                <button class="quick-chip-btn" data-folder="Documents" title="Open Documents">
+                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Documents" title="Open Documents">
                                     <span class="chip-emoji" style="display:inline-flex; align-items:center;">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" style="width:18px;height:18px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                                     </span>
                                     <span class="chip-name">Documents</span>
                                 </button>
-                                <button class="quick-chip-btn" data-folder="Videos" title="Open Videos">
+                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Movies" title="Open Movies">
                                     <span class="chip-emoji">🎬</span>
-                                    <span class="chip-name">Videos</span>
+                                    <span class="chip-name">Movies</span>
                                 </button>
-                                <button class="quick-chip-btn" data-folder="Music" title="Open Music">
+                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Music" title="Open Music">
                                     <span class="chip-emoji">🎵</span>
                                     <span class="chip-name">Music</span>
                                 </button>
+                            </div>
+                            <div id="dash-phone-shortcuts-empty" style="display: flex; align-items: center; justify-content: center; padding: 18px 12px; text-align: center; color: var(--text-light); font-size: 0.8rem; background: rgba(255, 255, 255, 0.02); border-radius: 12px; border: 1px dashed var(--border);">
+                                <span>📱 Phone shortcuts appear when connected</span>
                             </div>
                         </div>
                     </div>
@@ -7302,65 +7320,122 @@
             fetchPCFolder(targetPath, true);
         }
 
+        function openPhoneFolder(targetPath) {
+            const onlineDev = (typeof mobileDeviceList !== 'undefined' && Array.isArray(mobileDeviceList))
+                ? (mobileDeviceList.find(d => d.online && !d.isWebClient) || mobileDeviceList.find(d => d.online))
+                : null;
+            if (!onlineDev) {
+                showToast('Connect your phone to browse files', 'info');
+                showQRModal();
+                return;
+            }
+            if (typeof currentPhoneId !== 'undefined' && !currentPhoneId) {
+                currentPhoneId = onlineDev.id;
+                if (typeof updatePhoneHeader === 'function') updatePhoneHeader(onlineDev);
+            }
+            switchView('view-phone');
+            if (typeof fetchPhoneFolder === 'function') {
+                fetchPhoneFolder(targetPath || '/storage/emulated/0', true);
+            }
+        }
+
+        function renderDashboardPhoneCard() {
+            const phoneStorageCard = $('#dash-card-phone-storage');
+            if (!phoneStorageCard) return;
+
+            const devs = (typeof mobileDeviceList !== 'undefined' && Array.isArray(mobileDeviceList)) ? mobileDeviceList : [];
+            const onlineDevices = devs.filter(d => d.online);
+            const nativeOnline = onlineDevices.filter(d => !d.isWebClient);
+            const connectedDev = (nativeOnline.length > 0 ? nativeOnline[0] : (onlineDevices.length > 0 ? onlineDevices[0] : null));
+
+            const modelLabel = $('#dash-phone-model-label');
+            const tilesGrid = $('#dash-phone-tiles');
+            const emptyState = $('#dash-phone-empty-state');
+            const shortcutsCaption = $('#dash-phone-shortcuts-caption');
+            const quickChips = $('#dash-phone-quick-chips');
+            const shortcutsEmpty = $('#dash-phone-shortcuts-empty');
+
+            if (connectedDev) {
+                // Connected state
+                if (modelLabel) {
+                    modelLabel.textContent = `${connectedDev.name || connectedDev.model || 'Android Phone'} (Online)`;
+                    modelLabel.style.color = '#2ed573';
+                    modelLabel.style.borderColor = 'rgba(46, 213, 115, 0.3)';
+                    modelLabel.style.background = 'rgba(46, 213, 115, 0.1)';
+                }
+
+                if (emptyState) emptyState.style.display = 'none';
+                if (tilesGrid) tilesGrid.style.display = 'grid';
+
+                // Storage stats
+                const internalFree = $('#dash-phone-internal-free');
+                const internalFill = $('#dash-phone-internal-fill');
+                const internalSub = $('#dash-phone-internal-sub');
+                const tileInternal = $('#dash-tile-phone-internal');
+                const tileMedia = $('#dash-tile-phone-media');
+
+                let freeText = 'Storage Active';
+                let percentUsed = 45;
+
+                if (connectedDev.storage) {
+                    if (typeof connectedDev.storage.freeGB === 'string' && connectedDev.storage.freeGB !== '--') {
+                        freeText = `${connectedDev.storage.freeGB} Free / ${connectedDev.storage.totalGB || ''}`;
+                        if (connectedDev.storage.total > 0 && connectedDev.storage.free !== undefined) {
+                            percentUsed = Math.max(5, Math.min(100, Math.round((1 - (connectedDev.storage.free / connectedDev.storage.total)) * 100)));
+                        }
+                    } else if (connectedDev.storage.total > 0) {
+                        const fGb = (connectedDev.storage.free / (1024 * 1024 * 1024)).toFixed(1);
+                        const tGb = (connectedDev.storage.total / (1024 * 1024 * 1024)).toFixed(1);
+                        freeText = `${fGb} GB Free / ${tGb} GB`;
+                        percentUsed = Math.max(5, Math.min(100, Math.round((1 - (connectedDev.storage.free / connectedDev.storage.total)) * 100)));
+                    }
+                }
+
+                if (internalFree) internalFree.textContent = freeText;
+                if (internalFill) internalFill.style.width = `${percentUsed}%`;
+                if (internalSub) internalSub.textContent = 'Click to browse phone files';
+
+                if (tileInternal) {
+                    tileInternal.onclick = () => openPhoneFolder('/storage/emulated/0');
+                }
+                if (tileMedia) {
+                    tileMedia.onclick = () => openPhoneFolder('/storage/emulated/0/DCIM');
+                }
+
+                // Shortcuts
+                if (shortcutsCaption) shortcutsCaption.textContent = 'Phone Folders';
+                if (quickChips) quickChips.style.display = 'grid';
+                if (shortcutsEmpty) shortcutsEmpty.style.display = 'none';
+
+                // Wire shortcut chips
+                document.querySelectorAll('#dash-phone-quick-chips .quick-chip-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        const folder = btn.getAttribute('data-phone-folder');
+                        openPhoneFolder(folder || '/storage/emulated/0');
+                    };
+                });
+            } else {
+                // Disconnected state
+                if (modelLabel) {
+                    modelLabel.textContent = 'No Phone Linked';
+                    modelLabel.style.color = 'var(--text-light)';
+                    modelLabel.style.borderColor = 'var(--border)';
+                    modelLabel.style.background = 'rgba(255, 255, 255, 0.05)';
+                }
+
+                if (tilesGrid) tilesGrid.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'flex';
+
+                if (shortcutsCaption) shortcutsCaption.textContent = 'Offline';
+                if (quickChips) quickChips.style.display = 'none';
+                if (shortcutsEmpty) shortcutsEmpty.style.display = 'flex';
+            }
+        }
+
         async function loadDashboardData() {
             try {
-                // 1. Fetch drives & quick access
-                const qaRes = await apiFetch('/api/pc/explorer/quick-access');
-                if (qaRes.ok) {
-                    const data = await qaRes.json();
-                    if (Array.isArray(data.drives) && data.drives.length > 0) {
-                        // Populate Drive C:
-                        const driveC = data.drives.find(d => (d.mount && d.mount.toUpperCase().startsWith('C')) || (d.path && d.path.toUpperCase().startsWith('C'))) || data.drives[0];
-                        if (driveC) {
-                            const cFreeGb = Math.round(driveC.free / (1024 * 1024 * 1024));
-                            const cTotalGb = Math.round(driveC.total / (1024 * 1024 * 1024));
-                            const cPercent = driveC.total > 0 ? Math.round((1 - (driveC.free / driveC.total)) * 100) : 55;
-                            const cEl = $('#dash-drive-c-free');
-                            if (cEl) cEl.textContent = `${cFreeGb} GB Free / ${cTotalGb} GB`;
-                            const fillEl = $('#dash-drive-c-fill');
-                            if (fillEl) fillEl.style.width = `${cPercent}%`;
-                            const tileC = $('#dash-tile-drive-c');
-                            if (tileC) tileC.onclick = () => openPCFolder(driveC.path || driveC.mount || 'C:\\');
-                        }
-
-                        // Populate Drive D: (or secondary drive)
-                        const driveD = data.drives.find(d => (d.mount && !d.mount.toUpperCase().startsWith('C')) || (d.path && !d.path.toUpperCase().startsWith('C'))) || (data.drives.length > 1 ? data.drives[1] : null);
-                        if (driveD) {
-                            const dFreeGb = Math.round(driveD.free / (1024 * 1024 * 1024));
-                            const dTotalGb = Math.round(driveD.total / (1024 * 1024 * 1024));
-                            const dMount = driveD.mount || driveD.path || 'D:';
-                            const dLabel = $('#dash-drive-d-label');
-                            if (dLabel) dLabel.textContent = `Drive (${dMount.slice(0, 2)})`;
-                            const dEl = $('#dash-drive-d-free');
-                            if (dEl) dEl.textContent = `${dFreeGb} GB Free / ${dTotalGb} GB`;
-                            const dSub = $('#dash-drive-d-sub');
-                            if (dSub) dSub.textContent = `Click to explore ${dMount.slice(0, 2)}\\`;
-                            const tileD = $('#dash-tile-drive-d');
-                            if (tileD) tileD.onclick = () => openPCFolder(driveD.path || driveD.mount || 'D:\\');
-                        } else {
-                            const dLabel = $('#dash-drive-d-label');
-                            if (dLabel) dLabel.textContent = 'Drive (C:) Cache';
-                            const dEl = $('#dash-drive-d-free');
-                            if (dEl) dEl.textContent = 'System Ready';
-                            const tileD = $('#dash-tile-drive-d');
-                            if (tileD) tileD.onclick = () => openPCFolder('C:\\');
-                        }
-                    }
-
-                    // Map Quick Access folder clicks
-                    const shortcuts = Array.isArray(data.shortcuts) ? data.shortcuts : [];
-                    document.querySelectorAll('.quick-chip-btn').forEach(btn => {
-                        const folderName = btn.getAttribute('data-folder');
-                        const match = shortcuts.find(s => s.name.toLowerCase() === folderName.toLowerCase());
-                        btn.onclick = () => {
-                            if (match && match.path) {
-                                openPCFolder(match.path);
-                            } else {
-                                openPCFolder('C:\\Users\\' + (folderName || ''));
-                            }
-                        };
-                    });
-                }
+                // 1. Phone Storage & Drives Card on Homepage (Never PC drives)
+                renderDashboardPhoneCard();
 
                 // 2. Fetch Network Info & URL (used by QR code generation)
                 const netRes = await apiFetch('/api/network-url');
@@ -7588,8 +7663,8 @@
             switchView('view-hub');
             setTimeout(() => $('#file-input')?.click(), 80);
         });
-        $('#top-qr-toggle-btn')?.addEventListener('click', () => {
-            if (isMobile) {
+        function showQRModal() {
+            if (typeof isMobile !== 'undefined' && isMobile) {
                 switchView('view-apk');
                 return;
             }
@@ -7597,14 +7672,17 @@
             if (landing) {
                 if (landing.classList.contains('hidden-landing')) {
                     landing.classList.remove('hidden-landing');
-                    loadNetworkInfo();
+                    if (typeof loadNetworkInfo === 'function') loadNetworkInfo();
                 } else {
                     landing.classList.add('hidden-landing');
                 }
             } else {
                 switchView('view-phone');
             }
-        });
+        }
+        window.showQRModal = showQRModal;
+
+        $('#top-qr-toggle-btn')?.addEventListener('click', showQRModal);
 
         // Mobile Companion Tabs & Actions
         document.querySelectorAll('.mobile-tab-btn[data-target]').forEach(btn => {
@@ -9440,6 +9518,7 @@ function iconLabel(ext, type) {
                     }
                     const webBanner = $('#phone-web-paired-banner');
                     if (webBanner) webBanner.remove();
+                    if (typeof renderDashboardPhoneCard === 'function') renderDashboardPhoneCard();
                     return;
                 }
 
@@ -9543,6 +9622,10 @@ function iconLabel(ext, type) {
                             }
                         });
                     }
+                }
+
+                if (typeof renderDashboardPhoneCard === 'function') {
+                    renderDashboardPhoneCard();
                 }
             } catch (err) {
                 console.error('loadMobileDevices error:', err);
