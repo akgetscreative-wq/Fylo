@@ -983,6 +983,9 @@ export default function App() {
   videoCurrentTimeRef.current = videoCurrentTime;
   const videoDurationRef = useRef(0);
   videoDurationRef.current = videoDuration;
+  const scrubberTrackRef = useRef(null);
+  const scrubberTrackLayoutRef = useRef({ pageX: 60, width: SCREEN_WIDTH - 120 });
+  const seekCooldownRef = useRef(0);
 
   // Admin Security Password Modal State
   const [adminModalVisible, setAdminModalVisible] = useState(false);
@@ -1161,10 +1164,10 @@ export default function App() {
       onStartShouldSetPanResponder: () => true,
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4;
+        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 18 || Math.abs(gestureState.dy) > 18;
       },
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
-        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
+        return evt.nativeEvent.touches.length > 1 || Math.abs(gestureState.dx) > 24 || Math.abs(gestureState.dy) > 24;
       },
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (evt) => {
@@ -1215,12 +1218,12 @@ export default function App() {
             panXAnim.setValue(nextX);
             panYAnim.setValue(nextY);
           } else {
-            if (gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 0.9) {
+            if (gestureState.dy > 15 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.3) {
               const dragY = gestureState.dy;
               const dragScale = Math.max(0.65, 1 - (dragY / SCREEN_HEIGHT) * 0.45);
               panYAnim.setValue(dragY);
               zoomScaleAnim.setValue(dragScale);
-            } else if (Math.abs(gestureState.dx) > 4 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7) {
+            } else if (Math.abs(gestureState.dx) > 15 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.3) {
               mediaSlideAnim.setValue(gestureState.dx);
             }
           }
@@ -1229,7 +1232,7 @@ export default function App() {
       onPanResponderRelease: (evt, gestureState) => {
         lastTouchDistanceRef.current = null;
         if (zoomScaleRef.current <= 1.05) {
-          if (gestureState.dy > 50 || (gestureState.dy > 20 && gestureState.vy > 0.4)) {
+          if (gestureState.dy > 60 || (gestureState.dy > 25 && gestureState.vy > 0.45)) {
             setLightboxItem(null);
             resetZoom();
             return;
@@ -1237,18 +1240,18 @@ export default function App() {
           Animated.spring(panYAnim, { toValue: 0, useNativeDriver: true }).start();
           Animated.spring(zoomScaleAnim, { toValue: 1, useNativeDriver: true }).start();
 
-          const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7;
-          const swipeThreshold = SCREEN_WIDTH * 0.16;
-          if (isHorizontal && (gestureState.dx < -swipeThreshold || gestureState.vx < -0.3)) {
+          const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.3;
+          const swipeThreshold = SCREEN_WIDTH * 0.20;
+          if (isHorizontal && (gestureState.dx < -swipeThreshold || gestureState.vx < -0.35)) {
             goToNextMediaRef.current();
-          } else if (isHorizontal && (gestureState.dx > swipeThreshold || gestureState.vx > 0.3)) {
+          } else if (isHorizontal && (gestureState.dx > swipeThreshold || gestureState.vx > 0.35)) {
             goToPrevMediaRef.current();
           } else {
             Animated.spring(mediaSlideAnim, {
               toValue: 0,
-              damping: 18,
-              mass: 0.7,
-              stiffness: 200,
+              damping: 20,
+              mass: 0.8,
+              stiffness: 180,
               useNativeDriver: true,
             }).start();
             resetZoom();
@@ -1265,17 +1268,17 @@ export default function App() {
   ).current;
 
   // =========================================================
-  // FLUID VIDEO SWIPING, PULL-DOWN TO CLOSE & TAP TO TOGGLE
+  // FLUID VIDEO GESTURES (PULL-DOWN TO CLOSE & TAP TO TOGGLE)
   // =========================================================
   const videoPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6;
+        return gestureState.dy > 15 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.3;
       },
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
-        return Math.abs(gestureState.dx) > 12 || Math.abs(gestureState.dy) > 12;
+        return gestureState.dy > 20 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.3;
       },
       onPanResponderGrant: (evt) => {
         videoTouchStartRef.current = {
@@ -1285,33 +1288,33 @@ export default function App() {
         };
       },
       onPanResponderMove: (evt, gestureState) => {
-        if (Math.abs(gestureState.dx) > 6 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7) {
-          mediaSlideAnim.setValue(gestureState.dx);
+        if (gestureState.dy > 0) {
+          panYAnim.setValue(gestureState.dy);
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
+        panYAnim.setValue(0);
         const elapsed = Date.now() - videoTouchStartRef.current.time;
         const totalDistance = Math.hypot(gestureState.dx, gestureState.dy);
 
         // 1. Tap & Double-Tap Handling (YouTube Style 10s Seek & Toggle Controls)
-        if (elapsed < 350 && totalDistance < 15) {
+        if (elapsed < 350 && totalDistance < 22) {
           const now = Date.now();
           const tapX = evt.nativeEvent.pageX;
           if (now - lastVideoTapRef.current < 350) {
-            // Double Tap Detected! YouTube style 10s seek
             lastVideoTapRef.current = 0;
             if (tapX < SCREEN_WIDTH / 2) {
-              // Rewind 10s
               const target = Math.max(0, videoCurrentTimeRef.current - 10);
               setVideoCurrentTime(target);
               setVideoSeek(target);
+              seekCooldownRef.current = Date.now() + 1500;
               setVideoDoubleTapFeedback({ side: 'left', text: '−10s' });
               setTimeout(() => setVideoDoubleTapFeedback(null), 650);
             } else {
-              // Forward 10s
               const target = Math.min(videoDurationRef.current, videoCurrentTimeRef.current + 10);
               setVideoCurrentTime(target);
               setVideoSeek(target);
+              seekCooldownRef.current = Date.now() + 1500;
               setVideoDoubleTapFeedback({ side: 'right', text: '+10s' });
               setTimeout(() => setVideoDoubleTapFeedback(null), 650);
             }
@@ -1319,63 +1322,55 @@ export default function App() {
             return;
           }
           lastVideoTapRef.current = now;
-          // Single tap toggles controls visibility
           setVideoControlsVisible((prev) => !prev);
           return;
         }
 
-        // 2. Swipe Down to Close: dy > 50 or downward flick with vy > 0.4
-        if (gestureState.dy > 50 || (gestureState.dy > 20 && gestureState.vy > 0.4)) {
+        // 2. Swipe Down to Close
+        if (gestureState.dy > 60 || (gestureState.dy > 25 && gestureState.vy > 0.45)) {
           setLightboxItem(null);
           resetZoom();
           return;
-        }
-
-        // 3. Natural Swipe Left / Right with spring reset
-        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 0.7;
-        const swipeThreshold = SCREEN_WIDTH * 0.16;
-        if (isHorizontal && (gestureState.dx < -swipeThreshold || gestureState.vx < -0.3)) {
-          goToNextMediaRef.current();
-        } else if (isHorizontal && (gestureState.dx > swipeThreshold || gestureState.vx > 0.3)) {
-          goToPrevMediaRef.current();
-        } else {
-          Animated.spring(mediaSlideAnim, {
-            toValue: 0,
-            damping: 18,
-            mass: 0.7,
-            stiffness: 200,
-            useNativeDriver: true,
-          }).start();
         }
       },
     })
   ).current;
 
-  // YouTube / MX Player Scrubber Pan Responder
+  // YouTube / MX Player Scrubber Pan Responder (Absolute coordinates - moves to any minute)
   const scrubberPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderGrant: (evt, gestureState) => {
         setVideoScrubbing(true);
-        const touchX = evt.nativeEvent.locationX;
+        const currentX = evt.nativeEvent.pageX || gestureState.x0;
         const dur = videoDurationRef.current || 0;
-        const ratio = Math.max(0, Math.min(1, touchX / (scrubberWidth || 1)));
+        const trackLeft = scrubberTrackLayoutRef.current.pageX || 60;
+        const trackW = scrubberTrackLayoutRef.current.width || (SCREEN_WIDTH - 120);
+        const ratio = Math.max(0, Math.min(1, (currentX - trackLeft) / (trackW || 1)));
         setVideoScrubTime(ratio * dur);
       },
-      onPanResponderMove: (evt) => {
-        const touchX = evt.nativeEvent.locationX;
+      onPanResponderMove: (evt, gestureState) => {
+        const currentX = evt.nativeEvent.pageX || gestureState.moveX;
         const dur = videoDurationRef.current || 0;
-        const ratio = Math.max(0, Math.min(1, touchX / (scrubberWidth || 1)));
+        const trackLeft = scrubberTrackLayoutRef.current.pageX || 60;
+        const trackW = scrubberTrackLayoutRef.current.width || (SCREEN_WIDTH - 120);
+        const ratio = Math.max(0, Math.min(1, (currentX - trackLeft) / (trackW || 1)));
         setVideoScrubTime(ratio * dur);
       },
-      onPanResponderRelease: (evt) => {
-        const touchX = evt.nativeEvent.locationX;
+      onPanResponderRelease: (evt, gestureState) => {
+        const currentX = evt.nativeEvent.pageX || gestureState.moveX;
         const dur = videoDurationRef.current || 0;
-        const ratio = Math.max(0, Math.min(1, touchX / (scrubberWidth || 1)));
+        const trackLeft = scrubberTrackLayoutRef.current.pageX || 60;
+        const trackW = scrubberTrackLayoutRef.current.width || (SCREEN_WIDTH - 120);
+        const ratio = Math.max(0, Math.min(1, (currentX - trackLeft) / (trackW || 1)));
         const target = ratio * dur;
         setVideoCurrentTime(target);
+        setVideoScrubTime(target);
         setVideoSeek(target);
+        seekCooldownRef.current = Date.now() + 1600;
         setVideoScrubbing(false);
       },
       onPanResponderTerminate: () => {
@@ -2784,6 +2779,23 @@ export default function App() {
     }
   };
 
+  const playInbuiltVideo = (file, source = 'phone') => {
+    if (!file) return;
+    const pathOrUrl = source === 'pc'
+      ? (file.downloadUrl
+          ? file.downloadUrl
+          : (pairedPc ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(file.path || '')}&auth=${pcAuthToken || ''}` : null))
+      : file.path;
+    if (pathOrUrl && FyloModule && FyloModule.openVideoPlayer) {
+      FyloModule.openVideoPlayer(pathOrUrl, 'video/*').catch((err) => {
+        console.warn('Native video player launch error, fallback to lightbox:', err);
+        setLightboxItem({ item: file, source, index: 0, playlist: [file] });
+      });
+    } else {
+      setLightboxItem({ item: file, source, index: 0, playlist: [file] });
+    }
+  };
+
   const openExternalFileOrChooser = async (file, source = 'phone', mode = 'auto') => {
     if (!file) return;
     const fileName = file.name || file.path?.split(/[\\/]/).pop() || 'file';
@@ -2990,18 +3002,7 @@ export default function App() {
     }
 
     if (isVideoFile(ext)) {
-      const mediaFiles = sharedHubFiles.filter((f) => isVideoFile(f.ext));
-      const idx = mediaFiles.findIndex((f) => (f.id && file.id && f.id === file.id) || f.name === file.name || (f.path && file.path && f.path === file.path));
-      const activeIdx = idx >= 0 ? idx : 0;
-      setLightboxItem({
-        item: {
-          ...file,
-          path: resolvedPath,
-        },
-        source: isSentByPhone ? 'phone' : 'pc',
-        index: activeIdx,
-        playlist: mediaFiles.length > 0 ? mediaFiles : [file],
-      });
+      playInbuiltVideo(file, isSentByPhone ? 'phone' : 'pc');
       return;
     }
 
@@ -4340,14 +4341,7 @@ export default function App() {
                         } else if (isAudioFile(item.ext)) {
                           playInbuiltAudio(item, 'phone');
                         } else if (isVideoFile(item.ext)) {
-                          const playlist = filteredPhoneItems.filter((f) => !f.isDir && isVideoFile(f.ext));
-                          const idx = playlist.findIndex((f) => f.path === item.path);
-                          setLightboxItem({
-                            item,
-                            source: 'phone',
-                            index: idx >= 0 ? idx : 0,
-                            playlist: playlist.length > 0 ? playlist : [item],
-                          });
+                          playInbuiltVideo(item, 'phone');
                         } else if (isViewableMedia(item.ext)) {
                           const playlist = filteredPhoneItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                           const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4428,14 +4422,7 @@ export default function App() {
                       } else if (isAudioFile(item.ext)) {
                         playInbuiltAudio(item, 'phone');
                       } else if (isVideoFile(item.ext)) {
-                        const playlist = filteredPhoneItems.filter((f) => !f.isDir && isVideoFile(f.ext));
-                        const idx = playlist.findIndex((f) => f.path === item.path);
-                        setLightboxItem({
-                          item,
-                          source: 'phone',
-                          index: idx >= 0 ? idx : 0,
-                          playlist: playlist.length > 0 ? playlist : [item],
-                        });
+                        playInbuiltVideo(item, 'phone');
                       } else if (isViewableMedia(item.ext)) {
                         const playlist = filteredPhoneItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                         const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4836,14 +4823,7 @@ export default function App() {
                             } else if (isAudioFile(item.ext)) {
                               playInbuiltAudio(item, 'pc');
                             } else if (isVideoFile(item.ext)) {
-                              const playlist = filteredPcItems.filter((f) => !f.isDir && isVideoFile(f.ext));
-                              const idx = playlist.findIndex((f) => f.path === item.path);
-                              setLightboxItem({
-                                item,
-                                source: 'pc',
-                                index: idx >= 0 ? idx : 0,
-                                playlist: playlist.length > 0 ? playlist : [item],
-                              });
+                              playInbuiltVideo(item, 'pc');
                             } else if (isViewableMedia(item.ext)) {
                               const playlist = filteredPcItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                               const idx = playlist.findIndex((f) => f.path === item.path);
@@ -4913,14 +4893,7 @@ export default function App() {
                           } else if (isAudioFile(item.ext)) {
                             playInbuiltAudio(item, 'pc');
                           } else if (isVideoFile(item.ext)) {
-                            const playlist = filteredPcItems.filter((f) => !f.isDir && isVideoFile(f.ext));
-                            const idx = playlist.findIndex((f) => f.path === item.path);
-                            setLightboxItem({
-                              item,
-                              source: 'pc',
-                              index: idx >= 0 ? idx : 0,
-                              playlist: playlist.length > 0 ? playlist : [item],
-                            });
+                            playInbuiltVideo(item, 'pc');
                           } else if (isViewableMedia(item.ext)) {
                             const playlist = filteredPcItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
                             const idx = playlist.findIndex((f) => f.path === item.path);
@@ -5336,7 +5309,7 @@ export default function App() {
                         setVideoLoading(false);
                       }}
                       onVideoProgress={(e) => {
-                        if (!videoScrubbing) {
+                        if (!videoScrubbing && Date.now() > (seekCooldownRef.current || 0)) {
                           setVideoCurrentTime(e?.nativeEvent?.currentTime || 0);
                         }
                       }}
@@ -5482,10 +5455,19 @@ export default function App() {
 
                       {/* Bottom Bar: Timeline Scrubber + Actions */}
                       <View style={styles.ytBottomBar}>
-                        {/* Interactive Scrubber Bar */}
                         <View
+                          ref={scrubberTrackRef}
                           style={styles.ytScrubberTrack}
-                          onLayout={(e) => setScrubberWidth(e.nativeEvent.layout.width)}
+                          onLayout={(e) => {
+                            setScrubberWidth(e.nativeEvent.layout.width);
+                            if (scrubberTrackRef.current && scrubberTrackRef.current.measure) {
+                              scrubberTrackRef.current.measure((x, y, width, height, pageX, pageY) => {
+                                if (width > 0) {
+                                  scrubberTrackLayoutRef.current = { pageX, width };
+                                }
+                              });
+                            }
+                          }}
                           {...scrubberPanResponder.panHandlers}>
                           <View style={styles.ytScrubberBg}>
                             <View

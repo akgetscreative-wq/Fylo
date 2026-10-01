@@ -603,7 +603,8 @@ public class FyloPlayerActivity extends Activity {
                 if (mIsHorizontalSeek && mIsPrepared && mVideoView != null) {
                     int duration = mVideoView.getDuration();
                     if (duration > 0) {
-                        float seekDeltaMs = (dx / (float) screenWidth) * 90000f; // Max 90s scrub range
+                        float scrubFactor = Math.max(120000f, Math.min(600000f, duration * 0.20f));
+                        float seekDeltaMs = (dx / (float) screenWidth) * scrubFactor;
                         mSeekTargetPosition = (int) Math.max(0, Math.min(duration, mSeekInitialPosition + seekDeltaMs));
                         int diffSec = (int) ((mSeekTargetPosition - mSeekInitialPosition) / 1000);
                         String sign = diffSec >= 0 ? "+" : "";
