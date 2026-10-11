@@ -21,6 +21,13 @@ import android.media.ThumbnailUtils;
 import android.provider.MediaStore;
 import java.util.Map;
 import java.util.HashMap;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -1654,5 +1661,94 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                 promise.resolve(null);
             }
         }).start();
+    }
+
+    @ReactMethod
+    public void getSystemInsets(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            Activity activity = getCurrentActivity();
+            if (activity == null) {
+                WritableMap map = Arguments.createMap();
+                map.putDouble("statusBarHeight", 24);
+                map.putDouble("navigationBarHeight", 0);
+                safePromise.resolve(map);
+                return;
+            }
+
+            float density = activity.getResources().getDisplayMetrics().density;
+            if (density <= 0) density = 1.0f;
+
+            int statusBarHeight = 0;
+            int navBarHeight = 0;
+
+            View decorView = activity.getWindow().getDecorView();
+            WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decorView);
+            if (insets != null) {
+                androidx.core.graphics.Insets barInsets = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars()
+                );
+                statusBarHeight = barInsets.top;
+                navBarHeight = barInsets.bottom;
+            }
+
+            if (statusBarHeight <= 0) {
+                int resourceId = activity.getResources().getIdentifier("status_bar_height", "dimen", "android");
+                if (resourceId > 0) {
+                    statusBarHeight = activity.getResources().getDimensionPixelSize(resourceId);
+                }
+            }
+            if (navBarHeight <= 0) {
+                int resourceId = activity.getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+                if (resourceId > 0) {
+                    navBarHeight = activity.getResources().getDimensionPixelSize(resourceId);
+                }
+            }
+
+            WritableMap map = Arguments.createMap();
+            map.putDouble("statusBarHeight", statusBarHeight / density);
+            map.putDouble("navigationBarHeight", navBarHeight / density);
+            safePromise.resolve(map);
+        } catch (Exception e) {
+            safePromise.reject("INSETS_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void setSystemUiMode(final boolean isDark, final boolean isImmersive, final Promise promise) {
+        final SafePromise safePromise = new SafePromise(promise);
+        final Activity activity = getCurrentActivity();
+        if (activity == null) {
+            safePromise.resolve(false);
+            return;
+        }
+
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Window window = activity.getWindow();
+                    View decorView = window.getDecorView();
+                    WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decorView);
+
+                    if (controller != null) {
+                        if (isImmersive) {
+                            controller.hide(WindowInsetsCompat.Type.systemBars());
+                            controller.setSystemBarsBehavior(
+                                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                            );
+                        } else {
+                            controller.show(WindowInsetsCompat.Type.systemBars());
+                            controller.setAppearanceLightStatusBars(!isDark);
+                            controller.setAppearanceLightNavigationBars(!isDark);
+                        }
+                    }
+
+                    safePromise.resolve(true);
+                } catch (Exception e) {
+                    safePromise.reject("UI_MODE_ERROR", e.getMessage());
+                }
+            }
+        });
     }
 }

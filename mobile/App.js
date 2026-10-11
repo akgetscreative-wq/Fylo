@@ -607,7 +607,7 @@ const VectorShareHubIcon = React.memo(({ size = 18, color = '#60a5fa' }) => (
 ));
 
 // Floating Bottom Navigation Bar (Modern floating capsule tabs for quick navigation)
-const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = false, pairedPc = null }) => {
+const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = false, pairedPc = null, bottomInset = 0 }) => {
   const tabs = [
     { id: 'home', label: 'Home', renderIcon: (c) => <VectorHomeIcon size={17} color={c} /> },
     { id: 'sharehub', label: 'ShareHub', renderIcon: (c) => <VectorShareHubIcon size={17} color={c} /> },
@@ -620,7 +620,7 @@ const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = f
   return (
     <View style={{
       position: 'absolute',
-      bottom: Platform.OS === 'android' ? 22 : 16,
+      bottom: Math.max(bottomInset, 0) + (Platform.OS === 'android' ? 12 : 16),
       left: 14,
       right: 14,
       backgroundColor: isDark ? 'rgba(10, 10, 10, 0.96)' : 'rgba(255, 255, 255, 0.97)',
@@ -918,6 +918,57 @@ export default function App() {
   // Theme State: Dark / Light Mode (Toggle in Sidebar)
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  // Seamless Edge-to-Edge and Immersive Fullscreen State
+  const [isImmersiveFullscreen, setIsImmersiveFullscreen] = useState(false);
+  const [systemInsets, setSystemInsets] = useState({
+    statusBarHeight: StatusBar.currentHeight || 24,
+    navigationBarHeight: 0,
+  });
+
+  // Query exact native system insets (statusBarHeight & navigationBarHeight) for true Edge-to-Edge
+  useEffect(() => {
+    let isMounted = true;
+    const fetchInsets = async () => {
+      try {
+        if (FyloModule && FyloModule.getSystemInsets) {
+          const insets = await FyloModule.getSystemInsets();
+          if (isMounted && insets) {
+            setSystemInsets({
+              statusBarHeight: Math.max(insets.statusBarHeight || 0, StatusBar.currentHeight || 24),
+              navigationBarHeight: insets.navigationBarHeight || 0,
+            });
+          }
+        }
+      } catch (e) {}
+    };
+
+    fetchInsets();
+    const sub = Dimensions.addEventListener('change', fetchInsets);
+    return () => {
+      isMounted = false;
+      if (sub && sub.remove) sub.remove();
+    };
+  }, []);
+
+  // Sync System UI light/dark contrast and immersive fullscreen mode
+  useEffect(() => {
+    if (FyloModule && FyloModule.setSystemUiMode) {
+      FyloModule.setSystemUiMode(isDarkMode, isImmersiveFullscreen).catch(() => {});
+    }
+  }, [isDarkMode, isImmersiveFullscreen]);
+
+  // Load saved immersive fullscreen preference
+  useEffect(() => {
+    AsyncStorage.getItem('fylo_immersive_fullscreen').then((val) => {
+      if (val === 'true') setIsImmersiveFullscreen(true);
+    }).catch(() => {});
+  }, []);
+
+  const handleToggleImmersive = useCallback((val) => {
+    setIsImmersiveFullscreen(val);
+    AsyncStorage.setItem('fylo_immersive_fullscreen', val ? 'true' : 'false').catch(() => {});
+  }, []);
+
   // Collapsible Navigation Sidebar Drawer State
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarOpenRef = useRef(sidebarOpen);
@@ -933,6 +984,10 @@ export default function App() {
   const [downloadedSharedIds, setDownloadedSharedIds] = useState(new Set());
   const [shareHubSearch, setShareHubSearch] = useState('');
   const [shareHubViewMode, setShareHubViewMode] = useState('grid');
+
+  // Home Sketch Layout States
+  const [pcHomeCategory, setPcHomeCategory] = useState('recents'); // 'recents' | 'downloads' | 'pictures' | 'videos'
+  const [phoneRecentMedia, setPhoneRecentMedia] = useState([]);
 
   // Send to PC State (Replaces Sending)
   const [isSending, setIsSending] = useState(false);
@@ -1729,7 +1784,10 @@ export default function App() {
       loadPcQuickAccess();
       if (currentTab === 'home') fetchSharedHubFiles();
     }
-  }, [currentTab, pairedPc, fetchSharedHubFiles]);
+    if (currentTab === 'home' && hasPermission) {
+      loadRecentPhoneMedia();
+    }
+  }, [currentTab, pairedPc, hasPermission, fetchSharedHubFiles, loadRecentPhoneMedia]);
 
   // Load Phone Explorer root when switching to Phone Explorer tab
   useEffect(() => {
@@ -2765,6 +2823,61 @@ export default function App() {
     return map[e] || '*/*';
   };
 
+  // Load recent phone photos for Home "SHARE TO PC - RECENTS" section
+  const loadRecentPhoneMedia = useCallback(async () => {
+    try {
+      if (!FyloModule || !FyloModule.listDirectory) return;
+      let result = await FyloModule.listDirectory('/storage/emulated/0/DCIM/Camera').catch(() => null);
+      if (!result || !Array.isArray(result.items) || result.items.length === 0) {
+        result = await FyloModule.listDirectory('/storage/emulated/0/DCIM').catch(() => null);
+      }
+      if (!result || !Array.isArray(result.items) || result.items.length === 0) {
+        result = await FyloModule.listDirectory('/storage/emulated/0/Pictures').catch(() => null);
+      }
+      if (result && Array.isArray(result.items)) {
+        const media = result.items
+          .filter((item) => !item.isDir && (isImageFile(item.ext) || isVideoFile(item.ext)))
+          .sort((a, b) => (b.mtime || 0) - (a.mtime || 0))
+          .slice(0, 15);
+        setPhoneRecentMedia(media);
+      }
+    } catch (e) {
+      console.log('Error loading recent phone media:', e);
+    }
+  }, []);
+
+  // Filter PC items for Home "DOWNLOAD FROM PC" Card
+  const pcHomeItems = useMemo(() => {
+    if (!pairedPc) return [];
+    if (pcHomeCategory === 'recents') {
+      const received = sharedHubFiles.filter((f) => f.direction === 'received');
+      if (received.length > 0) return received.slice(0, 8);
+      return pcItems.slice(0, 8);
+    }
+    if (pcHomeCategory === 'downloads') {
+      const dlShortcut = pcQuickAccess.shortcuts?.find((s) => (s.name || '').toLowerCase().includes('download'));
+      const items = pcItems.filter((i) => (i.path || '').toLowerCase().includes('download') || (i.name || '').toLowerCase().includes('download'));
+      if (items.length > 0) return items.slice(0, 8);
+      if (dlShortcut) return [{ ...dlShortcut, isDir: true }, ...pcItems.slice(0, 7)];
+      return pcItems.slice(0, 8);
+    }
+    if (pcHomeCategory === 'pictures') {
+      const pictures = pcItems.filter((i) => isImageFile(i.ext) || (i.name || '').toLowerCase().includes('picture'));
+      if (pictures.length > 0) return pictures.slice(0, 8);
+      const picShortcut = pcQuickAccess.shortcuts?.find((s) => (s.name || '').toLowerCase().includes('picture'));
+      if (picShortcut) return [{ ...picShortcut, isDir: true }, ...pcItems.slice(0, 7)];
+      return pcItems.slice(0, 8);
+    }
+    if (pcHomeCategory === 'videos') {
+      const videos = pcItems.filter((i) => isVideoFile(i.ext) || (i.name || '').toLowerCase().includes('video'));
+      if (videos.length > 0) return videos.slice(0, 8);
+      const vidShortcut = pcQuickAccess.shortcuts?.find((s) => (s.name || '').toLowerCase().includes('video') || (s.name || '').toLowerCase().includes('movie'));
+      if (vidShortcut) return [{ ...vidShortcut, isDir: true }, ...pcItems.slice(0, 7)];
+      return pcItems.slice(0, 8);
+    }
+    return pcItems.slice(0, 8);
+  }, [pairedPc, pcHomeCategory, sharedHubFiles, pcItems, pcQuickAccess]);
+
   const playInbuiltAudio = (file, source = 'phone') => {
     if (!file) return;
     const pathOrUrl = source === 'pc'
@@ -3219,9 +3332,15 @@ export default function App() {
   // 3-Column dynamic tile width for responsive grid
   const GRID_TILE_WIDTH = (SCREEN_WIDTH - 32 - 16) / 3;
 
+  const topInset = isImmersiveFullscreen
+    ? 0
+    : Math.max(systemInsets.statusBarHeight || 0, (Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0));
+  const bottomInset = isImmersiveFullscreen ? 0 : (systemInsets.navigationBarHeight || 0);
+
   return (
-    <View style={[styles.container, !isDarkMode && styles.containerLight]}>
+    <View style={[styles.container, !isDarkMode && styles.containerLight, { paddingTop: topInset }]}>
       <StatusBar
+        hidden={isImmersiveFullscreen}
         translucent={true}
         backgroundColor="transparent"
         barStyle={isDarkMode ? "light-content" : "dark-content"}
@@ -3332,7 +3451,9 @@ export default function App() {
             </View>
           )}
 
-          {/* 1. HERO CONNECTION STATUS CARD (Alpine Sunrise Landscape) */}
+          {/* ========================================================= */}
+          {/* 1. HERO CONNECTION STATUS CARD (Alpine Sunrise Landscape)  */}
+          {/* ========================================================= */}
           <View style={[styles.bentoCardHero, !isDarkMode && styles.bentoCardHeroLight]}>
             <AlpineSunriseLandscape isDark={isDarkMode} />
 
@@ -3340,84 +3461,70 @@ export default function App() {
               // Connected State
               <View style={{ zIndex: 2 }}>
                 <View style={styles.heroTopRow}>
-                  {/* Left: Device Icon Badge & Host Details */}
-                  <View style={styles.heroLeftGroup}>
-                    <View style={[styles.heroDeviceBadge, !isDarkMode && styles.heroDeviceBadgeLight]}>
-                      <Text style={{ fontSize: 24 }}>💻</Text>
-                      <View style={[styles.heroOnlineDot, !isDarkMode && styles.heroOnlineDotLight, { backgroundColor: isPcReachable ? '#22c55e' : '#ef4444' }]} />
-                    </View>
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                      <Text style={[styles.heroConnectedLabel, !isDarkMode && styles.heroConnectedLabelLight]}>
-                        {isPcReachable ? 'CONNECTED TO PC' : 'PC OFFLINE'}
-                      </Text>
-                      <Text style={[styles.heroHostTitle, !isDarkMode && styles.heroHostTitleLight]} numberOfLines={1}>
-                        {pcHostName || 'Windows Host'}
-                      </Text>
-                      <Text style={[styles.heroIpSub, !isDarkMode && styles.heroIpSubLight]}>{pairedPc}</Text>
-                    </View>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={[styles.heroConnectedLabel, !isDarkMode && styles.heroConnectedLabelLight]}>
+                      {isPcReachable ? 'CONNECTED TO PC' : 'PC OFFLINE'}
+                    </Text>
+                    <Text style={[styles.heroHostTitle, !isDarkMode && styles.heroHostTitleLight]} numberOfLines={1}>
+                      {'‹ ' + (pcHostName || 'WINDOWS-PC')}
+                    </Text>
+                    <Text style={[styles.heroIpSub, !isDarkMode && styles.heroIpSubLight]}>
+                      {pairedPc}
+                    </Text>
                   </View>
 
-                  {/* Right: Latency Pill */}
-                  <View style={styles.heroRightGroup}>
-                    <View style={[styles.heroLatencyPill, !isDarkMode && styles.heroLatencyPillLight]}>
-                      <View style={[styles.beaconDot, { backgroundColor: '#22c55e', width: 6, height: 6, borderRadius: 3, marginRight: 4 }]} />
-                      <Text style={[styles.heroLatencyText, !isDarkMode && styles.heroLatencyTextLight]}>
-                        {isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : '22 ms') : 'Offline'}
-                      </Text>
-                    </View>
+                  <View style={[styles.heroLatencyPill, !isDarkMode && styles.heroLatencyPillLight]}>
+                    <View style={[styles.beaconDot, { backgroundColor: '#22c55e', width: 6, height: 6, borderRadius: 3, marginRight: 5 }]} />
+                    <Text style={[styles.heroLatencyText, !isDarkMode && styles.heroLatencyTextLight]}>
+                      {isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : '95 ms') : 'Offline'}
+                    </Text>
                   </View>
                 </View>
 
-                {/* Primary Action Buttons */}
-                <View style={styles.heroBtnRow}>
+                {/* Pill Action Buttons matching sketch */}
+                <View style={[styles.heroBtnRow, { marginTop: 14 }]}>
                   <TouchableOpacity
                     activeOpacity={0.8}
                     style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
                     onPress={() => setCurrentTab('pc-explorer')}>
                     <View style={{ marginRight: 6 }}>
-                      <Win11FolderIcon size={20} />
+                      <Win11FolderIcon size={18} />
                     </View>
-                    <Text style={styles.heroPrimaryBtnText}>Browse PC Drives →</Text>
+                    <Text style={styles.heroPrimaryBtnText}>Browse PC Drives 📁</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     activeOpacity={0.75}
-                    style={[styles.heroSecondaryBtn, !isDarkMode && styles.heroSecondaryBtnLight]}
+                    style={[styles.heroDisconnectBtn, !isDarkMode && styles.heroDisconnectBtnLight]}
                     onPress={handleUnpair}>
-                    <Text style={[styles.heroSecondaryBtnText, !isDarkMode && styles.heroSecondaryBtnTextLight]}>
-                      🔗 Disconnect
+                    <Text style={[styles.heroDisconnectBtnText, !isDarkMode && styles.heroDisconnectBtnTextLight]}>
+                      ⛔ Disconnect
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : (
-              // Ready to Pair State
+              // Disconnected State
               <View style={{ zIndex: 2 }}>
                 <View style={styles.heroTopRow}>
-                  <View style={styles.heroLeftGroup}>
-                    <View style={[styles.heroDeviceBadge, !isDarkMode && styles.heroDeviceBadgeLight, { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.2)' : '#d1fae5' }]}>
-                      <Text style={{ fontSize: 24 }}>⚡</Text>
-                      <View style={[styles.heroOnlineDot, !isDarkMode && styles.heroOnlineDotLight, { backgroundColor: '#10b981' }]} />
-                    </View>
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                      <Text style={[styles.heroConnectedLabel, !isDarkMode && styles.heroConnectedLabelLight]}>READY TO PAIR</Text>
-                      <Text style={[styles.heroHostTitle, !isDarkMode && styles.heroHostTitleLight]} numberOfLines={1}>
-                        Fast Wireless Sync
-                      </Text>
-                      <Text style={[styles.heroIpSub, !isDarkMode && styles.heroIpSubLight]}>Wi-Fi or Hotspot • {deviceIp}</Text>
-                    </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.heroConnectedLabel, !isDarkMode && styles.heroConnectedLabelLight, { color: '#ef4444' }]}>
+                      NOT CONNECTED
+                    </Text>
+                    <Text style={[styles.heroHostTitle, !isDarkMode && styles.heroHostTitleLight]}>
+                      Connect to PC
+                    </Text>
+                    <Text style={[styles.heroIpSub, !isDarkMode && styles.heroIpSubLight]}>
+                      Fast Wireless Sync • {deviceIp}
+                    </Text>
                   </View>
                 </View>
 
-                <Text style={[styles.heroReadySubText, !isDarkMode && styles.heroReadySubTextLight]}>
-                  Pair with Fylo desktop app to browse Windows drives, stream media, and sync clipboard without cables.
-                </Text>
-
-                {/* Auto-Discovered PC on local Wi-Fi */}
+                {/* Auto-Discovered PC on local Wi-Fi if available */}
                 {discoveredDevices.length > 0 && (
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    style={[styles.heroDiscoveredBanner, !isDarkMode && styles.heroDiscoveredBannerLight]}
+                    style={[styles.heroDiscoveredBanner, !isDarkMode && styles.heroDiscoveredBannerLight, { marginBottom: 12 }]}
                     onPress={() => handleConnectToPc(`${discoveredDevices[0].ip}:${discoveredDevices[0].port || 3000}`, discoveredDevices[0].token)}>
                     <View style={styles.heroDiscoveredDot} />
                     <View style={{ flex: 1 }}>
@@ -3425,7 +3532,7 @@ export default function App() {
                         ✨ Found {discoveredDevices[0].name || 'PC'} on Wi-Fi
                       </Text>
                       <Text style={[styles.heroDiscoveredSub, !isDarkMode && styles.heroDiscoveredSubLight]}>
-                        {discoveredDevices[0].ip}:{discoveredDevices[0].port || 3000} • Tap to link instantly ⚡
+                        Tap to link instantly ⚡
                       </Text>
                     </View>
                     <Text style={styles.heroDiscoveredBtnText}>Connect →</Text>
@@ -3433,31 +3540,22 @@ export default function App() {
                 )}
 
                 <View style={styles.heroBtnRow}>
-                  {discoveredDevices.length > 0 ? (
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
-                      onPress={() => handleConnectToPc(`${discoveredDevices[0].ip}:${discoveredDevices[0].port || 3000}`, discoveredDevices[0].token)}>
-                      <Text style={styles.heroPrimaryBtnText}>⚡ Link to {discoveredDevices[0].name || 'PC'}</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
-                      onPress={handleStartQrScan}>
-                      <Text style={styles.heroPrimaryBtnText}>Scan PC QR Code</Text>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
+                    onPress={handleStartQrScan}>
+                    <Text style={styles.heroPrimaryBtnText}>Scan PC QR Code 📷</Text>
+                  </TouchableOpacity>
 
                   <TouchableOpacity
                     activeOpacity={0.75}
                     style={[styles.heroSecondaryBtn, !isDarkMode && styles.heroSecondaryBtnLight]}
                     onPress={() => {
-                      setPairModalTab(discoveredDevices.length > 0 ? 'auto' : 'manual');
+                      setPairModalTab('manual');
                       setShowPairModal(true);
                     }}>
                     <Text style={[styles.heroSecondaryBtnText, !isDarkMode && styles.heroSecondaryBtnTextLight]}>
-                      {discoveredDevices.length > 0 ? `Devices (${discoveredDevices.length})` : 'Manual IP'}
+                      Manual IP
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -3465,412 +3563,308 @@ export default function App() {
             )}
           </View>
 
-          {/* 2. BENTO PRIMARY TILES (Browse PC & Browse Phone with Alpine Meadow & Ridge) */}
-          <View style={styles.bentoPrimaryRow}>
-            {/* Card 1: Browse PC (Meadow Monitor Scene) */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.bentoPrimaryCard, !isDarkMode && styles.bentoPrimaryCardLight]}
-              onPress={() => {
-                if (pairedPc) {
-                  setCurrentTab('pc-explorer');
-                } else {
-                  setShowPairModal(true);
-                }
-              }}>
-              <View style={[styles.bentoPillGreen, !isDarkMode && styles.bentoPillGreenLight]}>
-                <View style={[styles.beaconDot, { backgroundColor: '#22c55e', width: 6, height: 6, borderRadius: 3, marginRight: 4 }]} />
-                <Text style={[styles.bentoPillGreenText, !isDarkMode && styles.bentoPillGreenTextLight]}>
-                  {pairedPc ? (isPcReachable ? 'Online' : 'Offline') : 'Ready'}
+          {/* ========================================================= */}
+          {/* 2. MIDDLE SPLIT SECTION: Share to PC, ClipBoard & History */}
+          {/* ========================================================= */}
+          <View style={styles.sketchSplitRow}>
+            {/* Left Column (Two Cards) */}
+            <View style={styles.sketchColLeft}>
+              {/* Card A: Share to PC */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.sketchShareCard, !isDarkMode && styles.sketchShareCardLight]}
+                onPress={handlePickAndSendToPc}>
+                <View style={styles.sketchShareIconWrap}>
+                  <Text style={styles.sketchShareIcon}>➤</Text>
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.sketchShareTitle, !isDarkMode && styles.sketchShareTitleLight]}>Share to PC</Text>
+                  <Text style={[styles.sketchShareSub, !isDarkMode && styles.sketchShareSubLight]}>Pick files & send</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Card B: ClipBoard */}
+              <View style={[styles.sketchClipboardCard, !isDarkMode && styles.sketchClipboardCardLight]}>
+                <View style={styles.sketchClipboardHeader}>
+                  <Text style={[styles.sketchCardTitle, !isDarkMode && styles.sketchCardTitleLight]}>ClipBoard</Text>
+                  <View style={[styles.beaconDot, { backgroundColor: pcClipboardText ? '#22c55e' : '#94a3b8', width: 6, height: 6, borderRadius: 3 }]} />
+                </View>
+                <Text
+                  style={[styles.sketchClipPreviewText, !isDarkMode && styles.sketchClipPreviewTextLight]}
+                  numberOfLines={2}
+                  selectable>
+                  {pcClipboardText || 'Clipboard ready...'}
                 </Text>
-              </View>
-
-              <View style={styles.bentoCardMiddleRow}>
-                <View style={{ flex: 1, paddingRight: 4 }}>
-                  <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Browse PC</Text>
-                  <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]} numberOfLines={1}>
-                    {pairedPc ? (isPcReachable ? `${pcHostName || 'Windows'} drives` : 'PC unreachable') : 'Pair to explore drives'}
-                  </Text>
-                </View>
-                <MeadowMonitorScene isDark={isDarkMode} />
-              </View>
-
-              <View style={styles.bentoCardBottomRow}>
-                <Text style={[styles.bentoActionLink, { color: !isDarkMode ? '#2563eb' : '#60a5fa' }]}>Open PC Drives →</Text>
-                <View style={[styles.circleArrowBtn, { backgroundColor: !isDarkMode ? '#D1FAE5' : 'rgba(16, 185, 129, 0.25)' }]}>
-                  <Text style={{ color: !isDarkMode ? '#065F46' : '#34D399', fontSize: 13, fontWeight: '900' }}>→</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            {/* Card 2: Browse Phone (Golden Ridge Phone Scene) */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.bentoPrimaryCard, !isDarkMode && styles.bentoPrimaryCardLight]}
-              onPress={() => setCurrentTab('phone-explorer')}>
-              <View style={[styles.bentoPillAmber, !isDarkMode && styles.bentoPillAmberLight]}>
-                <View style={[styles.beaconDot, { backgroundColor: '#F59E0B', width: 6, height: 6, borderRadius: 3, marginRight: 4 }]} />
-                <Text style={[styles.bentoPillAmberText, !isDarkMode && styles.bentoPillAmberTextLight]}>
-                  {storageStats.freeGB} Free
-                </Text>
-              </View>
-
-              <View style={styles.bentoCardMiddleRow}>
-                <View style={{ flex: 1, paddingRight: 4 }}>
-                  <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Browse Phone</Text>
-                  <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]} numberOfLines={1}>
-                    Storage, DCIM & files
-                  </Text>
-                </View>
-                <RidgePhoneScene isDark={isDarkMode} />
-              </View>
-
-              <View style={styles.bentoCardBottomRow}>
-                <Text style={[styles.bentoActionLink, { color: !isDarkMode ? '#D97706' : '#FBBF24' }]}>Open Phone Files →</Text>
-                <View style={[styles.circleArrowBtn, { backgroundColor: !isDarkMode ? '#FEF3C7' : 'rgba(245, 158, 11, 0.25)' }]}>
-                  <Text style={{ color: !isDarkMode ? '#B45309' : '#FBBF24', fontSize: 13, fontWeight: '900' }}>→</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* 3. SECONDARY ACTION CARDS (ShareHub, Clipboard, Transfers with sleek vector icons) */}
-          <View style={styles.bentoSecondaryRow}>
-            {/* ShareHub */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#0A0A0A' : '#F3E8FF' }]}
-              onPress={() => {
-                setCurrentTab('sharehub');
-                fetchSharedHubFiles();
-              }}>
-              <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(124, 58, 237, 0.25)' : '#EDE9FE' }]}>
-                <VectorShareHubIcon size={18} color="#7C3AED" />
-              </View>
-              <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>ShareHub</Text>
-              <Text style={[styles.bentoSecSub, !isDarkMode && styles.bentoSecSubLight]}>
-                {sharedHubFiles.length} shared
-              </Text>
-              <View style={[styles.secChevronCircle, !isDarkMode && styles.secChevronCircleLight]}>
-                <Text style={styles.secChevronText}>›</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Clipboard */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#0A0A0A' : '#FEF3C7' }]}
-              onPress={() => setCurrentTab('clipboard')}>
-              <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A' }]}>
-                <VectorClipboardIcon size={18} color="#D97706" />
-              </View>
-              <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>Clipboard</Text>
-              <Text style={[styles.bentoSecSub, !isDarkMode && styles.bentoSecSubLight]}>
-                {pcClipboardText ? 'Live Synced' : 'Ready'}
-              </Text>
-              <View style={[styles.secChevronCircle, !isDarkMode && styles.secChevronCircleLight]}>
-                <Text style={styles.secChevronText}>›</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Transfers */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.bentoSecCard, !isDarkMode && styles.bentoSecCardLight, { backgroundColor: isDarkMode ? '#0A0A0A' : '#FFE4E6' }]}
-              onPress={() => setCurrentTab('transfer')}>
-              <View style={[styles.bentoSecIconCircle, { backgroundColor: isDarkMode ? 'rgba(225, 29, 72, 0.25)' : '#FECDD3' }]}>
-                <VectorLightningIcon size={18} color="#E11D48" />
-              </View>
-              <Text style={[styles.bentoSecTitle, !isDarkMode && styles.bentoSecTitleLight]}>Transfers</Text>
-              <Text style={[styles.bentoSecSub, !isDarkMode && styles.bentoSecSubLight]}>
-                Diagnostics
-              </Text>
-              <View style={[styles.secChevronCircle, !isDarkMode && styles.secChevronCircleLight]}>
-                <Text style={styles.secChevronText}>›</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* 4. SEND FILES TO PC CARD (Meadow Landscape & Forest Emerald Button) */}
-          <View style={[styles.sectionCard, !isDarkMode && styles.sectionCardLight, { overflow: 'hidden' }]}>
-            <SendFilesLandscape isDark={isDarkMode} />
-
-            <View style={[styles.sectionHeaderRow, { zIndex: 2 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                <View style={[styles.sendBadgeCircle, !isDarkMode && styles.sendBadgeCircleLight]}>
-                  <Text style={{ color: '#ffffff', fontSize: 18 }}>✈</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.sectionTitle, !isDarkMode && styles.sectionTitleLight]}>Send Files to PC</Text>
-                  <Text style={[styles.sectionSubtitle, !isDarkMode && styles.sectionSubtitleLight]} numberOfLines={1}>
-                    {pairedPc
-                      ? `Send directly into ${pcHostName || 'PC'} Downloads`
-                      : 'Send photos & files directly to PC'}
-                  </Text>
-                </View>
-              </View>
-              <View style={[styles.sectionChipPill, !isDarkMode && styles.sectionChipPillLight]}>
-                <Text style={[styles.sectionChipText, !isDarkMode && styles.sectionChipTextLight]}>Direct</Text>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={[styles.sketchCopyBtn, !isDarkMode && styles.sketchCopyBtnLight]}
+                  onPress={handleCopyPcClipboardToPhone}>
+                  <Text style={styles.sketchCopyBtnText}>COPY</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              disabled={isSending}
-              style={[styles.sendFilesBigBtn, !isDarkMode && styles.sendFilesBigBtnLight, isSending && { opacity: 0.6 }, { zIndex: 2 }]}
-              onPress={handlePickAndSendToPc}>
-              <Text style={styles.sendFilesBigBtnText}>
-                {isSending ? 'Sending to PC...' : '➤  Send Files to PC →'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* 5. SHARE HUB CARD */}
-          <View style={[styles.sectionCard, !isDarkMode && styles.sectionCardLight]}>
-            <View style={styles.sectionHeaderRow}>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                onPress={() => {
-                  setCurrentTab('sharehub');
-                  fetchSharedHubFiles();
-                }}>
-                <Text style={[styles.sectionTitle, !isDarkMode && styles.sectionTitleLight]}>ShareHub →</Text>
-                <Text style={[styles.sectionSubtitle, !isDarkMode && styles.sectionSubtitleLight]}>
-                  Active shared files from PC & Mobile
-                </Text>
-              </TouchableOpacity>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {/* Right Column: Share History (Tall Card) */}
+            <View style={[styles.sketchColRightCard, !isDarkMode && styles.sketchColRightCardLight]}>
+              <View style={styles.sketchShareHistoryHeader}>
+                <Text style={[styles.sketchCardTitle, !isDarkMode && styles.sketchCardTitleLight]}>Share History</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  style={[styles.shareHubRefreshBtn, !isDarkMode && styles.shareHubRefreshBtnLight]}
                   onPress={() => {
+                    setCurrentTab('sharehub');
                     fetchSharedHubFiles();
-                    showToast('Share Hub synchronized');
                   }}>
-                  <Text style={{ fontSize: 16, color: '#0284c7' }}>↻</Text>
-                </TouchableOpacity>
-                <View style={[styles.sectionChipPill, !isDarkMode && styles.sectionChipPillLight]}>
-                  <Text style={[styles.sectionChipText, !isDarkMode && styles.sectionChipTextLight]}>
-                    {sharedHubFiles.length} files
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Quick Batch Download Action if PC has shared files */}
-            {sharedHubFiles.some((f) => f.direction === 'received') && (
-              <View style={styles.shareHubBatchRow}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.shareHubSaveAllBtn}
-                  onPress={handleDownloadAllSharedHubFiles}>
-                  <Text style={styles.shareHubSaveAllBtnText}>
-                    Save All From PC ({sharedHubFiles.filter((f) => f.direction === 'received').length}) ↓
-                  </Text>
+                  <Text style={styles.sketchCardLink}>All ›</Text>
                 </TouchableOpacity>
               </View>
-            )}
 
-            {sharedHubFiles.length === 0 ? (
-              <View style={[styles.shareHubDashedBox, !isDarkMode && styles.shareHubDashedBoxLight]}>
-                <View style={[styles.shareHubEmptyCircle, !isDarkMode && styles.shareHubEmptyCircleLight]}>
-                  <Win11FolderIcon size={26} />
-                </View>
-                <Text style={[styles.shareHubEmptyTitle, !isDarkMode && styles.shareHubEmptyTitleLight]}>
-                  No files shared yet
-                </Text>
-                <Text style={[styles.shareHubEmptySub, !isDarkMode && styles.shareHubEmptySubLight]}>
-                  Upload or drop files in PC Share Hub, or tap "Send Files to PC" above to transfer files instantly
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.shareHubList}>
-                {sharedHubFiles.slice(0, 15).map((f, i) => {
-                  const isSaved = downloadedSharedIds.has(f.id || f.name);
-                  const isReceived = f.direction === 'received';
-                  return (
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingVertical: 2 }}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}>
+                {sharedHubFiles.length === 0 ? (
+                  <View style={styles.sketchHistoryEmpty}>
+                    <Text style={[styles.sketchHistoryEmptyText, !isDarkMode && styles.sketchHistoryEmptyTextLight]}>
+                      No shared items yet
+                    </Text>
+                  </View>
+                ) : (
+                  sharedHubFiles.slice(0, 8).map((f, i) => (
                     <TouchableOpacity
                       key={f.id || f.path || i}
                       activeOpacity={0.7}
-                      style={[styles.shareHubRow, !isDarkMode && styles.shareHubRowLight]}
+                      style={styles.sketchHistoryItemRow}
                       onPress={() => handleSharedHubItemPress(f)}>
-                      <FileBadgeIcon ext={(f.name || '').split('.').pop()} isDir={false} size={24} />
-                      <View style={{ flex: 1, minWidth: 0, marginHorizontal: 8 }}>
-                        <Text style={[styles.shareHubFileName, !isDarkMode && styles.shareHubFileNameLight]} numberOfLines={1}>
+                      <Text style={styles.sketchHistoryBullet}>•</Text>
+                      <View style={{ flex: 1, minWidth: 0, marginHorizontal: 4 }}>
+                        <Text
+                          style={[styles.sketchHistoryFileName, !isDarkMode && styles.sketchHistoryFileNameLight]}
+                          numberOfLines={1}>
                           {f.name}
                         </Text>
-                        <Text style={styles.shareHubFileMeta}>
-                          {f.size ? formatFileSize(f.size) : (f.sizeLabel || 'Ready')} • {isReceived ? 'From PC' : 'Sent to PC'}
-                        </Text>
                       </View>
-                      {isReceived ? (
-                        isSaved ? (
-                          <View style={styles.shareHubSavedChip}>
-                            <Text style={styles.shareHubSavedChipText}>✓ Saved</Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          </View>
+
+          {/* ========================================================= */}
+          {/* 3. DOWNLOAD FROM PC (Categories & File Grid)              */}
+          {/* ========================================================= */}
+          <View style={[styles.sketchSectionCard, !isDarkMode && styles.sketchSectionCardLight]}>
+            <View style={styles.sketchSectionHeaderRow}>
+              <Text style={[styles.sketchSectionHeaderTitle, !isDarkMode && styles.sketchSectionHeaderTitleLight]}>
+                DOWNLOAD FROM PC
+              </Text>
+              {pairedPc && (
+                <TouchableOpacity onPress={() => setCurrentTab('pc-explorer')}>
+                  <Text style={styles.sketchCardLink}>PC Explorer ›</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Category Filter Pills: RECENTS / DOWNLOADS / PICTURES / VIDEOS */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.sketchFilterScroll}
+              contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+              {[
+                { id: 'recents', label: 'RECENTS' },
+                { id: 'downloads', label: 'DOWNLOADS' },
+                { id: 'pictures', label: 'PICTURES' },
+                { id: 'videos', label: 'VIDEOS' },
+              ].map((cat) => {
+                const isActive = pcHomeCategory === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    activeOpacity={0.75}
+                    style={[
+                      styles.sketchCategoryPill,
+                      !isDarkMode && styles.sketchCategoryPillLight,
+                      isActive && (isDarkMode ? styles.sketchCategoryPillActive : styles.sketchCategoryPillActiveLight),
+                    ]}
+                    onPress={() => setPcHomeCategory(cat.id)}>
+                    <Text
+                      style={[
+                        styles.sketchCategoryText,
+                        !isDarkMode && styles.sketchCategoryTextLight,
+                        isActive && styles.sketchCategoryTextActive,
+                      ]}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Grid of PC Items */}
+            {!pairedPc ? (
+              <View style={styles.sketchEmptySection}>
+                <Text style={{ fontSize: 28, marginBottom: 6 }}>💻</Text>
+                <Text style={[styles.sketchEmptyTitle, !isDarkMode && styles.sketchEmptyTitleLight]}>
+                  PC not connected
+                </Text>
+                <Text style={[styles.sketchEmptySub, !isDarkMode && styles.sketchEmptySubLight]}>
+                  Connect to PC to view and download folders, videos, and pictures directly.
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.sketchConnectBtn, !isDarkMode && styles.sketchConnectBtnLight]}
+                  onPress={handleStartQrScan}>
+                  <Text style={styles.sketchConnectBtnText}>Connect to PC</Text>
+                </TouchableOpacity>
+              </View>
+            ) : pcHomeItems.length === 0 ? (
+              <View style={styles.sketchEmptySection}>
+                <Text style={{ fontSize: 24, marginBottom: 4 }}>📂</Text>
+                <Text style={[styles.sketchEmptySub, !isDarkMode && styles.sketchEmptySubLight]}>
+                  No files in this category
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={{ marginTop: 8 }}
+                  onPress={() => setCurrentTab('pc-explorer')}>
+                  <Text style={{ color: '#2563eb', fontWeight: '700', fontSize: 13 }}>Open PC Explorer →</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.sketchPcGrid}>
+                {pcHomeItems.slice(0, 8).map((item, idx) => {
+                  const isDir = !!item.isDir;
+                  const isImg = !isDir && isImageFile(item.ext);
+                  const isVid = !isDir && isVideoFile(item.ext);
+                  return (
+                    <TouchableOpacity
+                      key={item.path || item.name || idx}
+                      activeOpacity={0.75}
+                      style={[styles.sketchPcGridTile, !isDarkMode && styles.sketchPcGridTileLight]}
+                      onPress={() => {
+                        if (isDir) {
+                          setCurrentTab('pc-explorer');
+                          loadPcFolder(item.path);
+                        } else if (isImg || isVid) {
+                          const playlist = pcHomeItems.filter((f) => !f.isDir && isViewableMedia(f.ext));
+                          const plIdx = playlist.findIndex((f) => (f.path || f.name) === (item.path || item.name));
+                          setLightboxItem({
+                            item,
+                            source: 'pc',
+                            index: plIdx >= 0 ? plIdx : 0,
+                            playlist: playlist.length > 0 ? playlist : [item],
+                          });
+                        } else {
+                          setPcFileActionPrompt({ file: item, source: 'pc' });
+                        }
+                      }}>
+                      <View style={styles.sketchTileIconBox}>
+                        {isDir ? (
+                          <Win11FolderIcon size={32} />
+                        ) : isVid ? (
+                          <View style={[styles.sketchTileMediaThumb, { backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0' }]}>
+                            <Text style={{ color: '#ef4444', fontSize: 18 }}>▶</Text>
+                          </View>
+                        ) : isImg ? (
+                          <View style={[styles.sketchTileMediaThumb, { backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0' }]}>
+                            <Text style={{ color: '#3b82f6', fontSize: 18 }}>🖼️</Text>
                           </View>
                         ) : (
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.shareHubActionBtn}
-                            onPress={() => handleDownloadSharedHubFile(f)}>
-                            <Text style={styles.shareHubActionBtnText}>Save</Text>
-                          </TouchableOpacity>
-                        )
-                      ) : (
-                        <View style={styles.shareHubStatusChip}>
-                          <Text style={styles.shareHubStatusText}>Done</Text>
-                        </View>
-                      )}
+                          <FileBadgeIcon ext={item.ext} isDir={false} size={28} />
+                        )}
+                      </View>
+                      <Text
+                        style={[styles.sketchTileName, !isDarkMode && styles.sketchTileNameLight]}
+                        numberOfLines={1}>
+                        {item.name}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
-                {sharedHubFiles.length > 0 && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 8 }}>
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={styles.shareHubClearBtn}
-                      onPress={() => setSharedHubFiles([])}>
-                      <Text style={styles.shareHubClearBtnText}>Clear Local List</Text>
-                    </TouchableOpacity>
-                    {pairedPc && (
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        style={styles.shareHubClearBtn}
-                        onPress={() => {
-                          fetchSharedHubFiles();
-                          showToast('Share Hub synchronized');
-                        }}>
-                        <Text style={[styles.shareHubClearBtnText, { color: '#38bdf8' }]}>Sync with PC ↻</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
               </View>
             )}
           </View>
 
-          {/* 6. INTERNAL STORAGE CARD */}
-          <View style={[styles.sectionCard, !isDarkMode && styles.sectionCardLight]}>
-            <View style={styles.sectionHeaderRow}>
+          {/* ========================================================= */}
+          {/* 4. SHARE TO PC (RECENTS) CARD                              */}
+          {/* ========================================================= */}
+          <View style={[styles.sketchSectionCard, !isDarkMode && styles.sketchSectionCardLight]}>
+            <View style={styles.sketchSectionHeaderRow}>
               <View>
-                <Text style={[styles.sectionTitle, !isDarkMode && styles.sectionTitleLight]}>Internal Storage</Text>
-                <Text style={[styles.sectionSubtitle, !isDarkMode && styles.sectionSubtitleLight]}>
-                  Real-time flash memory status
+                <Text style={[styles.sketchSectionHeaderTitle, !isDarkMode && styles.sketchSectionHeaderTitleLight]}>
+                  SHARE TO PC
+                </Text>
+                <Text style={[styles.sketchSubHeader, !isDarkMode && styles.sketchSubHeaderLight]}>
+                  RECENTS
                 </Text>
               </View>
-              <View style={[styles.sectionChipPill, !isDarkMode && styles.sectionChipPillLight]}>
-                <Text style={[styles.sectionChipText, !isDarkMode && styles.sectionChipTextLight]}>
-                  {storageStats.usedPercent}% Used
-                </Text>
-              </View>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={handlePickAndSendToPc}>
+                <Text style={styles.sketchCardLink}>+ Pick Files ›</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Storage Progress Bar */}
-            <View style={[styles.storageTrackBar, !isDarkMode && styles.storageTrackBarLight]}>
-              <View style={[styles.storageFillBar, { width: `${storageStats.usedPercent}%` }]} />
-            </View>
+            {/* Horizontal Scroll of Recent Phone Photos / Media */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
+              {phoneRecentMedia.length === 0 ? (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.sketchEmptyMediaPickBtn, !isDarkMode && styles.sketchEmptyMediaPickBtnLight]}
+                  onPress={handlePickAndSendToPc}>
+                  <Text style={{ fontSize: 24, marginBottom: 4 }}>📷</Text>
+                  <Text style={[styles.sketchEmptyMediaPickText, !isDarkMode && styles.sketchEmptyMediaPickTextLight]}>
+                    Tap to Pick & Send Photos
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                phoneRecentMedia.map((media, idx) => (
+                  <View
+                    key={media.path || idx}
+                    style={[styles.sketchMediaCard, !isDarkMode && styles.sketchMediaCardLight]}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.sketchMediaThumbContainer}
+                      onPress={() => {
+                        if (isViewableMedia(media.ext)) {
+                          setLightboxItem({
+                            item: media,
+                            source: 'phone',
+                            index: idx,
+                            playlist: phoneRecentMedia,
+                          });
+                        }
+                      }}>
+                      <SafeImage
+                        uri={`file://${media.path}`}
+                        style={styles.sketchMediaThumb}
+                        resizeMode="cover"
+                        fallbackText={media.name?.substring(0, 3)}
+                      />
+                      {isVideoFile(media.ext) && (
+                        <View style={styles.sketchPlayBadge}>
+                          <Text style={{ color: '#ffffff', fontSize: 10 }}>▶</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              <Text style={[styles.storageLegendText, !isDarkMode && styles.storageLegendTextLight]}>
-                Used: {storageStats.usedGB}
-              </Text>
-              <Text style={[styles.storageLegendText, !isDarkMode && styles.storageLegendTextLight]}>
-                Free: {storageStats.freeGB}
-              </Text>
-            </View>
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      style={[styles.sketchMediaSendBtn, !isDarkMode && styles.sketchMediaSendBtnLight]}
+                      disabled={isSending}
+                      onPress={() => handleSendFilesToPc([media.path])}>
+                      <Text style={styles.sketchMediaSendBtnText}>📤 Send</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </ScrollView>
           </View>
-
-          {/* 3. LAN SHARED CLIPBOARD PREVIEW CARD */}
-          <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
-            <View style={styles.bentoCardHeaderRow}>
-              <View>
-                <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Shared Clipboard</Text>
-                <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]}>
-                  {pairedPc
-                    ? `Synced with PC (${pcClipboardUpdatedBy || 'Host Computer'})`
-                    : 'Pair with PC to share clipboard wirelessly'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                onPress={() => setCurrentTab('clipboard')}>
-                <Text style={styles.cardHeaderLink}>Full Hub ›</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.clipboardPreviewBox}>
-              <Text
-                style={styles.clipboardPreviewText}
-                numberOfLines={3}
-                selectable>
-                {pcClipboardText || 'Clipboard empty or waiting for text...'}
-              </Text>
-            </View>
-
-            <View style={styles.clipboardActionRow}>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={[styles.clipboardActionBtn, styles.clipboardActionBtnPrimary]}
-                onPress={handleCopyPcClipboardToPhone}>
-                <Text style={styles.clipboardActionBtnPrimaryText}>
-                  Copy to Phone
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.clipboardActionBtnSecondary}
-                onPress={() => setCurrentTab('clipboard')}>
-                <Text style={styles.clipboardActionBtnSecondaryText}>
-                  Push Text to PC ›
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* 5. BACKGROUND SERVER CONTROLS CARD */}
-          <View style={[styles.bentoCard, !isDarkMode && styles.bentoCardLight]}>
-            <View style={styles.bentoCardHeaderRow}>
-              <View>
-                <Text style={[styles.bentoCardTitle, !isDarkMode && styles.bentoCardTitleLight]}>Local File Server</Text>
-                <Text style={[styles.bentoCardSubtitle, !isDarkMode && styles.bentoCardSubtitleLight]}>
-                  Port {serverPort} • {readOnlyMode ? 'Safe Read-Only' : 'Read/Write Access'}
-                </Text>
-              </View>
-              <View style={[styles.serverStatusTag, serverRunning ? styles.serverStatusRunning : styles.serverStatusStopped]}>
-                <Text style={styles.serverStatusTagText}>
-                  {serverRunning ? 'ACTIVE' : 'STOPPED'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.serverControlButtonsRow}>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={[
-                  styles.serverToggleBtn,
-                  serverRunning ? styles.serverToggleBtnStop : styles.serverToggleBtnStart,
-                ]}
-                onPress={handleToggleServer}>
-                <Text style={styles.serverToggleBtnText}>
-                  {serverRunning ? 'Stop Server' : 'Start Server'}
-                </Text>
-              </TouchableOpacity>
-
-              <View style={styles.safeModeSwitchRow}>
-                <Text style={styles.safeModeLabel}>Safe Mode</Text>
-                <Switch
-                  value={readOnlyMode}
-                  onValueChange={handleToggleReadOnly}
-                  trackColor={{ false: '#475569', true: '#2563eb' }}
-                  thumbColor="#ffffff"
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* Bottom Canvas Landscape Framing */}
-          <BottomCanvasLandscape isDark={isDarkMode} />
         </ScrollView>
         </View>
       )}
@@ -5209,6 +5203,7 @@ export default function App() {
           setCurrentTab={setCurrentTab}
           isDark={isDarkMode}
           pairedPc={pairedPc}
+          bottomInset={bottomInset}
         />
       )}
 
@@ -5986,6 +5981,27 @@ export default function App() {
               />
             </View>
 
+            {/* Seamless Edge-to-Edge / Immersive Fullscreen Toggle */}
+            <View style={[styles.drawerThemeRow, !isDarkMode && styles.drawerThemeRowLight]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 16, color: isDarkMode ? '#60a5fa' : '#2563eb' }}>⛶</Text>
+                <View>
+                  <Text style={[styles.drawerThemeText, !isDarkMode && styles.drawerThemeTextLight]}>
+                    Immersive Fullscreen
+                  </Text>
+                  <Text style={{ fontSize: 10, color: isDarkMode ? '#94a3b8' : '#64748b' }}>
+                    {isImmersiveFullscreen ? 'Bars hidden (reveal on swipe)' : 'Seamless Edge-to-Edge'}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={isImmersiveFullscreen}
+                onValueChange={handleToggleImmersive}
+                trackColor={{ false: '#94a3b8', true: '#2563eb' }}
+                thumbColor={isImmersiveFullscreen ? '#60a5fa' : '#ffffff'}
+              />
+            </View>
+
             {/* Drawer Footer */}
             <View style={[styles.drawerFooter, !isDarkMode && styles.drawerFooterLight]}>
               <Text style={styles.drawerFooterText}>
@@ -6743,7 +6759,7 @@ export default function App() {
               </View>
 
               {/* Setting 4: Dark / Light Mode */}
-              <View style={[styles.settingsItemRow, !isDarkMode && styles.settingsItemRowLight, { borderBottomWidth: 0 }]}>
+              <View style={[styles.settingsItemRow, !isDarkMode && styles.settingsItemRowLight]}>
                 <View style={{ flex: 1, paddingRight: 10 }}>
                   <Text style={[styles.settingsItemTitle, !isDarkMode && styles.settingsItemTitleLight]}>
                     Theme Mode ({isDarkMode ? 'Dark' : 'Light'})
@@ -6757,6 +6773,24 @@ export default function App() {
                   onValueChange={(val) => setIsDarkMode(val)}
                   trackColor={{ false: '#94a3b8', true: '#2563eb' }}
                   thumbColor={isDarkMode ? '#60a5fa' : '#ffffff'}
+                />
+              </View>
+
+              {/* Setting 5: Immersive Fullscreen Mode */}
+              <View style={[styles.settingsItemRow, !isDarkMode && styles.settingsItemRowLight, { borderBottomWidth: 0 }]}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.settingsItemTitle, !isDarkMode && styles.settingsItemTitleLight]}>
+                    Immersive Fullscreen
+                  </Text>
+                  <Text style={styles.settingsItemSub}>
+                    {isImmersiveFullscreen ? 'Status & Navigation bars hidden (swipe to reveal)' : 'Seamless Edge-to-Edge display (transparent system bars)'}
+                  </Text>
+                </View>
+                <Switch
+                  value={isImmersiveFullscreen}
+                  onValueChange={handleToggleImmersive}
+                  trackColor={{ false: '#94a3b8', true: '#2563eb' }}
+                  thumbColor={isImmersiveFullscreen ? '#60a5fa' : '#ffffff'}
                 />
               </View>
             </ScrollView>
@@ -6781,11 +6815,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
   },
   containerLight: {
     backgroundColor: '#F7F6F2',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
   },
 
   /* Auto-Discovered PC on Home Hero */
@@ -7561,6 +7593,439 @@ const styles = StyleSheet.create({
   },
   heroSecondaryBtnTextLight: {
     color: '#334155',
+  },
+  heroDisconnectBtn: {
+    flex: 1,
+    height: 48,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroDisconnectBtnLight: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#fca5a5',
+  },
+  heroDisconnectBtnText: {
+    color: '#f87171',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  heroDisconnectBtnTextLight: {
+    color: '#b91c1c',
+  },
+
+  /* Middle Split Section Styles (Sketch Card 2) */
+  sketchSplitRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  sketchColLeft: {
+    flex: 1,
+    gap: 10,
+  },
+  sketchShareCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.25)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sketchShareCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  sketchShareIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(37, 99, 235, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sketchShareIcon: {
+    fontSize: 20,
+    color: '#3b82f6',
+    fontWeight: '900',
+  },
+  sketchShareTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  sketchShareTitleLight: {
+    color: '#0f172a',
+  },
+  sketchShareSub: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  sketchShareSubLight: {
+    color: '#64748b',
+  },
+  sketchClipboardCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  sketchClipboardCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  sketchClipboardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  sketchCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  sketchCardTitleLight: {
+    color: '#0f172a',
+  },
+  sketchCardLink: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  sketchClipPreviewText: {
+    fontSize: 11.5,
+    color: '#cbd5e1',
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+  sketchClipPreviewTextLight: {
+    color: '#475569',
+  },
+  sketchCopyBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    paddingVertical: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sketchCopyBtnLight: {
+    backgroundColor: '#1d4ed8',
+  },
+  sketchCopyBtnText: {
+    color: '#ffffff',
+    fontSize: 11.5,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  sketchColRightCard: {
+    flex: 1.15,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  sketchColRightCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  sketchShareHistoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  sketchHistoryItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  sketchHistoryBullet: {
+    fontSize: 14,
+    color: '#3b82f6',
+    marginRight: 4,
+    fontWeight: '900',
+  },
+  sketchHistoryFileName: {
+    fontSize: 11.5,
+    color: '#cbd5e1',
+    fontWeight: '600',
+  },
+  sketchHistoryFileNameLight: {
+    color: '#334155',
+  },
+  sketchHistoryEmpty: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sketchHistoryEmptyText: {
+    fontSize: 11,
+    color: '#64748b',
+    fontStyle: 'italic',
+  },
+  sketchHistoryEmptyTextLight: {
+    color: '#94a3b8',
+  },
+
+  /* Sketch Cards 3 & 4 (Download from PC & Share to PC) */
+  sketchSectionCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 12,
+  },
+  sketchSectionCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  sketchSectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  sketchSectionHeaderTitle: {
+    fontSize: 13.5,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  sketchSectionHeaderTitleLight: {
+    color: '#0f172a',
+  },
+  sketchSubHeader: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#3b82f6',
+    letterSpacing: 0.8,
+    marginTop: 2,
+  },
+  sketchSubHeaderLight: {
+    color: '#2563eb',
+  },
+  sketchFilterScroll: {
+    marginBottom: 12,
+  },
+  sketchCategoryPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  sketchCategoryPillLight: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
+  },
+  sketchCategoryPillActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#3b82f6',
+  },
+  sketchCategoryPillActiveLight: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  sketchCategoryText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#94a3b8',
+  },
+  sketchCategoryTextLight: {
+    color: '#64748b',
+  },
+  sketchCategoryTextActive: {
+    color: '#ffffff',
+  },
+  sketchPcGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sketchPcGridTile: {
+    width: '23%',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 14,
+    padding: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  sketchPcGridTileLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  sketchTileIconBox: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  sketchTileMediaThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sketchTileName: {
+    fontSize: 10,
+    color: '#cbd5e1',
+    fontWeight: '600',
+    textAlign: 'center',
+    width: '100%',
+  },
+  sketchTileNameLight: {
+    color: '#334155',
+  },
+  sketchEmptySection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+  sketchEmptyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  sketchEmptyTitleLight: {
+    color: '#0f172a',
+  },
+  sketchEmptySub: {
+    fontSize: 11,
+    color: '#64748b',
+    textAlign: 'center',
+    maxWidth: 240,
+  },
+  sketchEmptySubLight: {
+    color: '#64748b',
+  },
+  sketchConnectBtn: {
+    marginTop: 10,
+    backgroundColor: '#2563eb',
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  sketchConnectBtnLight: {
+    backgroundColor: '#1d4ed8',
+  },
+  sketchConnectBtnText: {
+    color: '#ffffff',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  sketchMediaCard: {
+    width: 90,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 14,
+    padding: 6,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+  },
+  sketchMediaCardLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  sketchMediaThumbContainer: {
+    width: 78,
+    height: 78,
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#1e293b',
+  },
+  sketchMediaThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  sketchPlayBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  sketchMediaSendBtn: {
+    marginTop: 6,
+    width: '100%',
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    paddingVertical: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sketchMediaSendBtnLight: {
+    backgroundColor: '#1d4ed8',
+  },
+  sketchMediaSendBtnText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  sketchEmptyMediaPickBtn: {
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sketchEmptyMediaPickBtnLight: {
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
+  },
+  sketchEmptyMediaPickText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '700',
+  },
+  sketchEmptyMediaPickTextLight: {
+    color: '#64748b',
   },
   heroReadySubText: {
     fontSize: 12,

@@ -32,9 +32,16 @@ public class MainActivity extends ReactActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // True Edge-to-Edge window rendering so content smoothly flows behind transparent navigation bar
+        // 1. Extend window completely into the camera notch / display cutout
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            getWindow().getAttributes().layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+
+        // 2. True Edge-to-Edge window rendering (content flows behind status & navigation bars)
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
+        // 3. Make system bars 100% transparent without any system scrims
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             getWindow().setStatusBarColor(Color.TRANSPARENT);
@@ -44,14 +51,16 @@ public class MainActivity extends ReactActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             getWindow().setNavigationBarContrastEnforced(false);
             getWindow().setStatusBarContrastEnforced(false);
-        } else {
-            View decorView = getWindow().getDecorView();
-            decorView.setSystemUiVisibility(
-                decorView.getSystemUiVisibility()
-                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            );
         }
+
+        // 4. Stable layout flags for all Android versions
+        View decorView = getWindow().getDecorView();
+        decorView.setSystemUiVisibility(
+            decorView.getSystemUiVisibility()
+            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        );
 
         handleShareIntent(getIntent());
     }
