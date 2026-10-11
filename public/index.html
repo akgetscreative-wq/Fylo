@@ -5723,12 +5723,12 @@
 
                 <!-- Bento Grid (Landscape-optimized, clean cards, real data only) -->
                 <div class="dash-bento-grid">
-                    <!-- 1. HERO DROP ZONE: Share to PC / Drag & Drop files anywhere to share instantly -->
+                    <!-- 1. HERO DROP ZONE: Share to Phone / Drag & Drop files anywhere to share instantly -->
                     <div class="bento-card dash-hero-drop" id="dash-drop-hero">
                         <div class="bento-card-header" style="width: 100%; margin-bottom: 8px;">
                             <div class="bento-card-title">
-                                <span class="card-header-icon">📤</span>
-                                <span id="dash-share-title">Share to PC</span>
+                                <span class="card-header-icon">📱</span>
+                                <span id="dash-share-title">Share to Phone</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 6px;">
                                 <button class="bento-icon-btn bento-expand-btn" id="btn-expand-drop-hero" data-card="dash-drop-hero" title="Expand card (⛶)" onclick="event.stopPropagation(); toggleBentoCardExpand('dash-drop-hero')">
@@ -5747,8 +5747,8 @@
                                     <line x1="12" y1="3" x2="12" y2="15"/>
                                 </svg>
                             </div>
-                            <h2 class="drop-hero-title">Drag & drop files here to share</h2>
-                            <p class="drop-hero-sub">Drop files anywhere across the app or click to browse files from your computer</p>
+                            <h2 class="drop-hero-title">Drag & drop files here to share with phone</h2>
+                            <p class="drop-hero-sub">Drop files anywhere across the app or click to browse files to share with your connected phone</p>
                             <div class="drop-hero-btn-row">
                                 <button class="btn btn-accent" style="padding: 10px 20px; border-radius: 14px; font-weight: 700; pointer-events: none;">
                                     <span>📂 Browse Files to Share</span>
@@ -5864,12 +5864,12 @@
                         </div>
                     </div>
 
-                    <!-- 3. REAL SHARED FILES QUEUE (Download from PC) -->
+                    <!-- 3. REAL SHARED FILES QUEUE (Files from Phone) -->
                     <div class="bento-card dash-card-shared" id="dash-card-shared" style="display: flex; flex-direction: column;">
                         <div class="bento-card-header">
                             <div class="bento-card-title">
-                                <span class="card-header-icon">⚡</span>
-                                <span id="dash-shared-header-title">Download from PC</span>
+                                <span class="card-header-icon">📥</span>
+                                <span id="dash-shared-header-title">Files from Phone</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 6px;">
                                 <button class="bento-icon-btn bento-expand-btn" id="btn-expand-shared-card" data-card="dash-card-shared" title="Expand card (⛶)" onclick="toggleBentoCardExpand('dash-card-shared')">
