@@ -5417,6 +5417,9 @@
         }
 
     </style>
+    <!-- PeerJS & QRCode.js for Direct In-App Web ShareHub -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
 <body>
@@ -6789,25 +6792,106 @@
                 </div>
             </div>
 
-            <!-- Web ShareHub Dedicated View Panel -->
+            <!-- Web ShareHub Dedicated View Panel (Native Embedded Interface) -->
             <div id="view-web-sharehub" class="view-panel hidden">
-                <div style="padding: 16px 20px; display: flex; flex-direction: column; height: calc(100vh - 20px); gap: 12px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span style="font-size: 1.5rem;">🌐</span>
+                <div style="padding: 20px 24px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 14px;">
+                            <div style="width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #06b6d4); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);">🌐</div>
                             <div>
-                                <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--text); margin: 0;">Web ShareHub</h2>
-                                <p style="font-size: 0.78rem; color: var(--text-light); margin: 2px 0 0 0;">Secure P2P file sharing via WebRTC — no cloud, direct encrypted transfer</p>
+                                <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text); margin: 0;">Web ShareHub</h2>
+                                <p style="font-size: 0.8rem; color: var(--text-light); margin: 2px 0 0 0;">Zero Cloud Storage &middot; Direct Encrypted P2P Transfer (WebRTC)</p>
                             </div>
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <a href="/web-sharehub.html" target="_blank" class="btn btn-accent" style="padding: 8px 16px; border-radius: 12px; font-weight: 700; font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:14px; height:14px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                Open in New Tab
-                            </a>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div id="pc-web-status-pill" class="dash-stat-badge" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24; font-size: 0.8rem; padding: 5px 12px; border-radius: 9999px;">
+                                <span id="pc-web-status-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; margin-right: 6px;"></span>
+                                <span id="pc-web-status-text">Waiting for connection...</span>
+                            </div>
+                            <button id="pc-web-disconnect-btn" onclick="pcWebDisconnectSession()" class="btn" style="display: none; padding: 6px 14px; border-radius: 12px; font-weight: 700; font-size: 0.8rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">
+                                ⛔ Disconnect
+                            </button>
                         </div>
                     </div>
-                    <iframe id="web-sharehub-iframe" src="/web-sharehub.html" style="flex: 1; width: 100%; border: none; border-radius: 16px; background: rgba(0,0,0,0.2);"></iframe>
+
+                    <!-- Security Banner -->
+                    <div style="padding: 10px 16px; border-radius: 12px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.22); color: #34d399; font-size: 0.82rem; font-weight: 600; text-align: center;">
+                        🔒 End-to-End Encrypted via DTLS-SRTP &middot; Peer-to-Peer &middot; No Cloud Storage
+                    </div>
+
+                    <!-- Web Share Grid -->
+                    <div style="display: grid; grid-template-columns: 360px 1fr; gap: 18px;">
+                        <!-- Left Column: Room PIN & Pairing QR Code -->
+                        <div class="card" style="padding: 20px; border-radius: 20px; display: flex; flex-direction: column; gap: 14px; text-align: center;">
+                            <div style="font-size: 0.78rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.8px;">
+                                Your PC Room PIN
+                            </div>
+                            <div id="pc-web-pin-display" style="font-size: 2.4rem; font-weight: 900; letter-spacing: 8px; color: #38bdf8; font-variant-numeric: tabular-nums;">
+                                ------
+                            </div>
+
+                            <!-- QR Code Box -->
+                            <div style="margin: 0 auto; padding: 10px; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.18);">
+                                <div id="pc-web-qr-canvas" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
+                            </div>
+                            <div style="font-size: 0.74rem; color: var(--text-light);">
+                                Scan with phone or enter 6-digit PIN on other device
+                            </div>
+
+                            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                <button onclick="pcWebCopyPin()" class="btn" style="flex: 1; padding: 8px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);">
+                                    📋 Copy PIN
+                                </button>
+                                <button onclick="pcWebGenerateNewRoom()" class="btn" style="flex: 1; padding: 8px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);">
+                                    🔄 New PIN
+                                </button>
+                            </div>
+
+                            <!-- Divider: Join Room -->
+                            <div style="border-top: 1px solid var(--border); margin: 6px 0;"></div>
+                            <div style="font-size: 0.75rem; color: var(--text-light); font-weight: 700;">
+                                OR CONNECT TO ANOTHER DEVICE
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="pc-web-join-input" maxlength="6" placeholder="Enter 6-digit PIN" style="flex: 1; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text); font-size: 0.88rem; text-align: center; letter-spacing: 2px;" />
+                                <button onclick="pcWebJoinRoom()" class="btn btn-accent" style="padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 0.8rem;">
+                                    Connect
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Drag & Drop Files & Transfers -->
+                        <div class="card" style="padding: 20px; border-radius: 20px; display: flex; flex-direction: column; gap: 14px;">
+                            <div style="font-weight: 800; font-size: 1rem; color: var(--text);">
+                                Direct P2P File Transfer
+                            </div>
+
+                            <!-- Drop Zone -->
+                            <div id="pc-web-dropzone" onclick="document.getElementById('pc-web-file-input').click()" style="padding: 36px 20px; border: 2px dashed rgba(59, 130, 246, 0.4); border-radius: 18px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: rgba(59, 130, 246, 0.04);">
+                                <input type="file" id="pc-web-file-input" multiple style="display: none;" onchange="pcWebHandleFileInput(this.files)" />
+                                <div style="font-size: 2.2rem; margin-bottom: 8px;">📤</div>
+                                <div id="pc-web-drop-title" style="font-size: 1rem; font-weight: 800; color: var(--text);">
+                                    Drop files here to send
+                                </div>
+                                <div id="pc-web-drop-sub" style="font-size: 0.78rem; color: var(--text-light); margin-top: 4px;">
+                                    Files are streamed directly peer-to-peer without server storage
+                                </div>
+                            </div>
+
+                            <!-- Transfer Activity List -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 0.82rem; font-weight: 800; color: var(--text-light); text-transform: uppercase;">Transfer Activity</span>
+                                    <button onclick="pcWebClearTransfers()" id="pc-web-clear-btn" class="btn" style="display: none; padding: 2px 8px; font-size: 0.72rem; border-radius: 8px;">Clear Completed</button>
+                                </div>
+                                <div id="pc-web-transfers-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto;">
+                                    <div id="pc-web-transfers-empty" style="text-align: center; padding: 24px 0; color: var(--text-light); font-size: 0.82rem;">
+                                        No active transfers yet. Connect with a device to send and receive files.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -7681,6 +7765,10 @@
                 loadDashboardData();
             }
 
+            if (targetId === 'view-web-sharehub') {
+                initPcWebShareHub();
+            }
+
             if (targetId === 'view-phone') {
                 if (!isBrowsingPhone) {
                     returnToPhoneList();
@@ -7897,32 +7985,354 @@
             }
         };
 
-        window.disconnectWebSession = function() {
+        // ==========================================
+        // Direct In-App Web ShareHub WebRTC Engine
+        // ==========================================
+        const PC_PEER_PREFIX = 'fylo-sharehub-';
+        const PC_ICE_CONFIG = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' }
+            ]
+        };
+
+        let pcWebPeer = null;
+        let pcWebActiveConn = null;
+        let pcWebPin = '';
+        let pcWebIsConnected = false;
+        const pcWebInbound = new Map();
+
+        function pcWebGeneratePin() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
+        window.initPcWebShareHub = function() {
+            if (!pcWebPin) {
+                pcWebPin = pcWebGeneratePin();
+            }
+            const pinDisplay = document.getElementById('pc-web-pin-display');
+            if (pinDisplay) pinDisplay.textContent = pcWebPin;
+
+            // Render QR Code in native view
+            try {
+                const qrBox = document.getElementById('pc-web-qr-canvas');
+                if (qrBox && typeof QRCode !== 'undefined') {
+                    qrBox.innerHTML = '';
+                    const shareUrl = `https://akgetscreative-wq.github.io/Fylo/web-sharehub.html?room=${pcWebPin}`;
+                    new QRCode(qrBox, {
+                        text: shareUrl,
+                        width: 140,
+                        height: 140,
+                        colorDark: '#0f172a',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                }
+            } catch (e) {
+                console.warn('pcWeb QR error:', e);
+            }
+
+            if (!pcWebPeer || pcWebPeer.destroyed) {
+                setupPcWebPeer();
+            }
+        };
+
+        function setupPcWebPeer() {
+            if (typeof Peer === 'undefined') return;
+            const peerId = `${PC_PEER_PREFIX}${pcWebPin}`;
+            if (pcWebPeer && !pcWebPeer.destroyed) {
+                try { pcWebPeer.destroy(); } catch(e) {}
+            }
+            try {
+                pcWebPeer = new Peer(peerId, { config: PC_ICE_CONFIG, debug: 1 });
+                pcWebPeer.on('open', () => {
+                    pcWebUpdateStatus('waiting', 'Ready for phone to connect');
+                });
+                pcWebPeer.on('connection', (conn) => {
+                    pcWebHandleConnection(conn);
+                });
+                pcWebPeer.on('error', (err) => {
+                    console.warn('pcWebPeer error:', err);
+                    if (err.type === 'unavailable-id') {
+                        pcWebPin = pcWebGeneratePin();
+                        window.initPcWebShareHub();
+                    }
+                });
+            } catch (err) {
+                console.warn('setupPcWebPeer error:', err);
+            }
+        }
+
+        function pcWebHandleConnection(conn) {
+            if (pcWebActiveConn) {
+                try { pcWebActiveConn.close(); } catch(e) {}
+            }
+            pcWebActiveConn = conn;
+
+            conn.on('open', () => {
+                pcWebIsConnected = true;
+                window._isWebShareConnected = true;
+                const remotePin = conn.peer.replace(PC_PEER_PREFIX, '');
+                pcWebUpdateStatus('connected', `Connected with Phone (${remotePin})`);
+                showToast(`🌐 Phone connected via Web (Room: ${remotePin})`);
+
+                const disconnectBtn = document.getElementById('pc-web-disconnect-btn');
+                if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
+                const webIndicator = $('#dash-web-connect-indicator');
+                if (webIndicator) webIndicator.style.display = 'inline-flex';
+            });
+
+            conn.on('data', (data) => {
+                pcWebHandleIncomingData(data);
+            });
+
+            conn.on('close', () => {
+                pcWebOnDisconnected();
+            });
+
+            conn.on('error', () => {
+                pcWebOnDisconnected();
+            });
+        }
+
+        function pcWebOnDisconnected() {
+            pcWebIsConnected = false;
             window._isWebShareConnected = false;
+            pcWebActiveConn = null;
+            pcWebUpdateStatus('waiting', 'Waiting for phone to connect...');
+            const disconnectBtn = document.getElementById('pc-web-disconnect-btn');
+            if (disconnectBtn) disconnectBtn.style.display = 'none';
             const webIndicator = $('#dash-web-connect-indicator');
             if (webIndicator) webIndicator.style.display = 'none';
-            try {
-                const iframe = document.getElementById('web-sharehub-iframe');
-                if (iframe && iframe.contentWindow) {
-                    iframe.contentWindow.postMessage({ type: 'fylo-disconnect-peer' }, '*');
+        }
+
+        function pcWebUpdateStatus(state, text) {
+            const pill = document.getElementById('pc-web-status-pill');
+            const dot = document.getElementById('pc-web-status-dot');
+            const label = document.getElementById('pc-web-status-text');
+            if (label) label.textContent = text;
+            if (state === 'connected') {
+                if (pill) {
+                    pill.style.background = 'rgba(16, 185, 129, 0.15)';
+                    pill.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+                    pill.style.color = '#34d399';
                 }
-            } catch (e) {}
+                if (dot) dot.style.background = '#34d399';
+            } else {
+                if (pill) {
+                    pill.style.background = 'rgba(245, 158, 11, 0.15)';
+                    pill.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+                    pill.style.color = '#fbbf24';
+                }
+                if (dot) dot.style.background = '#fbbf24';
+            }
+        }
+
+        window.pcWebCopyPin = function() {
+            if (navigator.clipboard && pcWebPin) {
+                navigator.clipboard.writeText(pcWebPin).then(() => {
+                    showToast(`Copied Room PIN: ${pcWebPin}`);
+                }).catch(() => {});
+            }
+        };
+
+        window.pcWebGenerateNewRoom = function() {
+            pcWebPin = pcWebGeneratePin();
+            window.initPcWebShareHub();
+            showToast(`Generated new Room PIN: ${pcWebPin}`);
+        };
+
+        window.pcWebJoinRoom = function() {
+            const input = document.getElementById('pc-web-join-input');
+            const targetPin = (input?.value || '').trim();
+            if (!/^\d{6}$/.test(targetPin)) {
+                showToast("Please enter a valid 6-digit PIN");
+                return;
+            }
+            if (targetPin === pcWebPin) {
+                showToast("Cannot connect to your own PIN");
+                return;
+            }
+            if (!pcWebPeer || pcWebPeer.destroyed) {
+                setupPcWebPeer();
+            }
+            const remotePeerId = `${PC_PEER_PREFIX}${targetPin}`;
+            showToast(`Connecting to Room ${targetPin}...`);
+            pcWebUpdateStatus('waiting', `Connecting to Room ${targetPin}...`);
+            const conn = pcWebPeer.connect(remotePeerId, { reliable: true, serialization: 'none' });
+            pcWebHandleConnection(conn);
+        };
+
+        window.pcWebDisconnectSession = function() {
+            if (pcWebActiveConn) {
+                try { pcWebActiveConn.close(); } catch(e) {}
+            }
+            pcWebOnDisconnected();
             showToast("Web P2P session disconnected");
         };
 
-        // Listen for Web ShareHub connection events from iframe
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'fylo-web-peer-connected') {
-                window._isWebShareConnected = true;
-                const webIndicator = $('#dash-web-connect-indicator');
-                if (webIndicator) webIndicator.style.display = 'inline-flex';
-                showToast("🌐 Peer connected via Web (P2P)");
-            } else if (event.data && event.data.type === 'fylo-web-peer-disconnected') {
-                window._isWebShareConnected = false;
-                const webIndicator = $('#dash-web-connect-indicator');
-                if (webIndicator) webIndicator.style.display = 'none';
+        window.disconnectWebSession = window.pcWebDisconnectSession;
+
+        function pcWebHandleIncomingData(data) {
+            if (typeof data === 'string') {
+                try {
+                    const msg = JSON.parse(data);
+                    if (msg.type === 'file-meta') {
+                        pcWebInbound.set(msg.fileId, {
+                            meta: msg,
+                            chunks: [],
+                            receivedBytes: 0
+                        });
+                        pcWebAddTransferCard(msg.fileId, msg.name, msg.size, 'incoming');
+                    } else if (msg.type === 'file-complete') {
+                        const item = pcWebInbound.get(msg.fileId);
+                        if (item) {
+                            const blob = new Blob(item.chunks, { type: item.meta.mimeType || 'application/octet-stream' });
+                            pcWebFinishInboundFile(msg.fileId, item.meta.name, blob);
+                            pcWebInbound.delete(msg.fileId);
+                        }
+                    }
+                } catch(e) {}
+            } else {
+                // Binary chunk
+                for (const [fileId, item] of pcWebInbound.entries()) {
+                    if (item.receivedBytes < item.meta.size) {
+                        item.chunks.push(data);
+                        item.receivedBytes += data.byteLength;
+                        pcWebUpdateTransferProgress(fileId, item.receivedBytes, item.meta.size);
+                        break;
+                    }
+                }
             }
-        });
+        }
+
+        window.pcWebHandleFileInput = function(files) {
+            if (!files || files.length === 0) return;
+            if (!pcWebActiveConn || !pcWebIsConnected) {
+                showToast("Please connect to a device before sending files");
+                return;
+            }
+            Array.from(files).forEach(file => {
+                pcWebSendFile(file);
+            });
+        };
+
+        async function pcWebSendFile(file) {
+            const fileId = 'web-' + Math.random().toString(36).substring(2, 9);
+            const meta = {
+                type: 'file-meta',
+                fileId: fileId,
+                name: file.name,
+                size: file.size,
+                mimeType: file.type
+            };
+
+            pcWebAddTransferCard(fileId, file.name, file.size, 'outgoing');
+            try {
+                pcWebActiveConn.send(JSON.stringify(meta));
+            } catch (e) {
+                showToast("Failed to send file meta");
+                return;
+            }
+
+            const chunkSize = 64 * 1024;
+            let offset = 0;
+
+            const reader = new FileReader();
+            function sendNextChunk() {
+                if (offset >= file.size) {
+                    pcWebActiveConn.send(JSON.stringify({ type: 'file-complete', fileId }));
+                    pcWebMarkTransferDone(fileId);
+                    showToast(`Sent ${file.name}!`);
+                    return;
+                }
+                const slice = file.slice(offset, offset + chunkSize);
+                reader.onload = (e) => {
+                    try {
+                        pcWebActiveConn.send(e.target.result);
+                        offset += e.target.result.byteLength;
+                        pcWebUpdateTransferProgress(fileId, offset, file.size);
+
+                        // Backpressure handling
+                        if (pcWebActiveConn.dataChannel && pcWebActiveConn.dataChannel.bufferedAmount > 1024 * 1024) {
+                            setTimeout(sendNextChunk, 40);
+                        } else {
+                            setTimeout(sendNextChunk, 2);
+                        }
+                    } catch (err) {
+                        console.warn("Send chunk error:", err);
+                    }
+                };
+                reader.readAsArrayBuffer(slice);
+            }
+            sendNextChunk();
+        }
+
+        function pcWebAddTransferCard(fileId, name, size, direction) {
+            const empty = document.getElementById('pc-web-transfers-empty');
+            if (empty) empty.style.display = 'none';
+            const list = document.getElementById('pc-web-transfers-list');
+            if (!list) return;
+
+            const card = document.createElement('div');
+            card.id = `pc-web-tcard-${fileId}`;
+            card.style.cssText = "padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px;";
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--text);">${direction === 'outgoing' ? '📤' : '📥'} ${name}</div>
+                    <div id="pc-web-pct-${fileId}" style="font-size: 0.75rem; color: var(--text-light); font-weight: 700;">0%</div>
+                </div>
+                <div style="width: 100%; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1); overflow: hidden;">
+                    <div id="pc-web-bar-${fileId}" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #06b6d4); border-radius: 3px; transition: width 0.1s ease;"></div>
+                </div>
+                <div id="pc-web-action-${fileId}" style="display: none; margin-top: 4px;"></div>
+            `;
+            list.prepend(card);
+            const clearBtn = document.getElementById('pc-web-clear-btn');
+            if (clearBtn) clearBtn.style.display = 'inline-block';
+        }
+
+        function pcWebUpdateTransferProgress(fileId, current, total) {
+            const pct = Math.min(100, Math.round((current / total) * 100));
+            const pctEl = document.getElementById(`pc-web-pct-${fileId}`);
+            const barEl = document.getElementById(`pc-web-bar-${fileId}`);
+            if (pctEl) pctEl.textContent = `${pct}%`;
+            if (barEl) barEl.style.width = `${pct}%`;
+        }
+
+        function pcWebMarkTransferDone(fileId) {
+            const pctEl = document.getElementById(`pc-web-pct-${fileId}`);
+            if (pctEl) {
+                pctEl.textContent = "Done ✓";
+                pctEl.style.color = "#34d399";
+            }
+        }
+
+        function pcWebFinishInboundFile(fileId, name, blob) {
+            pcWebMarkTransferDone(fileId);
+            const actionEl = document.getElementById(`pc-web-action-${fileId}`);
+            if (actionEl) {
+                actionEl.style.display = 'block';
+                const url = URL.createObjectURL(blob);
+                actionEl.innerHTML = `
+                    <a href="${url}" download="${name}" class="btn btn-accent" style="padding: 4px 12px; font-size: 0.76rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                        💾 Save ${name}
+                    </a>
+                `;
+            }
+            showToast(`📥 Received ${name}!`);
+        }
+
+        window.pcWebClearTransfers = function() {
+            const list = document.getElementById('pc-web-transfers-list');
+            if (list) {
+                list.innerHTML = `<div id="pc-web-transfers-empty" style="text-align: center; padding: 24px 0; color: var(--text-light); font-size: 0.82rem;">No active transfers yet. Connect with a device to send and receive files.</div>`;
+            }
+            const clearBtn = document.getElementById('pc-web-clear-btn');
+            if (clearBtn) clearBtn.style.display = 'none';
+        };
 
         async function loadDashboardData() {
             try {

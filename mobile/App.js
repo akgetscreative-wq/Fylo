@@ -2410,10 +2410,26 @@ export default function App() {
 
   const handleParseAndConnectQr = (rawText) => {
     if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
-      showToast('⚠️ Please enter or paste QR code string');
+      showToast('⚠️ Please enter or paste QR code or PIN');
       return;
     }
     const clean = rawText.trim();
+
+    // 1. Direct 6-Digit PIN check
+    if (/^\d{6}$/.test(clean)) {
+      handleOpenWebShare(clean);
+      return;
+    }
+
+    // 2. Web ShareHub room URL check (e.g. web-sharehub.html?room=123456)
+    if (clean.includes('room=') || clean.includes('web-sharehub')) {
+      const match = clean.match(/room=(\d{6})/);
+      if (match && match[1]) {
+        handleOpenWebShare(match[1]);
+        return;
+      }
+    }
+
     let host = '';
     let port = '3000';
     let token = '';
@@ -2451,7 +2467,7 @@ export default function App() {
     }
 
     if (!host) {
-      showToast('⚠️ Invalid QR code address format');
+      showToast('⚠️ Invalid connection code format');
       return;
     }
 
@@ -7047,7 +7063,7 @@ export default function App() {
 
                 <TextInput
                   style={[styles.modalInput, !isDarkMode && styles.modalInputLight]}
-                  placeholder="Paste QR Code String (e.g. http://192.168.1.5:3000/?auth=...)"
+                  placeholder="Paste QR String or Enter 6-Digit Web PIN"
                   placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
                   value={qrInputText}
                   onChangeText={setQrInputText}

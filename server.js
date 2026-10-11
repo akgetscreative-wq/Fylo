@@ -528,13 +528,33 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => {
     try {
-        const htmlPath = path.join(electronApp.getAppPath(), 'public', 'index.html');
+        const basePath = (electronApp && typeof electronApp.getAppPath === 'function') ? electronApp.getAppPath() : __dirname;
+        const htmlPath = path.join(basePath, 'public', 'index.html');
         const html = fs.readFileSync(htmlPath, 'utf8');
         res.send(html);
     } catch (err) {
         res.status(500).send('Internal Server Error: Missing interface payload asset.');
     }
 });
+
+app.get('/web-sharehub.html', (req, res) => {
+    try {
+        const basePath = (electronApp && typeof electronApp.getAppPath === 'function') ? electronApp.getAppPath() : __dirname;
+        const htmlPath = path.join(basePath, 'public', 'web-sharehub.html');
+        if (fs.existsSync(htmlPath)) {
+            return res.sendFile(htmlPath);
+        }
+        res.status(404).send('Web ShareHub asset not found');
+    } catch (err) {
+        res.status(500).send('Internal Server Error loading Web ShareHub');
+    }
+});
+
+// Serve other public assets safely
+const publicDir = (electronApp && typeof electronApp.getAppPath === 'function') 
+    ? path.join(electronApp.getAppPath(), 'public') 
+    : path.join(__dirname, 'public');
+app.use(express.static(publicDir));
 
 app.get('/api/me', (req, res) => {
     const isHost = isLocalHostIp(req.ip);
