@@ -1117,6 +1117,7 @@ export default function App() {
   const [discoveredDevices, setDiscoveredDevices] = useState([]);
   const [connectionMode, setConnectionMode] = useState('lan'); // 'lan' | 'web'
   const [webRoomPin, setWebRoomPin] = useState('');
+  const [webInputPin, setWebInputPin] = useState('');
   const [webQrBase64, setWebQrBase64] = useState(null);
   const [showWebShareFallback, setShowWebShareFallback] = useState(false);
   const [isWebShareBannerDismissed, setIsWebShareBannerDismissed] = useState(false);
@@ -2292,6 +2293,10 @@ export default function App() {
 
   const handleUnpair = async () => {
     if (!pairedPc) return;
+    if (connectionMode === 'web') {
+      handleDisconnectWebPeer();
+      return;
+    }
     try {
       await apiFetch(`http://${pairedPc}/api/mobile/disconnect`, {
         method: 'POST',
@@ -2669,58 +2674,87 @@ export default function App() {
       let successCount = 0;
       const sentFiles = [];
 
-      for (const file of files) {
-        try {
-          const res = await apiFetch(`http://${pairedPc}/api/mobile/fs/download-direct`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Auth-Token': pcAuthToken || '',
-            },
-            body: JSON.stringify({
-              deviceId: deviceIdRef.current,
-              path: file.path,
-            }),
-          }, 15000);
-          const data = await safeJson(res);
-          if (data && data.success) {
-            successCount++;
-            sentFiles.push({
-              name: file.name,
-              path: file.path,
-              size: file.size,
-              mimeType: file.mimeType,
-              savedPath: data.savedPath,
-              source: 'phone',
-              direction: 'sent',
-              time: Date.now(),
-            });
+      if (connectionMode === 'web') {
+        // Direct WebRTC P2P Transfer to PC
+        for (const file of files) {
+          try {
+            if (FyloModule && FyloModule.sendWebFile) {
+              const res = await FyloModule.sendWebFile(file.path);
+              if (res && res.success) {
+                successCount++;
+                sentFiles.push({
+                  name: file.name,
+                  path: file.path,
+                  size: file.size,
+                  mimeType: file.mimeType,
+                  source: 'phone',
+                  direction: 'sent',
+                  time: Date.now(),
+                });
+              }
+            }
+          } catch (err) {
+            console.warn('Web send error:', err);
           }
-        } catch (err) {
-          console.warn('Direct send error:', err);
         }
-      }
-
-      // Notify PC Share Hub so they immediately appear in the PC Share Hub!
-      if (sentFiles.length > 0) {
-        try {
-          await apiFetch(`http://${pairedPc}/api/files/share-event`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Auth-Token': pcAuthToken || '',
-            },
-            body: JSON.stringify({
-              files: sentFiles,
-              deviceName: phoneModelName,
-            }),
-          }, 6000);
-        } catch (e) {
-          console.warn('Share event notify error:', e);
+        if (sentFiles.length > 0) {
+          setShareHubFiles((prev) => [...sentFiles, ...prev]);
+        }
+      } else {
+        // Local LAN Transfer to PC
+        for (const file of files) {
+          try {
+            const res = await apiFetch(`http://${pairedPc}/api/mobile/fs/download-direct`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Auth-Token': pcAuthToken || '',
+              },
+              body: JSON.stringify({
+                deviceId: deviceIdRef.current,
+                path: file.path,
+              }),
+            }, 15000);
+            const data = await safeJson(res);
+            if (data && data.success) {
+              successCount++;
+              sentFiles.push({
+                name: file.name,
+                path: file.path,
+                size: file.size,
+                mimeType: file.mimeType,
+                savedPath: data.savedPath,
+                source: 'phone',
+                direction: 'sent',
+                time: Date.now(),
+              });
+            }
+          } catch (err) {
+            console.warn('Direct send error:', err);
+          }
         }
 
-        // Refresh Mobile Share Hub list
-        fetchSharedHubFiles();
+        // Notify PC Share Hub so they immediately appear in the PC Share Hub!
+        if (sentFiles.length > 0) {
+          try {
+            await apiFetch(`http://${pairedPc}/api/files/share-event`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Auth-Token': pcAuthToken || '',
+              },
+              body: JSON.stringify({
+                files: sentFiles,
+                deviceName: phoneModelName,
+              }),
+            }, 6000);
+          } catch (e) {
+            console.warn('Share event notify error:', e);
+          }
+
+          // Refresh Mobile Share Hub list
+          fetchSharedHubFiles();
+        }
       }
 
       setIsSending(false);
@@ -2753,51 +2787,76 @@ export default function App() {
     let successCount = 0;
     const sentFiles = [];
 
-    for (const fPath of pathArray) {
-      try {
-        const res = await apiFetch(`http://${pairedPc}/api/mobile/fs/download-direct`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Auth-Token': pcAuthToken || '',
-          },
-          body: JSON.stringify({
-            deviceId: deviceIdRef.current,
-            path: fPath,
-          }),
-        }, 15000);
-        const data = await safeJson(res);
-        if (data && data.success) {
-          successCount++;
-          const fileName = fPath.split(/[/\\]/).pop();
-          sentFiles.push({
-            name: fileName,
-            path: fPath,
-            savedPath: data.savedPath,
-            direction: 'sent',
-            time: Date.now(),
-          });
+    if (connectionMode === 'web') {
+      for (const fPath of pathArray) {
+        try {
+          if (FyloModule && FyloModule.sendWebFile) {
+            const res = await FyloModule.sendWebFile(fPath);
+            if (res && res.success) {
+              successCount++;
+              const fileName = fPath.split(/[/\\]/).pop();
+              sentFiles.push({
+                name: fileName,
+                path: fPath,
+                direction: 'sent',
+                time: Date.now(),
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('Web send error:', e);
         }
-      } catch (e) {
-        console.warn('Send error:', e);
       }
-    }
+      if (sentFiles.length > 0) {
+        setShareHubFiles((prev) => [...sentFiles, ...prev]);
+      }
+    } else {
+      for (const fPath of pathArray) {
+        try {
+          const res = await apiFetch(`http://${pairedPc}/api/mobile/fs/download-direct`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Token': pcAuthToken || '',
+            },
+            body: JSON.stringify({
+              deviceId: deviceIdRef.current,
+              path: fPath,
+            }),
+          }, 15000);
+          const data = await safeJson(res);
+          if (data && data.success) {
+            successCount++;
+            const fileName = fPath.split(/[/\\]/).pop();
+            sentFiles.push({
+              name: fileName,
+              path: fPath,
+              savedPath: data.savedPath,
+              direction: 'sent',
+              time: Date.now(),
+            });
+          }
+        } catch (e) {
+          console.warn('Send error:', e);
+        }
+      }
 
-    if (sentFiles.length > 0) {
-      try {
-        await apiFetch(`http://${pairedPc}/api/files/share-event`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Auth-Token': pcAuthToken || '',
-          },
-          body: JSON.stringify({
-            files: sentFiles,
-            deviceName: phoneModelName,
-          }),
-        }, 6000);
-      } catch (ignored) {}
-      fetchSharedHubFiles();
+      if (sentFiles.length > 0) {
+        try {
+          await apiFetch(`http://${pairedPc}/api/files/share-event`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Token': pcAuthToken || '',
+            },
+            body: JSON.stringify({
+              files: sentFiles,
+              deviceName: phoneModelName,
+            }),
+          }, 6000);
+        } catch (ignored) {}
+        fetchSharedHubFiles();
+      }
     }
 
     setIsSending(false);
@@ -2871,6 +2930,65 @@ export default function App() {
       }
     });
 
+    const subWebConnected = DeviceEventEmitter.addListener('onWebPeerConnected', (data) => {
+      const pin = data?.pin || '';
+      setPairedPc(`Web PC (${pin})`);
+      setPcHostName('PC (Web P2P)');
+      setConnectionMode('web');
+      setIsPcReachable(true);
+      setShowPairModal(false);
+      setIsWebShareBannerDismissed(true);
+      showToast(`🌐 Connected to PC via Web! (PIN: ${pin})`);
+      addLog(`Connected to PC via Web P2P (PIN: ${pin})`);
+    });
+
+    const subWebDisconnected = DeviceEventEmitter.addListener('onWebPeerDisconnected', () => {
+      setConnectionMode('lan');
+      setPairedPc(null);
+      setPcHostName('');
+      setIsPcReachable(false);
+      showToast('Web P2P session disconnected');
+      addLog('Web P2P session disconnected');
+    });
+
+    const subWebFileReceived = DeviceEventEmitter.addListener('onWebFileReceived', (file) => {
+      if (file && file.name) {
+        setShareHubFiles((prev) => [
+          {
+            name: file.name,
+            path: file.path,
+            size: file.size,
+            source: 'pc',
+            direction: 'received',
+            time: Date.now(),
+          },
+          ...prev,
+        ]);
+        showToast(`📥 Received ${file.name} from PC!`);
+        addLog(`Received file via Web P2P: ${file.name}`);
+      }
+    });
+
+    const subWebSendProgress = DeviceEventEmitter.addListener('onWebSendProgress', (prog) => {
+      if (prog && prog.totalBytes > 0) {
+        const pct = Math.min(100, Math.round((prog.sentBytes / prog.totalBytes) * 100));
+        setTransferProgress({ percent: pct, fileId: prog.fileId, isWeb: true });
+        if (pct >= 100) setTimeout(() => setTransferProgress(null), 2000);
+      }
+    });
+
+    const subWebReceiveProgress = DeviceEventEmitter.addListener('onWebReceiveProgress', (prog) => {
+      if (prog && prog.totalBytes > 0) {
+        const pct = Math.min(100, Math.round((prog.receivedBytes / prog.totalBytes) * 100));
+        setTransferProgress({ percent: pct, fileId: prog.fileId, isWeb: true });
+        if (pct >= 100) setTimeout(() => setTransferProgress(null), 2000);
+      }
+    });
+
+    if (FyloModule && FyloModule.initWebBridge) {
+      FyloModule.initWebBridge().catch(() => {});
+    }
+
     if (FyloModule && FyloModule.startDiscovery) {
       FyloModule.startDiscovery().catch(() => {});
     }
@@ -2878,6 +2996,11 @@ export default function App() {
     return () => {
       subDiscovery.remove();
       subProgress.remove();
+      subWebConnected.remove();
+      subWebDisconnected.remove();
+      subWebFileReceived.remove();
+      subWebSendProgress.remove();
+      subWebReceiveProgress.remove();
       if (FyloModule && FyloModule.stopDiscovery) {
         FyloModule.stopDiscovery().catch(() => {});
       }
@@ -2923,59 +3046,52 @@ export default function App() {
     };
   }, [pairedPc, discoveredDevices.length, showWebShareFallback, isWebShareBannerDismissed, webSharePulseAnim]);
 
-  // URL to standalone Web ShareHub hosted on GitHub Pages (peer-to-peer WebRTC file transfer)
-  // NOTE: Update this URL once custom domain or new GitHub Pages deployment is configured.
-  const WEB_SHAREHUB_URL = 'https://akgetscreative-wq.github.io/Fylo/web-sharehub.html';
-
-  const generateWebRoom = useCallback(async () => {
-    const pin = Math.floor(100000 + Math.random() * 900000).toString();
-    setWebRoomPin(pin);
-    const roomUrl = `${WEB_SHAREHUB_URL}?room=${pin}`;
-    try {
-      if (FyloModule && FyloModule.generateQrCode) {
-        const qrBase64 = await FyloModule.generateQrCode(roomUrl, 260);
-        setWebQrBase64(qrBase64);
-      }
-    } catch (e) {
-      console.warn('generateQrCode error:', e);
+  // WebRTC Native Peer Connection Handlers
+  const handleConnectWebPeer = useCallback(async (targetPin) => {
+    const pin = (targetPin || webInputPin || '').trim();
+    if (!pin || !/^\d{6}$/.test(pin)) {
+      showToast('⚠️ Please enter a valid 6-digit PIN from PC');
+      return;
     }
-    return pin;
+    showToast(`🌐 Connecting to PC (PIN: ${pin})...`);
+    addLog(`Connecting to Web P2P (PIN: ${pin})`);
+    try {
+      if (FyloModule && FyloModule.connectWebPeer) {
+        await FyloModule.connectWebPeer(pin);
+        AsyncStorage.setItem('fylo_last_web_pin', pin).catch(() => {});
+      } else {
+        showToast('⚠️ WebRTC bridge not available');
+      }
+    } catch (err) {
+      console.warn('connectWebPeer error:', err);
+      showToast('⚠️ Failed to connect to PC via Web');
+    }
+  }, [webInputPin]);
+
+  const handleDisconnectWebPeer = useCallback(async () => {
+    try {
+      if (FyloModule && FyloModule.disconnectWebSession) {
+        await FyloModule.disconnectWebSession();
+      }
+    } catch (e) {}
+    setConnectionMode('lan');
+    setPairedPc(null);
+    setPcHostName('');
+    setIsPcReachable(false);
+    showToast('Web P2P session disconnected');
+    addLog('Web P2P session disconnected');
   }, []);
 
-  const handleOpenWebShare = useCallback(async (customPin) => {
-    let pin = customPin || webRoomPin;
-    if (!pin) {
-      pin = await generateWebRoom();
-    }
-    const targetUrl = pin ? `${WEB_SHAREHUB_URL}?room=${pin}` : WEB_SHAREHUB_URL;
-    try {
-      const canOpen = await Linking.canOpenURL(targetUrl);
-      if (canOpen) {
-        await Linking.openURL(targetUrl);
-      } else {
-        await Linking.openURL(targetUrl);
-      }
-      setPairedPc('Web P2P Session');
-      setPcHostName('Web Peer (P2P)');
-      setConnectionMode('web');
-      setIsPcReachable(true);
-      setShowPairModal(false);
-      showToast('🌐 Connected via Web (P2P)!');
-    } catch (err) {
-      console.warn('Failed to open Web ShareHub in browser:', err);
-      Alert.alert(
-        'Connect via Web',
-        `Could not open browser automatically. Please open this link in any browser:\n\n${targetUrl}`
-      );
-    }
-  }, [webRoomPin, generateWebRoom]);
+  const handleOpenWebShare = handleConnectWebPeer;
 
-  // Generate web room PIN and QR code when fallback banner triggers
+  // Pre-fill last connected Web PIN if available
   useEffect(() => {
-    if (showWebShareFallback && !webRoomPin && !pairedPc) {
-      generateWebRoom();
-    }
-  }, [showWebShareFallback, webRoomPin, pairedPc, generateWebRoom]);
+    AsyncStorage.getItem('fylo_last_web_pin').then((savedPin) => {
+      if (savedPin && /^\d{6}$/.test(savedPin)) {
+        setWebInputPin(savedPin);
+      }
+    }).catch(() => {});
+  }, []);
 
   // Automatic connection for saved devices on local discovery without popups
   useEffect(() => {
@@ -3939,9 +4055,9 @@ export default function App() {
                     <TouchableOpacity
                       activeOpacity={0.8}
                       style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
-                      onPress={() => handleOpenWebShare()}>
-                      <Text style={{ fontSize: 16, marginRight: 6 }}>🌐</Text>
-                      <Text style={styles.heroPrimaryBtnText}>Open Web ShareHub</Text>
+                      onPress={handlePickAndSendToPc}>
+                      <Text style={{ fontSize: 16, marginRight: 6 }}>📤</Text>
+                      <Text style={styles.heroPrimaryBtnText}>Share to PC ⚡</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
@@ -4022,8 +4138,8 @@ export default function App() {
                   </View>
                 )}
 
-                {/* Web ShareHub fallback banner when no PC is found/paired */}
-                {discoveredDevices.length === 0 && showWebShareFallback && !isWebShareBannerDismissed && (
+                {/* Web Share fallback banner when no PC is found/paired */}
+                {discoveredDevices.length === 0 && showWebShareFallback && !isWebShareBannerDismissed && !pairedPc && (
                   <Animated.View style={{ transform: [{ scale: webSharePulseAnim }], marginBottom: 14 }}>
                     <View
                       style={{
@@ -4044,13 +4160,13 @@ export default function App() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Connect via Web</Text>
+                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Connect to PC via Web</Text>
                             <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
                               <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>P2P</Text>
                             </View>
                           </View>
                           <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 2 }}>
-                            No PC on Wi-Fi? Share files directly across networks
+                            Enter the 6-digit PIN shown on your PC screen, or scan the PC QR code
                           </Text>
                         </View>
                         <TouchableOpacity
@@ -4069,7 +4185,7 @@ export default function App() {
                         </TouchableOpacity>
                       </View>
 
-                      {/* Web Room PIN & QR Code Display */}
+                      {/* Web PIN Input & Connect Form */}
                       <View style={{
                         marginTop: 14,
                         padding: 12,
@@ -4077,67 +4193,55 @@ export default function App() {
                         backgroundColor: 'rgba(0, 0, 0, 0.22)',
                         borderWidth: 1,
                         borderColor: 'rgba(255, 255, 255, 0.12)',
-                        alignItems: 'center',
                       }}>
-                        <Text style={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                          Your 6-Digit Web Room PIN
-                        </Text>
-                        <Text style={{ color: '#38bdf8', fontSize: 26, fontWeight: '900', letterSpacing: 6, marginVertical: 4 }}>
-                          {webRoomPin || '------'}
+                        <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, textAlign: 'center', marginBottom: 8 }}>
+                          Enter 6-Digit PIN from PC
                         </Text>
 
-                        {webQrBase64 ? (
-                          <View style={{
-                            marginVertical: 8,
-                            padding: 8,
-                            backgroundColor: '#ffffff',
-                            borderRadius: 12,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}>
-                            <Image
-                              source={{ uri: webQrBase64 }}
-                              style={{ width: 130, height: 130, borderRadius: 6 }}
-                              resizeMode="contain"
-                            />
-                          </View>
-                        ) : null}
-
-                        <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, textAlign: 'center', marginBottom: 10 }}>
-                          Scan QR or enter PIN on your PC at fylo web to join room
-                        </Text>
-
-                        <View style={{ flexDirection: 'row', gap: 8, width: '100%' }}>
-                          <TouchableOpacity
-                            activeOpacity={0.8}
+                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                          <TextInput
+                            value={webInputPin}
+                            onChangeText={setWebInputPin}
+                            placeholder="e.g. 483291"
+                            placeholderTextColor="rgba(255,255,255,0.4)"
+                            keyboardType="number-pad"
+                            maxLength={6}
                             style={{
                               flex: 1,
-                              paddingVertical: 10,
+                              backgroundColor: 'rgba(255,255,255,0.15)',
                               borderRadius: 12,
-                              backgroundColor: '#38bdf8',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                            onPress={() => handleOpenWebShare()}>
-                            <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 13 }}>
-                              Open ShareHub 🚀
-                            </Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={{
                               paddingHorizontal: 14,
                               paddingVertical: 10,
+                              color: '#ffffff',
+                              fontSize: 18,
+                              fontWeight: '900',
+                              letterSpacing: 4,
+                              textAlign: 'center',
+                              borderWidth: 1,
+                              borderColor: 'rgba(255,255,255,0.25)',
+                            }}
+                          />
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => handleConnectWebPeer(webInputPin)}
+                            style={{
+                              backgroundColor: '#38bdf8',
+                              paddingHorizontal: 18,
+                              paddingVertical: 12,
                               borderRadius: 12,
-                              backgroundColor: 'rgba(255, 255, 255, 0.15)',
                               alignItems: 'center',
                               justifyContent: 'center',
-                            }}
-                            onPress={generateWebRoom}>
-                            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>
-                              New PIN 🔄
-                            </Text>
+                            }}>
+                            <Text style={{ color: '#0f172a', fontWeight: '900', fontSize: 13 }}>Connect ⚡</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10, gap: 12 }}>
+                          <TouchableOpacity
+                            onPress={handleScanQrCode}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 }}>
+                            <Text style={{ fontSize: 14 }}>📷</Text>
+                            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' }}>Scan PC QR Code</Text>
                           </TouchableOpacity>
                         </View>
                       </View>

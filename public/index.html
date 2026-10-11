@@ -5418,7 +5418,8 @@
 
     </style>
     <!-- PeerJS & QRCode.js for Direct In-App Web ShareHub -->
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="/peerjs.min.js"></script>
+    <script>if (typeof Peer === 'undefined') document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\\/script>');</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
@@ -5928,18 +5929,54 @@
                                     <span class="card-header-icon">📷</span>
                                     <span>Pair Phone</span>
                                 </div>
-                                <span class="dash-stat-badge live" style="font-size: 0.7rem; padding: 2px 7px;">Ready</span>
+                                <span id="dash-qr-stat-badge" class="dash-stat-badge live" style="font-size: 0.7rem; padding: 2px 7px;">Ready</span>
                             </div>
 
-                            <div class="dash-qr-square-box" style="width: 156px; height: 156px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.14); margin: 4px 0 8px 0; cursor: pointer;" onclick="showQRModal()" title="Click to view enlarged QR code">
-                                <div id="dash-qrcode" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
+                            <!-- Mode Toggle: Local Wi-Fi vs Web / Remote -->
+                            <div style="display: flex; width: 100%; background: rgba(255,255,255,0.06); padding: 3px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border);">
+                                <button id="dash-qr-tab-lan" onclick="setDashQrMode('lan')" style="flex: 1; padding: 5px 0; border: none; border-radius: 9px; font-size: 0.75rem; font-weight: 700; background: var(--accent); color: #fff; cursor: pointer; transition: all 0.2s;">
+                                    🏠 Wi-Fi
+                                </button>
+                                <button id="dash-qr-tab-web" onclick="setDashQrMode('web')" style="flex: 1; padding: 5px 0; border: none; border-radius: 9px; font-size: 0.75rem; font-weight: 700; background: transparent; color: var(--text-light); cursor: pointer; transition: all 0.2s;">
+                                    🌐 Web PIN
+                                </button>
                             </div>
 
-                            <div id="dash-qr-url" style="font-size: 0.78rem; font-weight: 800; color: var(--text); word-break: break-all; line-height: 1.2;">
-                                Ready
+                            <!-- LAN QR Container -->
+                            <div id="dash-qr-lan-box" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                                <div class="dash-qr-square-box" style="width: 156px; height: 156px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.14); margin: 4px 0 8px 0; cursor: pointer;" onclick="showQRModal()" title="Click to view enlarged QR code">
+                                    <div id="dash-qrcode" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
+                                </div>
+                                <div id="dash-qr-url" style="font-size: 0.78rem; font-weight: 800; color: var(--text); word-break: break-all; line-height: 1.2;">
+                                    Ready
+                                </div>
+                                <div style="font-size: 0.72rem; color: var(--text-light); margin-top: 3px;">
+                                    Scan with phone camera or Fylo app on same Wi-Fi
+                                </div>
                             </div>
-                            <div style="font-size: 0.72rem; color: var(--text-light); margin-top: 3px;">
-                                Scan with phone camera or Fylo app
+
+                            <!-- Web QR & PIN Container -->
+                            <div id="dash-qr-web-box" style="display: none; flex-direction: column; align-items: center; width: 100%;">
+                                <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px;">
+                                    Your 6-Digit Web Room PIN
+                                </div>
+                                <div id="dash-web-pin-val" style="font-size: 2.2rem; font-weight: 900; letter-spacing: 6px; color: #38bdf8; margin: 2px 0;">
+                                    ------
+                                </div>
+                                <div class="dash-qr-square-box" style="width: 156px; height: 156px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.14); margin: 4px 0 6px 0;">
+                                    <div id="dash-web-qrcode" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
+                                </div>
+                                <div style="font-size: 0.72rem; color: var(--text-light); margin-top: 2px;">
+                                    Enter PIN in Fylo mobile app or scan QR
+                                </div>
+                                <div style="display: flex; gap: 6px; margin-top: 8px; width: 100%;">
+                                    <button onclick="pcWebCopyPin()" class="btn" style="flex: 1; padding: 5px 8px; border-radius: 8px; font-size: 0.74rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);">
+                                        📋 Copy PIN
+                                    </button>
+                                    <button onclick="pcWebGenerateNewRoom()" class="btn" style="flex: 1; padding: 5px 8px; border-radius: 8px; font-size: 0.74rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);">
+                                        🔄 New PIN
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -8015,13 +8052,30 @@
             const pinDisplay = document.getElementById('pc-web-pin-display');
             if (pinDisplay) pinDisplay.textContent = pcWebPin;
 
-            // Render QR Code in native view
+            const dashPinVal = document.getElementById('dash-web-pin-val');
+            if (dashPinVal) dashPinVal.textContent = pcWebPin;
+
+            // Render QR Code in native view and dashboard
             try {
+                const shareUrl = `https://akgetscreative-wq.github.io/Fylo/web-sharehub.html?room=${pcWebPin}`;
+                
                 const qrBox = document.getElementById('pc-web-qr-canvas');
                 if (qrBox && typeof QRCode !== 'undefined') {
                     qrBox.innerHTML = '';
-                    const shareUrl = `https://akgetscreative-wq.github.io/Fylo/web-sharehub.html?room=${pcWebPin}`;
                     new QRCode(qrBox, {
+                        text: shareUrl,
+                        width: 140,
+                        height: 140,
+                        colorDark: '#0f172a',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                }
+
+                const dashQrBox = document.getElementById('dash-web-qrcode');
+                if (dashQrBox && typeof QRCode !== 'undefined') {
+                    dashQrBox.innerHTML = '';
+                    new QRCode(dashQrBox, {
                         text: shareUrl,
                         width: 140,
                         height: 140,
@@ -8036,6 +8090,28 @@
 
             if (!pcWebPeer || pcWebPeer.destroyed) {
                 setupPcWebPeer();
+            }
+        };
+
+        window.setDashQrMode = function(mode) {
+            const lanTab = document.getElementById('dash-qr-tab-lan');
+            const webTab = document.getElementById('dash-qr-tab-web');
+            const lanBox = document.getElementById('dash-qr-lan-box');
+            const webBox = document.getElementById('dash-qr-web-box');
+
+            if (mode === 'web') {
+                if (lanTab) { lanTab.style.background = 'transparent'; lanTab.style.color = 'var(--text-light)'; }
+                if (webTab) { webTab.style.background = 'var(--accent)'; webTab.style.color = '#fff'; }
+                if (lanBox) lanBox.style.display = 'none';
+                if (webBox) webBox.style.display = 'flex';
+                if (!pcWebPin || !pcWebPeer) {
+                    window.initPcWebShareHub();
+                }
+            } else {
+                if (lanTab) { lanTab.style.background = 'var(--accent)'; lanTab.style.color = '#fff'; }
+                if (webTab) { webTab.style.background = 'transparent'; webTab.style.color = 'var(--text-light)'; }
+                if (lanBox) lanBox.style.display = 'flex';
+                if (webBox) webBox.style.display = 'none';
             }
         };
 
@@ -8074,7 +8150,7 @@
             conn.on('open', () => {
                 pcWebIsConnected = true;
                 window._isWebShareConnected = true;
-                const remotePin = conn.peer.replace(PC_PEER_PREFIX, '');
+                const remotePin = conn.peer.replace(PC_PEER_PREFIX, '').replace('fylo-phone-', '');
                 pcWebUpdateStatus('connected', `Connected with Phone (${remotePin})`);
                 showToast(`🌐 Phone connected via Web (Room: ${remotePin})`);
 
@@ -8082,6 +8158,13 @@
                 if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
                 const webIndicator = $('#dash-web-connect-indicator');
                 if (webIndicator) webIndicator.style.display = 'inline-flex';
+
+                const qrStat = document.getElementById('dash-qr-stat-badge');
+                if (qrStat) {
+                    qrStat.textContent = 'Connected (Web)';
+                    qrStat.style.background = 'rgba(16, 185, 129, 0.2)';
+                    qrStat.style.color = '#34d399';
+                }
             });
 
             conn.on('data', (data) => {
@@ -8106,6 +8189,13 @@
             if (disconnectBtn) disconnectBtn.style.display = 'none';
             const webIndicator = $('#dash-web-connect-indicator');
             if (webIndicator) webIndicator.style.display = 'none';
+
+            const qrStat = document.getElementById('dash-qr-stat-badge');
+            if (qrStat) {
+                qrStat.textContent = 'Ready';
+                qrStat.style.background = '';
+                qrStat.style.color = '';
+            }
         }
 
         function pcWebUpdateStatus(state, text) {
@@ -8312,17 +8402,30 @@
 
         function pcWebFinishInboundFile(fileId, name, blob) {
             pcWebMarkTransferDone(fileId);
+            const url = URL.createObjectURL(blob);
             const actionEl = document.getElementById(`pc-web-action-${fileId}`);
             if (actionEl) {
                 actionEl.style.display = 'block';
-                const url = URL.createObjectURL(blob);
                 actionEl.innerHTML = `
                     <a href="${url}" download="${name}" class="btn btn-accent" style="padding: 4px 12px; font-size: 0.76rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                         💾 Save ${name}
                     </a>
                 `;
             }
-            showToast(`📥 Received ${name}!`);
+
+            // Automatically trigger download/save in PC browser or Electron
+            try {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    try { document.body.removeChild(a); } catch(e) {}
+                }, 1000);
+            } catch(e) {}
+
+            showToast(`📥 Received ${name} from phone! Saved to Downloads.`);
         }
 
         window.pcWebClearTransfers = function() {
@@ -9260,6 +9363,15 @@ function iconLabel(ext, type) {
 
         async function queueFiles(fileList) {
             if (!fileList || !fileList.length) return;
+
+            // If connected to phone via Web (WebRTC), stream files directly to the connected phone
+            if (window._isWebShareConnected && typeof window.pcWebHandleFileInput === 'function') {
+                try {
+                    window.pcWebHandleFileInput(fileList);
+                } catch(e) {
+                    console.warn('Web send error:', e);
+                }
+            }
 
             let currentFiles = [];
             try {
@@ -13149,6 +13261,7 @@ function iconLabel(ext, type) {
                 await loadClipboard();
                 await loadPCQuickAccess();
                 await loadDashboardData();
+                if (typeof initPcWebShareHub === 'function') initPcWebShareHub();
                 await initSettingsFolder();
                 initSettingsClipboardSync();
                 initSettingsClientName();

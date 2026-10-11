@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Fylo WebRTC Native Bridge</title>
+    <script src="peerjs.min.js"></script>
+</head>
+<body>
+    <script>
+        const ICE_CONFIG = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' }
+            ]
+        };
+
+        let peer = null;
+        let activeConn = null;
+        let myPeerId = null;
+
+        function log(msg) {
+            console.log('[WebRTCBridge]', msg);
+            if (window.AndroidBridge && window.AndroidBridge.onLog) {
+                window.AndroidBridge.onLog(String(msg));
+            }
+        }
+
+        window.initPeer = function(customPeerId) {
+            myPeerId = customPeerId || ('fylo-phone-' + Math.floor(100000 + Math.random() * 900000));
+            if (peer && !peer.destroyed) {
+                try { peer.destroy(); } catch(e) {}
+            }
+
+            try {
+                peer = new Peer(myPeerId, { config: ICE_CONFIG, debug: 1 });
+
+                peer.on('open', (id) => {
+                    log('Peer open: ' + id);
+                    if (window.AndroidBridge && window.AndroidBridge.onPeerReady) {
+                        window.AndroidBridge.onPeerReady(id);
+                    }
+                });
+
+                peer.on('connection', (conn) => {
+                    log('Incoming connection from: ' + conn.peer);
+                    setupConnection(conn);
+                });
+
+                peer.on('error', (err) => {
+                    log('Peer error: ' + (err ? err.message || err.type : 'unknown'));
+                    if (window.AndroidBridge && window.AndroidBridge.onPeerError) {
+                        window.AndroidBridge.onPeerError(String(err));
+                    }
+                });
+            } catch(e) {
+                log('Init peer error: ' + e);
+            }
+        };
+
+        window.connectToPeer = function(remotePeerId) {
+            if (!peer || peer.destroyed) {
+                window.initPeer();
+            }
+            log('Connecting to remote peer: ' + remotePeerId);
+            try {
+                const conn = peer.connect(remotePeerId, { reliable: true, serialization: 'none' });
+                setupConnection(conn);
+            } catch(e) {
+                log('Connect error: ' + e);
+            }
+        };
+
+        function setupConnection(conn) {
+            if (activeConn) {
+                try { activeConn.close(); } catch(e) {}
+            }
+            activeConn = conn;
+
+            conn.on('open', () => {
+                log('Data channel open with: ' + conn.peer);
+                if (window.AndroidBridge && window.AndroidBridge.onPeerConnected) {
+                    window.AndroidBridge.onPeerConnected(conn.peer);
+                }
+            });
+
+            conn.on('data', (data) => {
+                handleIncomingData(data);
+            });
+
+            conn.on('close', () => {
+                log('Connection closed');
+                activeConn = null;
+                if (window.AndroidBridge && window.AndroidBridge.onPeerDisconnected) {
+                    window.AndroidBridge.onPeerDisconnected();
+                }
+            });
+
+            conn.on('error', (err) => {
+                log('Connection error: ' + err);
+                activeConn = null;
+                if (window.AndroidBridge && window.AndroidBridge.onPeerDisconnected) {
+                    window.AndroidBridge.onPeerDisconnected();
+                }
+            });
+        }
+
+        window.disconnectPeer = function() {
+            if (activeConn) {
+                try { activeConn.close(); } catch(e) {}
+                activeConn = null;
+            }
+            if (window.AndroidBridge && window.AndroidBridge.onPeerDisconnected) {
+                window.AndroidBridge.onPeerDisconnected();
+            }
+        };
+
+        function handleIncomingData(data) {
+            if (typeof data === 'string') {
+                try {
+                    const msg = JSON.parse(data);
+                    if (msg.type === 'file-meta') {
+                        if (window.AndroidBridge && window.AndroidBridge.onFileMeta) {
+                            window.AndroidBridge.onFileMeta(msg.fileId, msg.name, msg.size, msg.mimeType || '');
+                        }
+                    } else if (msg.type === 'file-complete') {
+                        if (window.AndroidBridge && window.AndroidBridge.onFileComplete) {
+                            window.AndroidBridge.onFileComplete(msg.fileId);
+                        }
+                    }
+                } catch(e) {
+                    log('Parse incoming JSON error: ' + e);
+                }
+            } else {
+                // Binary ArrayBuffer chunk received
+                try {
+                    const base64 = arrayBufferToBase64(data);
+                    if (window.AndroidBridge && window.AndroidBridge.onFileChunk) {
+                        window.AndroidBridge.onFileChunk(base64);
+                    }
+                } catch(e) {
+                    log('Binary chunk handling error: ' + e);
+                }
+            }
+        }
+
+        // Outbound transmission methods called by Java
+        window.sendMeta = function(metaJsonStr) {
+            if (!activeConn || !activeConn.open) {
+                log('Cannot sendMeta: connection not open');
+                return false;
+            }
+            try {
+                activeConn.send(metaJsonStr);
+                return true;
+            } catch(e) {
+                log('sendMeta error: ' + e);
+                return false;
+            }
+        };
+
+        window.sendChunk = function(base64Chunk) {
+            if (!activeConn || !activeConn.open) {
+                return false;
+            }
+            try {
+                const arrayBuffer = base64ToArrayBuffer(base64Chunk);
+                activeConn.send(arrayBuffer);
+
+                // Backpressure check
+                if (activeConn.dataChannel && activeConn.dataChannel.bufferedAmount > 1024 * 1024) {
+                    return false; // Signal buffer high threshold
+                }
+                return true;
+            } catch(e) {
+                log('sendChunk error: ' + e);
+                return false;
+            }
+        };
+
+        window.sendComplete = function(completeJsonStr) {
+            if (!activeConn || !activeConn.open) return false;
+            try {
+                activeConn.send(completeJsonStr);
+                return true;
+            } catch(e) {
+                log('sendComplete error: ' + e);
+                return false;
+            }
+        };
+
+        // Binary Base64 utilities
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // Notify Android that bridge HTML is loaded and ready
+        window.onload = function() {
+            log('Bridge HTML loaded');
+            if (window.AndroidBridge && window.AndroidBridge.onBridgeReady) {
+                window.AndroidBridge.onBridgeReady();
+            }
+        };
+    </script>
+</body>
+</html>

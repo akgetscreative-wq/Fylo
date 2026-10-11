@@ -39,6 +39,11 @@ import android.database.Cursor;
 import android.provider.OpenableColumns;
 import android.media.MediaScannerConnection;
 import android.webkit.MimeTypeMap;
+import android.webkit.WebView;
+import android.webkit.WebSettings;
+import android.webkit.JavascriptInterface;
+import android.os.Handler;
+import android.os.Looper;
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
@@ -1932,6 +1937,365 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                 } catch (Throwable t) {
                     Log.w(TAG, "generateQrCode error: " + t.getMessage());
                     promise.reject("QR_GEN_ERROR", t.getMessage());
+                }
+            }
+        }).start();
+    }
+
+    // ==========================================
+    // WebRTC Native Bridge via Headless WebView
+    // ==========================================
+    private WebView mWebBridgeView;
+    private volatile boolean mIsWebBridgeReady = false;
+    private volatile boolean mIsWebConnected = false;
+    private String mActiveWebRemotePeer = null;
+
+    // Incoming file assembly
+    private String mCurrentInboundFileId = null;
+    private String mCurrentInboundFileName = null;
+    private long mCurrentInboundFileSize = 0;
+    private long mCurrentInboundReceivedBytes = 0;
+    private FileOutputStream mInboundFileOutputStream = null;
+    private File mInboundTargetFile = null;
+
+    private void ensureWebBridge(final Runnable onReady) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                if (mWebBridgeView == null) {
+                    try {
+                        mWebBridgeView = new WebView(reactContext);
+                        WebSettings settings = mWebBridgeView.getSettings();
+                        settings.setJavaScriptEnabled(true);
+                        settings.setDomStorageEnabled(true);
+                        settings.setAllowFileAccess(true);
+                        settings.setAllowContentAccess(true);
+                        mWebBridgeView.addJavascriptInterface(new WebBridgeInterface(), "AndroidBridge");
+                        mWebBridgeView.loadUrl("file:///android_asset/webrtc_bridge.html");
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Failed to initialize WebBridge WebView: " + t.getMessage(), t);
+                    }
+                }
+                if (onReady != null) {
+                    if (mIsWebBridgeReady) {
+                        onReady.run();
+                    } else {
+                        new Handler(Looper.getMainLooper()).postDelayed(onReady, 600);
+                    }
+                }
+            }
+        });
+    }
+
+    private class WebBridgeInterface {
+        @JavascriptInterface
+        public void onBridgeReady() {
+            mIsWebBridgeReady = true;
+            Log.d(TAG, "WebRTC bridge HTML ready");
+        }
+
+        @JavascriptInterface
+        public void onLog(String msg) {
+            Log.d(TAG, "[WebRTCBridgeJS] " + msg);
+        }
+
+        @JavascriptInterface
+        public void onPeerReady(String peerId) {
+            Log.d(TAG, "WebRTC Peer opened: " + peerId);
+            WritableMap map = Arguments.createMap();
+            map.putString("peerId", peerId);
+            emitWebEvent("onWebPeerReady", map);
+        }
+
+        @JavascriptInterface
+        public void onPeerConnected(String remotePeerId) {
+            mIsWebConnected = true;
+            mActiveWebRemotePeer = remotePeerId;
+            Log.d(TAG, "WebRTC Peer connected: " + remotePeerId);
+            WritableMap map = Arguments.createMap();
+            map.putString("remotePeerId", remotePeerId);
+            String pin = remotePeerId != null ? remotePeerId.replace("fylo-sharehub-", "").replace("fylo-phone-", "") : "";
+            map.putString("pin", pin);
+            emitWebEvent("onWebPeerConnected", map);
+        }
+
+        @JavascriptInterface
+        public void onPeerDisconnected() {
+            mIsWebConnected = false;
+            mActiveWebRemotePeer = null;
+            closeInboundFile();
+            Log.d(TAG, "WebRTC Peer disconnected");
+            emitWebEvent("onWebPeerDisconnected", Arguments.createMap());
+        }
+
+        @JavascriptInterface
+        public void onPeerError(String error) {
+            Log.w(TAG, "WebRTC Peer error: " + error);
+            WritableMap map = Arguments.createMap();
+            map.putString("error", error);
+            emitWebEvent("onWebPeerError", map);
+        }
+
+        @JavascriptInterface
+        public void onFileMeta(String fileId, String fileName, double fileSize, String mimeType) {
+            try {
+                closeInboundFile();
+                mCurrentInboundFileId = fileId;
+                mCurrentInboundFileName = fileName;
+                mCurrentInboundFileSize = (long) fileSize;
+                mCurrentInboundReceivedBytes = 0;
+
+                File downloadsDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Fylo");
+                if (!downloadsDir.exists()) downloadsDir.mkdirs();
+
+                String cleanName = (fileName != null && !fileName.isEmpty()) ? fileName.replaceAll("[\\\\/:*?\"<>|]", "_") : ("fylo_web_" + System.currentTimeMillis());
+                mInboundTargetFile = new File(downloadsDir, cleanName);
+                mInboundFileOutputStream = new FileOutputStream(mInboundTargetFile);
+
+                WritableMap map = Arguments.createMap();
+                map.putString("fileId", fileId);
+                map.putString("name", cleanName);
+                map.putDouble("size", fileSize);
+                emitWebEvent("onWebFileReceiveStart", map);
+            } catch (Throwable t) {
+                Log.e(TAG, "Error starting inbound file: " + t.getMessage(), t);
+                closeInboundFile();
+            }
+        }
+
+        @JavascriptInterface
+        public void onFileChunk(String base64Chunk) {
+            if (mInboundFileOutputStream != null && base64Chunk != null) {
+                try {
+                    byte[] bytes = Base64.decode(base64Chunk, Base64.NO_WRAP);
+                    mInboundFileOutputStream.write(bytes);
+                    mCurrentInboundReceivedBytes += bytes.length;
+
+                    WritableMap map = Arguments.createMap();
+                    map.putString("fileId", mCurrentInboundFileId);
+                    map.putDouble("receivedBytes", mCurrentInboundReceivedBytes);
+                    map.putDouble("totalBytes", mCurrentInboundFileSize);
+                    emitWebEvent("onWebReceiveProgress", map);
+                } catch (Throwable t) {
+                    Log.e(TAG, "Error writing inbound chunk: " + t.getMessage(), t);
+                }
+            }
+        }
+
+        @JavascriptInterface
+        public void onFileComplete(String fileId) {
+            try {
+                if (mInboundFileOutputStream != null) {
+                    mInboundFileOutputStream.flush();
+                    mInboundFileOutputStream.close();
+                    mInboundFileOutputStream = null;
+                }
+                if (mInboundTargetFile != null && mInboundTargetFile.exists()) {
+                    try {
+                        MediaScannerConnection.scanFile(reactContext, new String[]{ mInboundTargetFile.getAbsolutePath() }, null, null);
+                    } catch (Throwable ignored) {}
+
+                    WritableMap map = Arguments.createMap();
+                    map.putString("fileId", fileId);
+                    map.putString("name", mInboundTargetFile.getName());
+                    map.putString("path", mInboundTargetFile.getAbsolutePath());
+                    map.putDouble("size", mInboundTargetFile.length());
+                    emitWebEvent("onWebFileReceived", map);
+                }
+            } catch (Throwable t) {
+                Log.e(TAG, "Error completing inbound file: " + t.getMessage(), t);
+            } finally {
+                closeInboundFile();
+            }
+        }
+    }
+
+    private void closeInboundFile() {
+        try {
+            if (mInboundFileOutputStream != null) {
+                mInboundFileOutputStream.close();
+                mInboundFileOutputStream = null;
+            }
+        } catch (Throwable ignored) {}
+        mCurrentInboundFileId = null;
+        mCurrentInboundFileName = null;
+        mInboundTargetFile = null;
+    }
+
+    private void emitWebEvent(String eventName, WritableMap params) {
+        try {
+            if (reactContext != null && reactContext.hasActiveReactInstance()) {
+                reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                    .emit(eventName, params);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to emit event " + eventName + ": " + t.getMessage());
+        }
+    }
+
+    private String getFileMimeType(String path) {
+        try {
+            String ext = MimeTypeMap.getFileExtensionFromUrl(path);
+            if (ext == null || ext.isEmpty()) {
+                int i = path.lastIndexOf('.');
+                if (i > 0) ext = path.substring(i + 1).toLowerCase();
+            }
+            if (ext != null) {
+                String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.toLowerCase());
+                if (mime != null) return mime;
+            }
+        } catch (Throwable ignored) {}
+        return "application/octet-stream";
+    }
+
+    @ReactMethod
+    public void initWebBridge(final Promise promise) {
+        ensureWebBridge(new Runnable() {
+            @Override
+            public void run() {
+                if (mWebBridgeView != null) {
+                    mWebBridgeView.evaluateJavascript("window.initPeer();", null);
+                }
+                promise.resolve(true);
+            }
+        });
+    }
+
+    @ReactMethod
+    public void connectWebPeer(final String remotePin, final Promise promise) {
+        if (remotePin == null || remotePin.trim().isEmpty()) {
+            promise.reject("INVALID_PIN", "PIN cannot be empty");
+            return;
+        }
+        final String cleanPin = remotePin.trim();
+        ensureWebBridge(new Runnable() {
+            @Override
+            public void run() {
+                if (mWebBridgeView != null) {
+                    String targetPeerId = "fylo-sharehub-" + cleanPin;
+                    mWebBridgeView.evaluateJavascript("window.connectToPeer('" + targetPeerId + "');", null);
+                    promise.resolve(true);
+                } else {
+                    promise.reject("BRIDGE_ERROR", "WebBridge is not ready");
+                }
+            }
+        });
+    }
+
+    @ReactMethod
+    public void disconnectWebSession(final Promise promise) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                if (mWebBridgeView != null) {
+                    mWebBridgeView.evaluateJavascript("window.disconnectPeer();", null);
+                }
+                mIsWebConnected = false;
+                mActiveWebRemotePeer = null;
+                promise.resolve(true);
+            }
+        });
+    }
+
+    @ReactMethod
+    public void sendWebFile(final String filePath, final Promise promise) {
+        if (!mIsWebConnected || mWebBridgeView == null) {
+            promise.reject("NOT_CONNECTED", "Web P2P session is not connected");
+            return;
+        }
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                FileInputStream fis = null;
+                try {
+                    File file = new File(filePath);
+                    if (!file.exists() || !file.canRead()) {
+                        promise.reject("FILE_NOT_FOUND", "File does not exist or cannot be read: " + filePath);
+                        return;
+                    }
+
+                    final String fileId = "web-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 1000);
+                    final String fileName = file.getName();
+                    final long fileSize = file.length();
+                    final String mimeType = getFileMimeType(filePath);
+
+                    final String metaJson = String.format(
+                        "{\"type\":\"file-meta\",\"fileId\":\"%s\",\"name\":\"%s\",\"size\":%d,\"mimeType\":\"%s\"}",
+                        fileId, fileName.replace("\"", "\\\""), fileSize, mimeType
+                    );
+
+                    final Handler mainHandler = new Handler(Looper.getMainLooper());
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (mWebBridgeView != null) {
+                                mWebBridgeView.evaluateJavascript("window.sendMeta('" + metaJson.replace("'", "\\'") + "');", null);
+                            }
+                        }
+                    });
+
+                    Thread.sleep(40);
+
+                    fis = new FileInputStream(file);
+                    byte[] buffer = new byte[64 * 1024];
+                    int bytesRead;
+                    long totalSent = 0;
+
+                    while ((bytesRead = fis.read(buffer)) != -1) {
+                        if (!mIsWebConnected) {
+                            promise.reject("DISCONNECTED", "Connection dropped during transfer");
+                            return;
+                        }
+
+                        byte[] chunk = bytesRead == buffer.length ? buffer : Arrays.copyOf(buffer, bytesRead);
+                        final String base64Chunk = Base64.encodeToString(chunk, Base64.NO_WRAP);
+                        totalSent += bytesRead;
+                        final long currentTotal = totalSent;
+
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (mWebBridgeView != null) {
+                                    mWebBridgeView.evaluateJavascript("window.sendChunk('" + base64Chunk + "');", null);
+                                }
+                            }
+                        });
+
+                        WritableMap pMap = Arguments.createMap();
+                        pMap.putString("fileId", fileId);
+                        pMap.putDouble("sentBytes", currentTotal);
+                        pMap.putDouble("totalBytes", fileSize);
+                        emitWebEvent("onWebSendProgress", pMap);
+
+                        Thread.sleep(8);
+                    }
+
+                    Thread.sleep(30);
+                    final String completeJson = String.format("{\"type\":\"file-complete\",\"fileId\":\"%s\"}", fileId);
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (mWebBridgeView != null) {
+                                mWebBridgeView.evaluateJavascript("window.sendComplete('" + completeJson.replace("'", "\\'") + "');", null);
+                            }
+                        }
+                    });
+
+                    WritableMap res = Arguments.createMap();
+                    res.putBoolean("success", true);
+                    res.putString("fileId", fileId);
+                    res.putString("fileName", fileName);
+                    res.putDouble("size", fileSize);
+                    promise.resolve(res);
+
+                } catch (Throwable t) {
+                    Log.e(TAG, "sendWebFile failed: " + t.getMessage(), t);
+                    promise.reject("SEND_ERROR", t.getMessage());
+                } finally {
+                    if (fis != null) {
+                        try { fis.close(); } catch (Throwable ignored) {}
+                    }
                 }
             }
         }).start();
