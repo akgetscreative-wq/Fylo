@@ -2414,69 +2414,74 @@ export default function App() {
   };
 
   const handleParseAndConnectQr = (rawText) => {
-    if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
-      showToast('⚠️ Please enter or paste QR code or PIN');
-      return;
-    }
-    const clean = rawText.trim();
-
-    // 1. Direct 6-Digit PIN check
-    if (/^\d{6}$/.test(clean)) {
-      handleConnectWebPeer(clean);
-      return;
-    }
-
-    // 2. Web room / PIN format check (e.g. fylo://pair?mode=web&pin=123456 or room=123456 or fylo-web:123456)
-    if (clean.includes('pin=') || clean.includes('room=') || clean.includes('web-sharehub') || clean.includes('fylo-web')) {
-      const match = clean.match(/(?:pin=|room=|fylo-web:)(\d{6})/);
-      if (match && match[1]) {
-        handleConnectWebPeer(match[1]);
+    try {
+      if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
+        showToast('⚠️ Please enter or paste QR code or PIN');
         return;
       }
-    }
+      const clean = rawText.trim();
 
-    let host = '';
-    let port = '3000';
-    let token = '';
-
-    try {
-      const urlStr = (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('fylo://'))
-        ? clean.replace(/^fylo:\/\//i, 'http://')
-        : 'http://' + clean;
-
-      if (typeof URL !== 'undefined') {
-        const parsed = new URL(urlStr);
-        host = parsed.hostname;
-        port = parsed.port || '3000';
-        token = parsed.searchParams.get('auth') || parsed.searchParams.get('token') || '';
-      } else {
-        throw new Error('URL not globally defined');
+      // 1. Direct 6-Digit PIN check
+      if (/^\d{6}$/.test(clean)) {
+        handleConnectWebPeer(clean);
+        return;
       }
-    } catch (e) {
-      const withoutProto = clean.replace(/^https?:\/\//i, '').replace(/^fylo:\/\//i, '');
-      const [addrPart, queryPart] = withoutProto.split('?');
-      if (addrPart && addrPart.includes(':')) {
-        const parts = addrPart.split(':');
-        host = parts[0];
-        port = parts[1].replace(/[^0-9]/g, '') || '3000';
-      } else if (addrPart) {
-        host = addrPart.replace(/\/.*$/, '');
-        port = '3000';
-      }
-      if (queryPart) {
-        try {
-          const match = queryPart.match(/(?:auth|token)=([^&]+)/i);
-          if (match && match[1]) token = decodeURIComponent(match[1]);
-        } catch (ignored) {}
-      }
-    }
 
-    if (!host) {
-      showToast('⚠️ Invalid connection code format');
-      return;
-    }
+      // 2. Web room / PIN format check (e.g. fylo://pair?mode=web&pin=123456 or room=123456 or fylo-web:123456)
+      if (clean.includes('pin=') || clean.includes('room=') || clean.includes('web-sharehub') || clean.includes('fylo-web')) {
+        const match = clean.match(/(?:pin=|room=|fylo-web:)(\d{6})/);
+        if (match && match[1]) {
+          handleConnectWebPeer(match[1]);
+          return;
+        }
+      }
 
-    handleConnectToPc(`${host}:${port}`, token);
+      let host = '';
+      let port = '3000';
+      let token = '';
+
+      try {
+        const urlStr = (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('fylo://'))
+          ? clean.replace(/^fylo:\/\//i, 'http://')
+          : 'http://' + clean;
+
+        if (typeof URL !== 'undefined') {
+          const parsed = new URL(urlStr);
+          host = parsed.hostname;
+          port = parsed.port || '3000';
+          token = parsed.searchParams.get('auth') || parsed.searchParams.get('token') || '';
+        } else {
+          throw new Error('URL not globally defined');
+        }
+      } catch (e) {
+        const withoutProto = clean.replace(/^https?:\/\//i, '').replace(/^fylo:\/\//i, '');
+        const [addrPart, queryPart] = withoutProto.split('?');
+        if (addrPart && addrPart.includes(':')) {
+          const parts = addrPart.split(':');
+          host = parts[0];
+          port = parts[1].replace(/[^0-9]/g, '') || '3000';
+        } else if (addrPart) {
+          host = addrPart.replace(/\/.*$/, '');
+          port = '3000';
+        }
+        if (queryPart) {
+          try {
+            const match = queryPart.match(/(?:auth|token)=([^&]+)/i);
+            if (match && match[1]) token = decodeURIComponent(match[1]);
+          } catch (ignored) {}
+        }
+      }
+
+      if (!host) {
+        showToast('⚠️ Invalid connection code format');
+        return;
+      }
+
+      handleConnectToPc(`${host}:${port}`, token);
+    } catch (err) {
+      console.warn('handleParseAndConnectQr error:', err);
+      showToast('⚠️ Could not process QR code');
+    }
   };
 
   const handleStartQrScan = async () => {
@@ -2493,9 +2498,11 @@ export default function App() {
       }
     } catch (err) {
       console.warn('QR scan error:', err);
-      showToast('📷 Camera scanner unavailable');
+      showToast('📷 Camera scanner cancelled or unavailable');
     }
   };
+
+  const handleScanQrCode = handleStartQrScan;
 
   // ==========================================
   // LAN Shared Clipboard Operations (Bidirectional Real-Time Live Sync)
