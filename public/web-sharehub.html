@@ -6,6 +6,8 @@
   <title>Fylo Web ShareHub | Secure P2P Direct File Sharing</title>
   <!-- PeerJS CDN -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- QRCode.js CDN for Web Share QR Code generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
       --bg-color: #0f172a;
@@ -707,6 +709,10 @@
         <div class="room-box">
           <div class="pin-label">Your Room PIN</div>
           <div id="roomPinDisplay" class="pin-display">------</div>
+          <div id="roomQrBox" style="margin: 10px 0 6px 0; padding: 10px; background: #ffffff; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 18px rgba(0,0,0,0.4);">
+            <div id="roomQrCanvas" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Scan with another device to join room automatically</div>
           <div class="btn-group">
             <button id="copyPinBtn" class="btn btn-secondary" title="Copy 6-Digit PIN">
               <svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
@@ -892,6 +898,27 @@
       roomPinDisplay.textContent = myPin;
       myPeerIdDisplay.textContent = myPeerId;
 
+      // Generate room QR Code
+      try {
+        const qrCanvas = document.getElementById('roomQrCanvas');
+        if (qrCanvas) {
+          qrCanvas.innerHTML = '';
+          const shareUrl = `${window.location.origin}${window.location.pathname}?room=${myPin}`;
+          if (typeof QRCode !== 'undefined') {
+            new QRCode(qrCanvas, {
+              text: shareUrl,
+              width: 140,
+              height: 140,
+              colorDark: '#0f172a',
+              colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('QR Code generation error:', e);
+      }
+
       if (peer) {
         peer.destroy();
       }
@@ -947,6 +974,11 @@
         updateStatus('connected', `Connected with ${remotePin}`);
         showToast(`Connected to peer ${remotePin}!`, 'success');
         enableDropzone(true);
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'fylo-web-peer-connected', peer: conn.peer }, '*');
+          }
+        } catch (e) {}
       });
 
       conn.on('data', (data) => {
@@ -971,8 +1003,21 @@
       remotePeerIdDisplay.textContent = 'None';
       updateStatus('waiting', 'Waiting for peer...');
       enableDropzone(false);
-      showToast('Peer disconnected', 'warn');
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'fylo-web-peer-disconnected' }, '*');
+        }
+      } catch (e) {}
     }
+
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'fylo-disconnect-peer') {
+        if (activeConn) {
+          activeConn.close();
+        }
+        handleDisconnect();
+      }
+    });
 
     function updateStatus(state, text) {
       statusPill.className = `status-pill ${state}`;

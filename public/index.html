@@ -5698,8 +5698,16 @@
             <div id="view-dashboard" class="view-panel">
                 <!-- Greeting Bar -->
                 <div class="dash-greeting-bar">
-                    <div class="dash-greeting-left">
+                    <div class="dash-greeting-left" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                         <h1 class="dash-greeting-title">Hello, <span id="dash-greeting-user">Fylo PC</span></h1>
+                        <div id="dash-web-connect-indicator" style="display: none; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.35); font-size: 0.76rem; font-weight: 700; color: #38bdf8;">
+                            <span style="font-size: 0.85rem;">🌐</span>
+                            <span>Connected via Web (P2P)</span>
+                            <button id="dash-web-disconnect-btn" onclick="event.stopPropagation(); window.disconnectWebSession();" style="background: none; border: none; color: #94a3b8; font-size: 0.82rem; cursor: pointer; padding: 0 2px; margin-left: 4px; display: inline-flex; align-items: center;" title="Disconnect Web Session">✕</button>
+                        </div>
+                        <button id="dash-phone-disconnect-btn" onclick="event.stopPropagation(); window.disconnectConnectedPhone();" style="display: none; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 9999px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.74rem; font-weight: 700; color: #f87171; cursor: pointer;" title="Disconnect Linked Phone">
+                            <span>⛔ Disconnect</span>
+                        </button>
                     </div>
                     <div class="dash-greeting-right">
                         <div class="dash-search-box">
@@ -7838,6 +7846,10 @@
                         openPhoneFolder(folder || '/storage/emulated/0');
                     };
                 });
+
+                // Show phone disconnect button in header
+                const phoneDisconnectBtn = $('#dash-phone-disconnect-btn');
+                if (phoneDisconnectBtn) phoneDisconnectBtn.style.display = 'inline-flex';
             } else {
                 // Disconnected state
                 if (modelLabel) {
@@ -7853,8 +7865,64 @@
                 if (shortcutsCaption) shortcutsCaption.textContent = 'Offline';
                 if (quickChips) quickChips.style.display = 'none';
                 if (shortcutsEmpty) shortcutsEmpty.style.display = 'flex';
+
+                const phoneDisconnectBtn = $('#dash-phone-disconnect-btn');
+                if (phoneDisconnectBtn) phoneDisconnectBtn.style.display = 'none';
+            }
+
+            // Web P2P Share session indicator
+            const webIndicator = $('#dash-web-connect-indicator');
+            if (webIndicator) {
+                const isWebConnected = window._isWebShareConnected || false;
+                webIndicator.style.display = isWebConnected ? 'inline-flex' : 'none';
             }
         }
+
+        window.disconnectConnectedPhone = async function() {
+            try {
+                const devs = (typeof mobileDeviceList !== 'undefined' && Array.isArray(mobileDeviceList)) ? mobileDeviceList : [];
+                const dev = devs.find(d => d.online) || devs[0];
+                if (dev && dev.id) {
+                    await apiFetch('/api/mobile/disconnect', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ deviceId: dev.id })
+                    });
+                }
+                showToast("Device disconnected");
+                if (typeof loadMobileDevices === 'function') loadMobileDevices();
+                renderDashboardPhoneCard();
+            } catch (e) {
+                console.warn('disconnect error:', e);
+            }
+        };
+
+        window.disconnectWebSession = function() {
+            window._isWebShareConnected = false;
+            const webIndicator = $('#dash-web-connect-indicator');
+            if (webIndicator) webIndicator.style.display = 'none';
+            try {
+                const iframe = document.getElementById('web-sharehub-iframe');
+                if (iframe && iframe.contentWindow) {
+                    iframe.contentWindow.postMessage({ type: 'fylo-disconnect-peer' }, '*');
+                }
+            } catch (e) {}
+            showToast("Web P2P session disconnected");
+        };
+
+        // Listen for Web ShareHub connection events from iframe
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'fylo-web-peer-connected') {
+                window._isWebShareConnected = true;
+                const webIndicator = $('#dash-web-connect-indicator');
+                if (webIndicator) webIndicator.style.display = 'inline-flex';
+                showToast("🌐 Peer connected via Web (P2P)");
+            } else if (event.data && event.data.type === 'fylo-web-peer-disconnected') {
+                window._isWebShareConnected = false;
+                const webIndicator = $('#dash-web-connect-indicator');
+                if (webIndicator) webIndicator.style.display = 'none';
+            }
+        });
 
         async function loadDashboardData() {
             try {

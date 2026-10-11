@@ -1113,8 +1113,11 @@ export default function App() {
   const [pingLatency, setPingLatency] = useState(null); // Real measured latency in ms
   const [isPcReachable, setIsPcReachable] = useState(false); // True only when heartbeat succeeds
   const [showPairModal, setShowPairModal] = useState(false);
-  const [pairModalTab, setPairModalTab] = useState('auto'); // 'auto' | 'qr' | 'manual'
+  const [pairModalTab, setPairModalTab] = useState('auto'); // 'auto' | 'qr' | 'manual' | 'web'
   const [discoveredDevices, setDiscoveredDevices] = useState([]);
+  const [connectionMode, setConnectionMode] = useState('lan'); // 'lan' | 'web'
+  const [webRoomPin, setWebRoomPin] = useState('');
+  const [webQrBase64, setWebQrBase64] = useState(null);
   const [showWebShareFallback, setShowWebShareFallback] = useState(false);
   const [isWebShareBannerDismissed, setIsWebShareBannerDismissed] = useState(false);
   const webSharePulseAnim = useRef(new Animated.Value(1)).current;
@@ -1943,9 +1946,14 @@ export default function App() {
 
   // Real-time Heartbeat & Real Ping Latency Measurement while paired
   useEffect(() => {
-    if (!pairedPc) {
-      setPingLatency(null);
-      setIsPcReachable(false);
+    if (!pairedPc || connectionMode === 'web') {
+      if (connectionMode === 'web') {
+        setIsPcReachable(true);
+        setPingLatency(12);
+      } else {
+        setPingLatency(null);
+        setIsPcReachable(false);
+      }
       return;
     }
 
@@ -2296,9 +2304,10 @@ export default function App() {
       FyloModule.clearSavedPairedDevice().catch(() => {});
     }
     setPairedPc(null);
+    setConnectionMode('lan');
     setPingLatency(null);
     setIsPcReachable(false);
-    showToast('Unpaired from PC');
+    showToast('Disconnected');
   };
 
   // =========================================================
@@ -2361,6 +2370,7 @@ export default function App() {
       const data = await safeJson(res);
       if (res.ok && data && data.success) {
         setPairedPc(`${host}:${port}`);
+        setConnectionMode('lan');
         setPcHostName(data.hostName || 'Windows Host');
         setPingLatency(roundTrip);
         setIsPcReachable(true);
@@ -2901,22 +2911,65 @@ export default function App() {
   // NOTE: Update this URL once custom domain or new GitHub Pages deployment is configured.
   const WEB_SHAREHUB_URL = 'https://akgetscreative-wq.github.io/Fylo/web-sharehub.html';
 
-  const handleOpenWebShare = useCallback(async () => {
+  const generateWebRoom = useCallback(async () => {
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+    setWebRoomPin(pin);
+    const roomUrl = `${WEB_SHAREHUB_URL}?room=${pin}`;
     try {
-      const canOpen = await Linking.canOpenURL(WEB_SHAREHUB_URL);
-      if (canOpen) {
-        await Linking.openURL(WEB_SHAREHUB_URL);
-      } else {
-        await Linking.openURL(WEB_SHAREHUB_URL);
+      if (FyloModule && FyloModule.generateQrCode) {
+        const qrBase64 = await FyloModule.generateQrCode(roomUrl, 260);
+        setWebQrBase64(qrBase64);
       }
+    } catch (e) {
+      console.warn('generateQrCode error:', e);
+    }
+    return pin;
+  }, []);
+
+  const handleOpenWebShare = useCallback(async (customPin) => {
+    let pin = customPin || webRoomPin;
+    if (!pin) {
+      pin = await generateWebRoom();
+    }
+    const targetUrl = pin ? `${WEB_SHAREHUB_URL}?room=${pin}` : WEB_SHAREHUB_URL;
+    try {
+      const canOpen = await Linking.canOpenURL(targetUrl);
+      if (canOpen) {
+        await Linking.openURL(targetUrl);
+      } else {
+        await Linking.openURL(targetUrl);
+      }
+      setPairedPc('Web P2P Session');
+      setPcHostName('Web Peer (P2P)');
+      setConnectionMode('web');
+      setIsPcReachable(true);
+      setShowPairModal(false);
+      showToast('🌐 Connected via Web (P2P)!');
     } catch (err) {
       console.warn('Failed to open Web ShareHub in browser:', err);
       Alert.alert(
         'Connect via Web',
-        `Could not open browser automatically. Please open this link in any browser:\n\n${WEB_SHAREHUB_URL}`
+        `Could not open browser automatically. Please open this link in any browser:\n\n${targetUrl}`
       );
     }
-  }, []);
+  }, [webRoomPin, generateWebRoom]);
+
+  // Generate web room PIN and QR code when fallback banner triggers
+  useEffect(() => {
+    if (showWebShareFallback && !webRoomPin && !pairedPc) {
+      generateWebRoom();
+    }
+  }, [showWebShareFallback, webRoomPin, pairedPc, generateWebRoom]);
+
+  // Automatic connection for saved devices on local discovery without popups
+  useEffect(() => {
+    if (pairedPc || discoveredDevices.length === 0) return;
+    const dev = discoveredDevices[0];
+    if (dev && dev.ip) {
+      const target = `${dev.ip}:${dev.port || 3000}`;
+      handleConnectToPc(target, dev.token);
+    }
+  }, [discoveredDevices, pairedPc]);
 
   // Directory Breadcrumb navigation helper
   const renderBreadcrumbs = (currentPath, onSelectPath, isPc = false) => {
@@ -3838,36 +3891,53 @@ export default function App() {
               <View style={{ zIndex: 2 }}>
                 <View style={styles.heroTopRow}>
                   <View style={{ flex: 1, paddingRight: 8 }}>
-                    <Text style={[styles.heroConnectedLabel, !isDarkMode && styles.heroConnectedLabelLight]}>
-                      {isPcReachable ? 'CONNECTED TO PC' : 'PC OFFLINE'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <Text style={[styles.heroConnectedLabel, !isDarkMode && styles.heroConnectedLabelLight]}>
+                        {connectionMode === 'web' ? 'CONNECTED VIA WEB' : (isPcReachable ? 'CONNECTED TO PC' : 'PC OFFLINE')}
+                      </Text>
+                      {connectionMode === 'web' && (
+                        <View style={{ backgroundColor: '#0284c7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>P2P WEB</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={[styles.heroHostTitle, !isDarkMode && styles.heroHostTitleLight]} numberOfLines={1}>
-                      {'‹ ' + (pcHostName || 'WINDOWS-PC')}
+                      {connectionMode === 'web' ? '🌐 Web Peer Room' : ('‹ ' + (pcHostName || 'WINDOWS-PC'))}
                     </Text>
                     <Text style={[styles.heroIpSub, !isDarkMode && styles.heroIpSubLight]}>
-                      {pairedPc}
+                      {connectionMode === 'web' ? `Room PIN: ${webRoomPin || 'Active'} • Encrypted P2P` : pairedPc}
                     </Text>
                   </View>
 
                   <View style={[styles.heroLatencyPill, !isDarkMode && styles.heroLatencyPillLight]}>
-                    <View style={[styles.beaconDot, { backgroundColor: '#22c55e', width: 6, height: 6, borderRadius: 3, marginRight: 5 }]} />
+                    <View style={[styles.beaconDot, { backgroundColor: connectionMode === 'web' ? '#06b6d4' : '#22c55e', width: 6, height: 6, borderRadius: 3, marginRight: 5 }]} />
                     <Text style={[styles.heroLatencyText, !isDarkMode && styles.heroLatencyTextLight]}>
-                      {isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : '95 ms') : 'Offline'}
+                      {connectionMode === 'web' ? 'Web P2P' : (isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : '95 ms') : 'Offline')}
                     </Text>
                   </View>
                 </View>
 
                 {/* Pill Action Buttons matching sketch */}
                 <View style={[styles.heroBtnRow, { marginTop: 14 }]}>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
-                    onPress={() => setCurrentTab('pc-explorer')}>
-                    <View style={{ marginRight: 6 }}>
-                      <Win11FolderIcon size={18} />
-                    </View>
-                    <Text style={styles.heroPrimaryBtnText}>Browse PC Drives 📁</Text>
-                  </TouchableOpacity>
+                  {connectionMode === 'web' ? (
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
+                      onPress={() => handleOpenWebShare()}>
+                      <Text style={{ fontSize: 16, marginRight: 6 }}>🌐</Text>
+                      <Text style={styles.heroPrimaryBtnText}>Open Web ShareHub</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
+                      onPress={() => setCurrentTab('pc-explorer')}>
+                      <View style={{ marginRight: 6 }}>
+                        <Win11FolderIcon size={18} />
+                      </View>
+                      <Text style={styles.heroPrimaryBtnText}>Browse PC Drives 📁</Text>
+                    </TouchableOpacity>
+                  )}
 
                   <TouchableOpacity
                     activeOpacity={0.75}
@@ -3939,57 +4009,123 @@ export default function App() {
                 {/* Web ShareHub fallback banner when no PC is found/paired */}
                 {discoveredDevices.length === 0 && showWebShareFallback && !isWebShareBannerDismissed && (
                   <Animated.View style={{ transform: [{ scale: webSharePulseAnim }], marginBottom: 14 }}>
-                    <TouchableOpacity
-                      activeOpacity={0.85}
+                    <View
                       style={{
-                        padding: 14,
-                        borderRadius: 18,
-                        backgroundColor: isDarkMode ? '#1e40af' : '#2563eb',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 12,
+                        padding: 16,
+                        borderRadius: 20,
+                        backgroundColor: isDarkMode ? '#1e3a8a' : '#2563eb',
                         borderWidth: 1,
                         borderColor: isDarkMode ? 'rgba(96, 165, 250, 0.4)' : 'rgba(255, 255, 255, 0.35)',
                         shadowColor: '#2563eb',
-                        shadowOffset: { width: 0, height: 4 },
+                        shadowOffset: { width: 0, height: 6 },
                         shadowOpacity: 0.35,
-                        shadowRadius: 10,
-                        elevation: 5,
-                      }}
-                      onPress={handleOpenWebShare}>
-                      <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ fontSize: 22 }}>🌐</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Connect via Web</Text>
-                          <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
-                            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>P2P</Text>
-                          </View>
+                        shadowRadius: 12,
+                        elevation: 6,
+                      }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 22 }}>🌐</Text>
                         </View>
-                        <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 2 }}>
-                          Share files across networks with encrypted P2P
-                        </Text>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Connect via Web</Text>
+                            <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>P2P</Text>
+                            </View>
+                          </View>
+                          <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 2 }}>
+                            No PC on Wi-Fi? Share files directly across networks
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                          onPress={() => setIsWebShareBannerDismissed(true)}
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: 13,
+                            backgroundColor: 'rgba(255,255,255,0.2)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginLeft: 4,
+                          }}>
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>✕</Text>
+                        </TouchableOpacity>
                       </View>
-                      <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 18, fontWeight: '600' }}>→</Text>
-                      <TouchableOpacity
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          setIsWebShareBannerDismissed(true);
-                        }}
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 13,
-                          backgroundColor: 'rgba(255,255,255,0.2)',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginLeft: 4,
-                        }}>
-                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>✕</Text>
-                      </TouchableOpacity>
-                    </TouchableOpacity>
+
+                      {/* Web Room PIN & QR Code Display */}
+                      <View style={{
+                        marginTop: 14,
+                        padding: 12,
+                        borderRadius: 14,
+                        backgroundColor: 'rgba(0, 0, 0, 0.22)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(255, 255, 255, 0.12)',
+                        alignItems: 'center',
+                      }}>
+                        <Text style={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                          Your 6-Digit Web Room PIN
+                        </Text>
+                        <Text style={{ color: '#38bdf8', fontSize: 26, fontWeight: '900', letterSpacing: 6, marginVertical: 4 }}>
+                          {webRoomPin || '------'}
+                        </Text>
+
+                        {webQrBase64 ? (
+                          <View style={{
+                            marginVertical: 8,
+                            padding: 8,
+                            backgroundColor: '#ffffff',
+                            borderRadius: 12,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                            <Image
+                              source={{ uri: webQrBase64 }}
+                              style={{ width: 130, height: 130, borderRadius: 6 }}
+                              resizeMode="contain"
+                            />
+                          </View>
+                        ) : null}
+
+                        <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, textAlign: 'center', marginBottom: 10 }}>
+                          Scan QR or enter PIN on your PC at fylo web to join room
+                        </Text>
+
+                        <View style={{ flexDirection: 'row', gap: 8, width: '100%' }}>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={{
+                              flex: 1,
+                              paddingVertical: 10,
+                              borderRadius: 12,
+                              backgroundColor: '#38bdf8',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            onPress={() => handleOpenWebShare()}>
+                            <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 13 }}>
+                              Open ShareHub 🚀
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={{
+                              paddingHorizontal: 14,
+                              paddingVertical: 10,
+                              borderRadius: 12,
+                              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            onPress={generateWebRoom}>
+                            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>
+                              New PIN 🔄
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
                   </Animated.View>
                 )}
 

@@ -51,6 +51,12 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 import com.journeyapps.barcodescanner.CaptureActivity;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.common.BitMatrix;
+import android.graphics.Color;
+import java.io.ByteArrayOutputStream;
+import android.util.Base64;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -1898,5 +1904,36 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                 }
             }
         });
+    }
+
+    @ReactMethod
+    public void generateQrCode(final String content, final int size, final Promise promise) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    int qrSize = size > 0 ? size : 260;
+                    QRCodeWriter writer = new QRCodeWriter();
+                    BitMatrix bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, qrSize, qrSize);
+                    int width = bitMatrix.getWidth();
+                    int height = bitMatrix.getHeight();
+                    Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+                    for (int x = 0; x < width; x++) {
+                        for (int y = 0; y < height; y++) {
+                            bmp.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
+                        }
+                    }
+                    ByteArrayOutputStream os = new ByteArrayOutputStream();
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, os);
+                    byte[] bytes = os.toByteArray();
+                    String base64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
+                    bmp.recycle();
+                    promise.resolve("data:image/png;base64," + base64);
+                } catch (Throwable t) {
+                    Log.w(TAG, "generateQrCode error: " + t.getMessage());
+                    promise.reject("QR_GEN_ERROR", t.getMessage());
+                }
+            }
+        }).start();
     }
 }
