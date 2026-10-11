@@ -22,6 +22,7 @@ import {
   Alert,
   Animated,
   requireNativeComponent,
+  Linking,
 } from 'react-native';
 
 const { FyloModule } = NativeModules;
@@ -1114,6 +1115,9 @@ export default function App() {
   const [showPairModal, setShowPairModal] = useState(false);
   const [pairModalTab, setPairModalTab] = useState('auto'); // 'auto' | 'qr' | 'manual'
   const [discoveredDevices, setDiscoveredDevices] = useState([]);
+  const [showWebShareFallback, setShowWebShareFallback] = useState(false);
+  const [isWebShareBannerDismissed, setIsWebShareBannerDismissed] = useState(false);
+  const webSharePulseAnim = useRef(new Animated.Value(1)).current;
   const [transferProgress, setTransferProgress] = useState(null); // { fileName, percent, transferred, total }
   const lastBackPressTimeRef = useRef(0);
   const [qrInputText, setQrInputText] = useState('');
@@ -2854,6 +2858,66 @@ export default function App() {
     };
   }, []);
 
+  // Web ShareHub fallback: after 6 seconds with no PC paired or discovered, show web fallback
+  useEffect(() => {
+    if (pairedPc || discoveredDevices.length > 0) {
+      setShowWebShareFallback(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (!pairedPc && discoveredDevices.length === 0) {
+        setShowWebShareFallback(true);
+      }
+    }, 6000); // 6s grace period for local Wi-Fi UDP discovery
+    return () => clearTimeout(timer);
+  }, [pairedPc, discoveredDevices.length]);
+
+  // Subtle pulsing animation for Web ShareHub fallback banner to attract attention
+  useEffect(() => {
+    let anim;
+    if (!pairedPc && discoveredDevices.length === 0 && showWebShareFallback && !isWebShareBannerDismissed) {
+      anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(webSharePulseAnim, {
+            toValue: 1.025,
+            duration: 1300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(webSharePulseAnim, {
+            toValue: 1,
+            duration: 1300,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      anim.start();
+    }
+    return () => {
+      if (anim) anim.stop();
+    };
+  }, [pairedPc, discoveredDevices.length, showWebShareFallback, isWebShareBannerDismissed, webSharePulseAnim]);
+
+  // URL to standalone Web ShareHub hosted on GitHub Pages (peer-to-peer WebRTC file transfer)
+  // NOTE: Update this URL once custom domain or new GitHub Pages deployment is configured.
+  const WEB_SHAREHUB_URL = 'https://akgetscreative-wq.github.io/Fylo/web-sharehub.html';
+
+  const handleOpenWebShare = useCallback(async () => {
+    try {
+      const canOpen = await Linking.canOpenURL(WEB_SHAREHUB_URL);
+      if (canOpen) {
+        await Linking.openURL(WEB_SHAREHUB_URL);
+      } else {
+        await Linking.openURL(WEB_SHAREHUB_URL);
+      }
+    } catch (err) {
+      console.warn('Failed to open Web ShareHub in browser:', err);
+      Alert.alert(
+        'Connect via Web',
+        `Could not open browser automatically. Please open this link in any browser:\n\n${WEB_SHAREHUB_URL}`
+      );
+    }
+  }, []);
+
   // Directory Breadcrumb navigation helper
   const renderBreadcrumbs = (currentPath, onSelectPath, isPc = false) => {
     if (!currentPath || typeof currentPath !== 'string') return null;
@@ -3849,6 +3913,84 @@ export default function App() {
                     </View>
                     <Text style={styles.heroDiscoveredBtnText}>Connect →</Text>
                   </TouchableOpacity>
+                )}
+
+                {/* Wi-Fi scan in progress indicator (before fallback banner appears) */}
+                {discoveredDevices.length === 0 && !showWebShareFallback && (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginBottom: 12,
+                    paddingVertical: 9,
+                    paddingHorizontal: 13,
+                    borderRadius: 14,
+                    backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.08)',
+                    borderWidth: 1,
+                    borderColor: isDarkMode ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.15)',
+                    gap: 10,
+                  }}>
+                    <ActivityIndicator size="small" color="#3b82f6" />
+                    <Text style={{ color: isDarkMode ? '#93c5fd' : '#2563eb', fontSize: 12, fontWeight: '600', flex: 1 }}>
+                      Scanning Wi-Fi for PCs...
+                    </Text>
+                  </View>
+                )}
+
+                {/* Web ShareHub fallback banner when no PC is found/paired */}
+                {discoveredDevices.length === 0 && showWebShareFallback && !isWebShareBannerDismissed && (
+                  <Animated.View style={{ transform: [{ scale: webSharePulseAnim }], marginBottom: 14 }}>
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      style={{
+                        padding: 14,
+                        borderRadius: 18,
+                        backgroundColor: isDarkMode ? '#1e40af' : '#2563eb',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? 'rgba(96, 165, 250, 0.4)' : 'rgba(255, 255, 255, 0.35)',
+                        shadowColor: '#2563eb',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.35,
+                        shadowRadius: 10,
+                        elevation: 5,
+                      }}
+                      onPress={handleOpenWebShare}>
+                      <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 22 }}>🌐</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Connect via Web</Text>
+                          <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>P2P</Text>
+                          </View>
+                        </View>
+                        <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 2 }}>
+                          Share files across networks with encrypted P2P
+                        </Text>
+                      </View>
+                      <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 18, fontWeight: '600' }}>→</Text>
+                      <TouchableOpacity
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          setIsWebShareBannerDismissed(true);
+                        }}
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 13,
+                          backgroundColor: 'rgba(255,255,255,0.2)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginLeft: 4,
+                        }}>
+                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>✕</Text>
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  </Animated.View>
                 )}
 
                 <View style={styles.heroBtnRow}>
@@ -6681,6 +6823,29 @@ export default function App() {
                     <Text style={styles.autoDiscoverSearchingDesc}>
                       Make sure Fylo is running on your PC and both devices are connected to the same Wi-Fi or hotspot.
                     </Text>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={{
+                        marginTop: 14,
+                        paddingVertical: 10,
+                        paddingHorizontal: 16,
+                        borderRadius: 14,
+                        backgroundColor: isDarkMode ? '#1e40af' : '#2563eb',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                      }}
+                      onPress={() => {
+                        setShowPairModal(false);
+                        handleOpenWebShare();
+                      }}>
+                      <Text style={{ fontSize: 16 }}>🌐</Text>
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>
+                        No PC on Wi-Fi? Connect via Web
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 ) : (
                   <View style={{ gap: 8, marginTop: 6, marginBottom: 14 }}>
