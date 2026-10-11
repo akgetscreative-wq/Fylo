@@ -8057,13 +8057,13 @@
 
             // Render QR Code in native view and dashboard
             try {
-                const shareUrl = `https://akgetscreative-wq.github.io/Fylo/web-sharehub.html?room=${pcWebPin}`;
+                const qrPayload = `fylo://pair?mode=web&pin=${pcWebPin}`;
                 
                 const qrBox = document.getElementById('pc-web-qr-canvas');
                 if (qrBox && typeof QRCode !== 'undefined') {
                     qrBox.innerHTML = '';
                     new QRCode(qrBox, {
-                        text: shareUrl,
+                        text: qrPayload,
                         width: 140,
                         height: 140,
                         colorDark: '#0f172a',
@@ -8076,7 +8076,7 @@
                 if (dashQrBox && typeof QRCode !== 'undefined') {
                     dashQrBox.innerHTML = '';
                     new QRCode(dashQrBox, {
-                        text: shareUrl,
+                        text: qrPayload,
                         width: 140,
                         height: 140,
                         colorDark: '#0f172a',

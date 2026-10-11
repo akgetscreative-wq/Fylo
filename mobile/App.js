@@ -2422,15 +2422,15 @@ export default function App() {
 
     // 1. Direct 6-Digit PIN check
     if (/^\d{6}$/.test(clean)) {
-      handleOpenWebShare(clean);
+      handleConnectWebPeer(clean);
       return;
     }
 
-    // 2. Web ShareHub room URL check (e.g. web-sharehub.html?room=123456)
-    if (clean.includes('room=') || clean.includes('web-sharehub')) {
-      const match = clean.match(/room=(\d{6})/);
+    // 2. Web room / PIN format check (e.g. fylo://pair?mode=web&pin=123456 or room=123456 or fylo-web:123456)
+    if (clean.includes('pin=') || clean.includes('room=') || clean.includes('web-sharehub') || clean.includes('fylo-web')) {
+      const match = clean.match(/(?:pin=|room=|fylo-web:)(\d{6})/);
       if (match && match[1]) {
-        handleOpenWebShare(match[1]);
+        handleConnectWebPeer(match[1]);
         return;
       }
     }
