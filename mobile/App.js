@@ -3014,7 +3014,7 @@ export default function App() {
     };
   }, []);
 
-  // Web ShareHub fallback: after 6 seconds with no PC paired or discovered, show web fallback
+  // Web ShareHub fallback: after 2 seconds with no PC paired or discovered, show web fallback
   useEffect(() => {
     if (pairedPc || discoveredDevices.length > 0) {
       setShowWebShareFallback(false);
@@ -3024,7 +3024,7 @@ export default function App() {
       if (!pairedPc && discoveredDevices.length === 0) {
         setShowWebShareFallback(true);
       }
-    }, 6000); // 6s grace period for local Wi-Fi UDP discovery
+    }, 2000); // 2s grace period for local Wi-Fi UDP discovery
     return () => clearTimeout(timer);
   }, [pairedPc, discoveredDevices.length]);
 
@@ -4261,7 +4261,19 @@ export default function App() {
                     activeOpacity={0.8}
                     style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
                     onPress={handleStartQrScan}>
-                    <Text style={styles.heroPrimaryBtnText}>Scan PC QR Code 📷</Text>
+                    <Text style={styles.heroPrimaryBtnText}>Scan PC QR 📷</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.heroSecondaryBtn, { backgroundColor: '#0284c7', borderColor: '#38bdf8' }]}
+                    onPress={() => {
+                      setPairModalTab('web');
+                      setShowPairModal(true);
+                    }}>
+                    <Text style={[styles.heroSecondaryBtnText, { color: '#ffffff', fontWeight: '800' }]}>
+                      Web PIN 🌐
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -4272,7 +4284,7 @@ export default function App() {
                       setShowPairModal(true);
                     }}>
                     <Text style={[styles.heroSecondaryBtnText, !isDarkMode && styles.heroSecondaryBtnTextLight]}>
-                      Manual IP
+                      Manual
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -7069,6 +7081,23 @@ export default function App() {
                   Manual IP
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[
+                  styles.modalSubTab,
+                  !isDarkMode && styles.modalSubTabLight,
+                  pairModalTab === 'web' && styles.modalSubTabActive,
+                ]}
+                onPress={() => setPairModalTab('web')}>
+                <Text style={[
+                  styles.modalSubTabText,
+                  !isDarkMode && styles.modalSubTabTextLight,
+                  pairModalTab === 'web' && styles.modalSubTabTextActive,
+                ]}>
+                  🌐 Web PIN
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {pairModalTab === 'auto' ? (
@@ -7270,6 +7299,43 @@ export default function App() {
                     style={styles.modalPrimaryBtn}
                     onPress={() => handleConnectToPc(manualPcIp, manualAuthToken)}>
                     <Text style={styles.modalPrimaryBtnText}>Connect</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              /* pairModalTab === 'web' */
+              <View>
+                <Text style={[styles.modalSubtitle, !isDarkMode && styles.modalSubtitleLight]}>
+                  Enter the 6-Digit Web PIN shown on your PC screen to connect over the internet:
+                </Text>
+
+                <TextInput
+                  style={[styles.modalInput, !isDarkMode && styles.modalInputLight, { fontSize: 22, fontWeight: '900', letterSpacing: 6, textAlign: 'center' }]}
+                  placeholder="e.g. 483291"
+                  placeholderTextColor={!isDarkMode ? '#64748b' : '#94a3b8'}
+                  value={webInputPin}
+                  onChangeText={setWebInputPin}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  autoCapitalize="none"
+                />
+
+                <View style={styles.modalBtnRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={[styles.modalCancelBtn, !isDarkMode && styles.modalCancelBtnLight]}
+                    onPress={() => setShowPairModal(false)}>
+                    <Text style={[styles.modalCancelBtnText, !isDarkMode && styles.modalCancelBtnTextLight]}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={[styles.modalPrimaryBtn, { backgroundColor: '#0284c7' }]}
+                    onPress={() => {
+                      setShowPairModal(false);
+                      handleConnectWebPeer(webInputPin);
+                    }}>
+                    <Text style={styles.modalPrimaryBtnText}>Connect via Web ⚡</Text>
                   </TouchableOpacity>
                 </View>
               </View>

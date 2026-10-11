@@ -27,8 +27,13 @@
             }
         }
 
+        let pendingRemotePeerId = null;
+
         window.initPeer = function(customPeerId) {
             myPeerId = customPeerId || ('fylo-phone-' + Math.floor(100000 + Math.random() * 900000));
+            if (peer && !peer.destroyed && peer.open) {
+                return;
+            }
             if (peer && !peer.destroyed) {
                 try { peer.destroy(); } catch(e) {}
             }
@@ -40,6 +45,11 @@
                     log('Peer open: ' + id);
                     if (window.AndroidBridge && window.AndroidBridge.onPeerReady) {
                         window.AndroidBridge.onPeerReady(id);
+                    }
+                    if (pendingRemotePeerId) {
+                        const target = pendingRemotePeerId;
+                        pendingRemotePeerId = null;
+                        window.connectToPeer(target);
                     }
                 });
 
@@ -60,8 +70,16 @@
         };
 
         window.connectToPeer = function(remotePeerId) {
+            if (!remotePeerId) return;
             if (!peer || peer.destroyed) {
+                pendingRemotePeerId = remotePeerId;
                 window.initPeer();
+                return;
+            }
+            if (!peer.open) {
+                log('Peer not open yet, queueing connect to: ' + remotePeerId);
+                pendingRemotePeerId = remotePeerId;
+                return;
             }
             log('Connecting to remote peer: ' + remotePeerId);
             try {
