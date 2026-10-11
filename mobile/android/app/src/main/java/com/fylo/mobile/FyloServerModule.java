@@ -515,6 +515,7 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                     item.putBoolean("isDir", isDir);
                     item.putDouble("size", isDir ? 0 : (double) f.length());
                     item.putDouble("modified", (double) f.lastModified());
+                    item.putDouble("mtime", (double) f.lastModified());
 
                     String ext = "";
                     int dotIdx = fName.lastIndexOf('.');
@@ -1005,8 +1006,12 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
             intent.setDataAndType(uri, finalMimeType);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                intent.setClipData(ClipData.newRawUri(file.getName(), uri));
+            } catch (Throwable ignored) {}
 
             Intent chooser = Intent.createChooser(intent, "Open with...");
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
             Activity currentActivity = getCurrentActivity();
@@ -1023,6 +1028,149 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
             Log.e(TAG, "openFileWithChooser error: " + e.getMessage(), e);
             safePromise.reject("OPEN_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
+    }
+
+    @ReactMethod
+    public void openDocumentWithApp(String filePath, String mimeType, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            if (filePath == null || filePath.trim().isEmpty()) {
+                safePromise.reject("INVALID_PATH", "Document path is empty");
+                return;
+            }
+
+            File file = new File(filePath.trim());
+            if (!file.exists()) {
+                safePromise.reject("FILE_NOT_FOUND", "Document not found: " + filePath);
+                return;
+            }
+
+            String finalMimeType = resolveMimeType(file.getName(), mimeType);
+            Context ctx = getCurrentActivity() != null ? getCurrentActivity() : reactContext;
+
+            Uri uri = null;
+            String[] authorities = new String[] {
+                ctx.getPackageName() + ".fileprovider",
+                "com.fylo.mobile.fileprovider",
+                ctx.getPackageName() + ".provider",
+                "com.fylo.mobile.provider"
+            };
+
+            for (String auth : authorities) {
+                try {
+                    uri = FileProvider.getUriForFile(ctx, auth, file);
+                    if (uri != null) break;
+                } catch (Throwable ignored) {}
+            }
+
+            if (uri == null) {
+                try {
+                    StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+                    StrictMode.setVmPolicy(builder.build());
+                    uri = Uri.fromFile(file);
+                } catch (Throwable t) {
+                    safePromise.reject("URI_ERROR", "Could not create URI for document: " + t.getMessage());
+                    return;
+                }
+            }
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, finalMimeType);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                intent.setClipData(ClipData.newRawUri(file.getName(), uri));
+            } catch (Throwable ignored) {}
+
+            Intent chooser = Intent.createChooser(intent, "Open with...");
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            Activity currentActivity = getCurrentActivity();
+            if (currentActivity != null) {
+                currentActivity.startActivity(chooser);
+            } else {
+                reactContext.startActivity(chooser);
+            }
+            safePromise.resolve(true);
+        } catch (ActivityNotFoundException anf) {
+            Log.w(TAG, "No document reader app found: " + anf.getMessage());
+            safePromise.reject("NO_APP", "No app found to open this document");
+        } catch (Throwable e) {
+            Log.e(TAG, "openDocumentWithApp error: " + e.getMessage(), e);
+            safePromise.reject("OPEN_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void getRecentMedia(int limit, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        new Thread(() -> {
+            WritableArray results = Arguments.createArray();
+            try {
+                Context ctx = reactContext.getApplicationContext();
+                Uri queryUri = MediaStore.Files.getContentUri("external");
+                String[] projection = {
+                    MediaStore.Files.FileColumns._ID,
+                    MediaStore.Files.FileColumns.DATA,
+                    MediaStore.Files.FileColumns.DISPLAY_NAME,
+                    MediaStore.Files.FileColumns.DATE_MODIFIED,
+                    MediaStore.Files.FileColumns.SIZE,
+                    MediaStore.Files.FileColumns.MEDIA_TYPE
+                };
+                String selection = MediaStore.Files.FileColumns.MEDIA_TYPE + "=" + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE
+                        + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + "=" + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO;
+                String sortOrder = MediaStore.MediaColumns.DATE_MODIFIED + " DESC";
+
+                int max = limit > 0 ? limit : 25;
+                try (Cursor cursor = ctx.getContentResolver().query(queryUri, projection, selection, null, sortOrder)) {
+                    if (cursor != null) {
+                        int pathCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA);
+                        int nameCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
+                        int dateCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED);
+                        int sizeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE);
+                        int typeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MEDIA_TYPE);
+
+                        int count = 0;
+                        while (cursor.moveToNext() && count < max) {
+                            String path = pathCol != -1 ? cursor.getString(pathCol) : null;
+                            if (path == null) continue;
+                            File f = new File(path);
+                            if (!f.exists()) continue;
+
+                            String name = nameCol != -1 ? cursor.getString(nameCol) : f.getName();
+                            long dateSec = dateCol != -1 ? cursor.getLong(dateCol) : 0;
+                            long dateMs = dateSec > 0 ? dateSec * 1000L : f.lastModified();
+                            long size = sizeCol != -1 ? cursor.getLong(sizeCol) : f.length();
+                            int mediaType = typeCol != -1 ? cursor.getInt(typeCol) : 0;
+
+                            String ext = "";
+                            int dot = name.lastIndexOf('.');
+                            if (dot > 0 && dot < name.length() - 1) {
+                                ext = name.substring(dot + 1).toLowerCase();
+                            }
+
+                            WritableMap item = Arguments.createMap();
+                            item.putString("name", name);
+                            item.putString("path", path);
+                            item.putBoolean("isDir", false);
+                            item.putDouble("size", (double) size);
+                            item.putDouble("modified", (double) dateMs);
+                            item.putDouble("mtime", (double) dateMs);
+                            item.putString("ext", ext);
+                            item.putBoolean("isVideo", mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO);
+
+                            results.pushMap(item);
+                            count++;
+                        }
+                    }
+                }
+                safePromise.resolve(results);
+            } catch (Throwable e) {
+                Log.w(TAG, "getRecentMedia MediaStore error: " + e.getMessage());
+                safePromise.resolve(results);
+            }
+        }).start();
     }
 
     @ReactMethod

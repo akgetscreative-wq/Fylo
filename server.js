@@ -51,11 +51,37 @@ let downloadFolder = path.join(os.homedir(), 'Downloads');
 const SAVED_DEVICES_PATH = path.join(os.homedir(), '.fylo-devices.json');
 let savedDevices = {};
 
+function deduplicateSavedDevices() {
+    const seen = new Map();
+    const clean = {};
+    for (const [id, dev] of Object.entries(savedDevices)) {
+        if (!dev) continue;
+        // Fingerprint by clean IP or by (model + name)
+        const cleanIp = (dev.ip || '').replace(/^::ffff:/, '').trim();
+        const key = cleanIp || `${dev.model || ''}_${dev.name || ''}` || id;
+        if (seen.has(key)) {
+            const existingId = seen.get(key);
+            // Retain the one with more recent activity or lastSeen
+            if ((dev.lastSeen || 0) > (clean[existingId]?.lastSeen || 0)) {
+                delete clean[existingId];
+                clean[id] = dev;
+                seen.set(key, id);
+            }
+        } else {
+            clean[id] = dev;
+            seen.set(key, id);
+        }
+    }
+    savedDevices = clean;
+}
+
 function loadSavedDevices() {
     try {
         if (fs.existsSync(SAVED_DEVICES_PATH)) {
             const data = fs.readFileSync(SAVED_DEVICES_PATH, 'utf8');
             savedDevices = JSON.parse(data) || {};
+            deduplicateSavedDevices();
+            persistSavedDevices();
         }
     } catch (e) {
         console.warn('[Saved Devices] Error reading .fylo-devices.json:', e.message);
@@ -65,6 +91,7 @@ function loadSavedDevices() {
 
 function persistSavedDevices() {
     try {
+        deduplicateSavedDevices();
         fs.writeFileSync(SAVED_DEVICES_PATH, JSON.stringify(savedDevices, null, 2), 'utf8');
     } catch (e) {
         console.warn('[Saved Devices] Error writing .fylo-devices.json:', e.message);
@@ -1300,8 +1327,51 @@ app.post('/api/mobile/connect', (req, res) => {
     const phonePort = port ? parseInt(port, 10) : 8080;
     const phoneName = deviceName || model || 'Android Phone';
 
-    mobileDevices[deviceId] = {
-        id: deviceId,
+    // DEDUPLICATION: Look for existing saved or mobile device with the same IP or (model + name)
+    let canonicalId = deviceId;
+    for (const [existingId, dev] of Object.entries(savedDevices)) {
+        if (existingId === deviceId || (resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
+            canonicalId = existingId;
+            break;
+        }
+    }
+    if (canonicalId === deviceId) {
+        for (const [existingId, dev] of Object.entries(mobileDevices)) {
+            if (existingId === deviceId || (resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
+                canonicalId = existingId;
+                break;
+            }
+        }
+    }
+
+    // Purge any other duplicate IDs matching the same physical phone
+    for (const id of Object.keys(savedDevices)) {
+        if (id !== canonicalId) {
+            const dev = savedDevices[id];
+            if ((resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
+                delete savedDevices[id];
+            }
+        }
+    }
+    for (const id of Object.keys(mobileDevices)) {
+        if (id !== canonicalId) {
+            const dev = mobileDevices[id];
+            if ((resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
+                delete mobileDevices[id];
+            }
+        }
+    }
+    for (const id of Object.keys(devices)) {
+        if (id !== canonicalId && !devices[id].isHost) {
+            const dev = devices[id];
+            if ((resolvedIp && dev.ip === resolvedIp) || (phoneName && dev.name === phoneName)) {
+                delete devices[id];
+            }
+        }
+    }
+
+    mobileDevices[canonicalId] = {
+        id: canonicalId,
         name: phoneName,
         model: model || 'Android Device',
         ip: resolvedIp,
@@ -1314,27 +1384,28 @@ app.post('/api/mobile/connect', (req, res) => {
     };
 
     // Mirror to general devices map for global dashboard & devices view
-    devices[deviceId] = {
-        id: deviceId,
+    devices[canonicalId] = {
+        id: canonicalId,
         name: phoneName,
         kind: 'android',
         isHost: false,
+        ip: resolvedIp,
         lastActive: Date.now()
     };
 
-    // Persist to saved devices
-    savedDevices[deviceId] = {
-        id: deviceId,
+    // Persist to saved devices (only one single entry per phone)
+    savedDevices[canonicalId] = {
+        id: canonicalId,
         name: phoneName,
         model: model || 'Android Device',
         ip: resolvedIp,
         port: phonePort,
         lastSeen: Date.now(),
-        autoConnect: savedDevices[deviceId]?.autoConnect !== undefined ? savedDevices[deviceId].autoConnect : true
+        autoConnect: savedDevices[canonicalId]?.autoConnect !== undefined ? savedDevices[canonicalId].autoConnect : true
     };
     persistSavedDevices();
 
-    console.log(`[Fylo v4] Mobile connected: ${phoneName} (${resolvedIp}:${phonePort}), Read-Only: ${readOnly}, Full Phone Access: ${mobileDevices[deviceId].allowFullPhoneAccess}`);
+    console.log(`[Fylo v4] Mobile connected: ${phoneName} (${resolvedIp}:${phonePort}) [ID: ${canonicalId}], Read-Only: ${readOnly}, Full Phone Access: ${mobileDevices[canonicalId].allowFullPhoneAccess}`);
     res.json({ 
         success: true, 
         message: 'Paired with Fylo PC', 

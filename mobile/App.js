@@ -93,9 +93,10 @@ const safeJson = async (res) => {
 };
 
 // Robust SafeImage component with onError fallback handler to prevent corrupt image crashes
-const SafeImage = ({ source, style, resizeMode, fallbackText, fallbackEmoji }) => {
+const SafeImage = ({ source, uri: directUri, style, resizeMode, fallbackText, fallbackEmoji }) => {
   const [hasError, setHasError] = useState(false);
-  const uri = source?.uri;
+  const resolvedSource = source || (directUri ? { uri: directUri } : null);
+  const uri = resolvedSource?.uri;
   const prevUriRef = useRef(uri);
 
   useEffect(() => {
@@ -109,17 +110,19 @@ const SafeImage = ({ source, style, resizeMode, fallbackText, fallbackEmoji }) =
 
   if (hasError || !uri) {
     return (
-      <View style={[style, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
+      <View style={[style, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}>
         {displayFallback ? (
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748b', letterSpacing: 0.5 }}>{displayFallback}</Text>
-        ) : null}
+        ) : (
+          <Text style={{ fontSize: 16, color: '#38bdf8' }}>🖼️</Text>
+        )}
       </View>
     );
   }
 
   return (
     <Image
-      source={source}
+      source={resolvedSource}
       style={style}
       resizeMode={resizeMode}
       onError={() => setHasError(true)}
@@ -134,8 +137,6 @@ const VideoThumbnail = React.memo(({ path, isPc, pairedPc, pcAuthToken, serverPo
   useEffect(() => {
     let isMounted = true;
     const fetchThumbnail = async () => {
-      // For remote PC video files, do NOT download or fetch multi-gigabyte video frames across Wi-Fi for thumbnails!
-      // This eliminates network saturation, lag, and crashing when loading folders with large videos.
       if (isPc) {
         return;
       }
@@ -182,6 +183,83 @@ const VideoThumbnail = React.memo(({ path, isPc, pairedPc, pcAuthToken, serverPo
       <View style={styles.gridVideoPlayBadge}>
         <Text style={styles.gridVideoPlayBadgeIcon}>▶</Text>
       </View>
+    </View>
+  );
+});
+
+// Dedicated High-Performance Media Thumbnail for Homepage (Real Images & Native Video Frames)
+const HomeMediaThumbnail = React.memo(({ item, style, isPc, pairedPc, pcAuthToken, serverPort }) => {
+  const [videoThumb, setVideoThumb] = useState(null);
+  const ext = (item?.ext || (item?.name ? item.name.split('.').pop() : '')).toLowerCase();
+  const isVid = ['mp4', 'mkv', 'mov', 'webm', 'avi', 'flv', '3gp', 'wmv'].includes(ext);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (isVid) {
+      const loadThumb = async () => {
+        try {
+          if (FyloModule && FyloModule.getVideoThumbnail) {
+            const target = isPc
+              ? (pairedPc ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(item.path || '')}` : '')
+              : (item.path || '');
+            if (target) {
+              const uri = await FyloModule.getVideoThumbnail(target, pcAuthToken || '');
+              if (isMounted && uri) {
+                setVideoThumb(uri);
+                return;
+              }
+            }
+          }
+        } catch (e) {}
+
+        if (!isPc && isMounted && item?.path) {
+          const httpUri = `http://127.0.0.1:${serverPort || 8080}/api/fs/thumbnail?path=${encodeURIComponent(item.path)}${pcAuthToken ? `&auth=${pcAuthToken}` : ''}`;
+          setVideoThumb(httpUri);
+        }
+      };
+      loadThumb();
+    }
+    return () => { isMounted = false; };
+  }, [item?.path, isVid, isPc, pairedPc, pcAuthToken, serverPort]);
+
+  if (isVid) {
+    return (
+      <View style={[style, { overflow: 'hidden', position: 'relative', backgroundColor: 'rgba(15, 23, 42, 0.7)' }]}>
+        {videoThumb ? (
+          <Image
+            source={{ uri: videoThumb }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(37, 99, 235, 0.18)' }}>
+            <Text style={{ fontSize: 16, color: '#38bdf8' }}>▶</Text>
+          </View>
+        )}
+        <View style={styles.sketchPlayBadge}>
+          <Text style={{ color: '#ffffff', fontSize: 10 }}>▶</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const imageUri = item?.thumbnailUri || (isPc
+    ? (item?.downloadUrl || (pairedPc ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(item.path || '')}&auth=${pcAuthToken || ''}` : null))
+    : (item?.path ? `file://${item.path}` : null));
+
+  return (
+    <View style={[style, { overflow: 'hidden', backgroundColor: 'rgba(15, 23, 42, 0.4)' }]}>
+      {imageUri ? (
+        <SafeImage
+          source={{ uri: imageUri }}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontSize: 16, color: '#38bdf8' }}>🖼️</Text>
+        </View>
+      )}
     </View>
   );
 });
@@ -347,6 +425,171 @@ const AlpineSunriseLandscape = React.memo(({ isDark = false }) => {
 
 // Backward-compatible alias
 const HeroDeskIllustration = AlpineSunriseLandscape;
+
+// Modern Geometric Aesthetic Artwork for Hero Connection Card
+const GeometricHeroArt = React.memo(({ isDark = true }) => {
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {/* Radiant Glowing Neon Backdrop */}
+      <View style={{
+        position: 'absolute', top: -35, right: -25, width: 230, height: 165,
+        borderRadius: 85,
+        backgroundColor: isDark ? 'rgba(37, 99, 235, 0.28)' : 'rgba(56, 189, 248, 0.22)',
+        transform: [{ scaleX: 1.4 }],
+      }} />
+      <View style={{
+        position: 'absolute', top: -10, right: 45, width: 145, height: 145,
+        borderRadius: 72,
+        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.22)' : 'rgba(192, 132, 252, 0.18)',
+      }} />
+
+      {/* Sleek Isometric Diamond Prisms */}
+      <View style={{
+        position: 'absolute', top: 16, right: 28,
+        width: 60, height: 60, borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: isDark ? 'rgba(56, 189, 248, 0.5)' : 'rgba(37, 99, 235, 0.38)',
+        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.12)' : 'rgba(37, 99, 235, 0.08)',
+        transform: [{ rotate: '45deg' }],
+        shadowColor: '#38bdf8', shadowOpacity: 0.35, shadowRadius: 10, elevation: 3,
+      }}>
+        {/* Inner nested diamond */}
+        <View style={{
+          position: 'absolute', top: 13, left: 13, width: 30, height: 30, borderRadius: 8,
+          borderWidth: 1, borderColor: isDark ? 'rgba(168, 85, 247, 0.55)' : 'rgba(147, 51, 234, 0.45)',
+          backgroundColor: isDark ? 'rgba(168, 85, 247, 0.22)' : 'rgba(147, 51, 234, 0.14)',
+        }} />
+      </View>
+
+      {/* Floating Angled Gradient Pill */}
+      <View style={{
+        position: 'absolute', top: 38, right: 102,
+        width: 95, height: 22, borderRadius: 11,
+        borderWidth: 1,
+        borderColor: isDark ? 'rgba(168, 85, 247, 0.4)' : 'rgba(147, 51, 234, 0.3)',
+        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.12)' : 'rgba(147, 51, 234, 0.08)',
+        transform: [{ rotate: '-28deg' }]
+      }} />
+
+      {/* Glowing Neon Node Accents */}
+      <View style={{
+        position: 'absolute', top: 22, right: 125,
+        width: 8, height: 8, borderRadius: 4,
+        backgroundColor: '#38bdf8',
+        shadowColor: '#38bdf8', shadowOpacity: 0.85, shadowRadius: 6, elevation: 4
+      }} />
+      <View style={{
+        position: 'absolute', top: 82, right: 20,
+        width: 6, height: 6, borderRadius: 3,
+        backgroundColor: '#a855f7',
+        shadowColor: '#a855f7', shadowOpacity: 0.85, shadowRadius: 5, elevation: 3
+      }} />
+
+      {/* Modern Tech Circuit Line */}
+      <View style={{
+        position: 'absolute', top: 92, right: 38, width: 62, height: 1.5,
+        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.35)' : 'rgba(37, 99, 235, 0.28)',
+        transform: [{ rotate: '15deg' }]
+      }} />
+    </View>
+  );
+});
+
+// Vibrant Geometric Vector Art & Mesh Background for Android Homepage
+const GeometricAestheticBackground = React.memo(({ isDark = true }) => {
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {/* 1. Ambient Glowing Gradient Mesh Orbs */}
+      <View style={{
+        position: 'absolute', top: -40, right: -60,
+        width: 320, height: 320, borderRadius: 160,
+        backgroundColor: isDark ? 'rgba(37, 99, 235, 0.16)' : 'rgba(56, 189, 248, 0.13)',
+        transform: [{ scaleX: 1.3 }],
+      }} />
+      <View style={{
+        position: 'absolute', top: 250, left: -80,
+        width: 290, height: 290, borderRadius: 145,
+        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.13)' : 'rgba(192, 132, 252, 0.11)',
+        transform: [{ scaleY: 1.2 }],
+      }} />
+      <View style={{
+        position: 'absolute', top: 570, right: -40,
+        width: 270, height: 270, borderRadius: 135,
+        backgroundColor: isDark ? 'rgba(16, 185, 129, 0.10)' : 'rgba(52, 211, 153, 0.09)',
+      }} />
+      <View style={{
+        position: 'absolute', bottom: -50, left: 10,
+        width: 300, height: 300, borderRadius: 150,
+        backgroundColor: isDark ? 'rgba(59, 130, 246, 0.11)' : 'rgba(96, 165, 250, 0.09)',
+      }} />
+
+      {/* 2. Angled Geometric Accent Pills & Polygon Lines */}
+      <View style={{
+        position: 'absolute', top: 25, right: 18,
+        width: 140, height: 26, borderRadius: 13,
+        borderWidth: 1, borderColor: isDark ? 'rgba(56, 189, 248, 0.22)' : 'rgba(37, 99, 235, 0.18)',
+        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.05)' : 'rgba(37, 99, 235, 0.03)',
+        transform: [{ rotate: '-32deg' }]
+      }} />
+      <View style={{
+        position: 'absolute', top: 55, right: 62,
+        width: 72, height: 16, borderRadius: 8,
+        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.20)' : 'rgba(168, 85, 247, 0.15)',
+        transform: [{ rotate: '-32deg' }]
+      }} />
+
+      {/* Center left geometric diamonds & angled polygon accents */}
+      <View style={{
+        position: 'absolute', top: 375, left: 16,
+        width: 34, height: 34, borderRadius: 8,
+        borderWidth: 1.5, borderColor: isDark ? 'rgba(168, 85, 247, 0.28)' : 'rgba(147, 51, 234, 0.22)',
+        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.07)' : 'rgba(147, 51, 234, 0.05)',
+        transform: [{ rotate: '45deg' }]
+      }} />
+      <View style={{
+        position: 'absolute', top: 405, left: 52,
+        width: 16, height: 16, borderRadius: 4,
+        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.22)' : 'rgba(37, 99, 235, 0.16)',
+        transform: [{ rotate: '45deg' }]
+      }} />
+      <View style={{
+        position: 'absolute', top: 345, left: -10,
+        width: 115, height: 22, borderRadius: 11,
+        borderWidth: 1, borderColor: isDark ? 'rgba(16, 185, 129, 0.22)' : 'rgba(5, 150, 105, 0.18)',
+        backgroundColor: isDark ? 'rgba(16, 185, 129, 0.04)' : 'rgba(5, 150, 105, 0.03)',
+        transform: [{ rotate: '28deg' }]
+      }} />
+
+      {/* Mid-bottom geometric polygon accents */}
+      <View style={{
+        position: 'absolute', top: 615, right: 22,
+        width: 26, height: 26, borderRadius: 6,
+        borderWidth: 1, borderColor: isDark ? 'rgba(56, 189, 248, 0.24)' : 'rgba(37, 99, 235, 0.19)',
+        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.06)' : 'rgba(37, 99, 235, 0.04)',
+        transform: [{ rotate: '45deg' }]
+      }} />
+      <View style={{
+        position: 'absolute', top: 675, right: -15,
+        width: 165, height: 32, borderRadius: 16,
+        borderWidth: 1, borderColor: isDark ? 'rgba(99, 102, 241, 0.22)' : 'rgba(79, 70, 229, 0.17)',
+        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.05)' : 'rgba(79, 70, 229, 0.03)',
+        transform: [{ rotate: '-38deg' }]
+      }} />
+
+      {/* Minimal modern geometric grid points */}
+      <View style={{ position: 'absolute', top: 175, right: 35, flexDirection: 'row', gap: 6 }}>
+        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
+        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
+        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
+      </View>
+      <View style={{ position: 'absolute', top: 187, right: 35, flexDirection: 'row', gap: 6 }}>
+        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
+        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(56,189,248,0.5)' : 'rgba(37,99,235,0.35)' }} />
+        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
+      </View>
+    </View>
+  );
+});
 
 // 4. Meadow Monitor Scene for "Browse PC" (Matching Image 3)
 const MeadowMonitorScene = React.memo(({ isDark = false }) => {
@@ -880,7 +1123,20 @@ export default function App() {
   const [storageInfo, setStorageInfo] = useState({ totalGB: '--', freeGB: '--' });
   const [batteryLevel, setBatteryLevel] = useState(null);
   const [phoneModelName, setPhoneModelName] = useState(Platform.constants?.Model || 'Android');
-  const deviceIdRef = useRef('phone-' + Math.random().toString(36).substring(2, 9));
+  const stablePhonePrefix = (Platform.constants?.Model ? Platform.constants.Model.toLowerCase().replace(/[^a-z0-9]/g, '') : 'client');
+  const deviceIdRef = useRef('phone-' + stablePhonePrefix);
+
+  useEffect(() => {
+    AsyncStorage.getItem('fylo_device_stable_id').then((saved) => {
+      if (saved) {
+        deviceIdRef.current = saved;
+      } else {
+        const genId = 'phone-' + stablePhonePrefix + '-' + Math.random().toString(36).substring(2, 8);
+        deviceIdRef.current = genId;
+        AsyncStorage.setItem('fylo_device_stable_id', genId).catch(() => {});
+      }
+    }).catch(() => {});
+  }, [stablePhonePrefix]);
 
   // LAN Shared Clipboard State
   const [pcClipboardText, setPcClipboardText] = useState('');
@@ -2775,6 +3031,10 @@ export default function App() {
 
   const isViewableMedia = (ext) => isImageFile(ext) || isVideoFile(ext);
   const isMediaFile = (ext) => isImageFile(ext) || isVideoFile(ext);
+  const isDocumentFile = (ext) => {
+    const e = (ext || '').toLowerCase().replace(/^\./, '');
+    return ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'rtf', 'epub', 'odt', 'ods'].includes(e);
+  };
 
   const getMimeTypeForExt = (ext) => {
     const e = (ext || '').toLowerCase().replace(/^\./, '');
@@ -2823,9 +3083,22 @@ export default function App() {
     return map[e] || '*/*';
   };
 
-  // Load recent phone photos for Home "SHARE TO PC - RECENTS" section
+  // Load recent phone photos for Home "SHARE TO PC - RECENTS" section (STRICTLY NEWEST FIRST)
   const loadRecentPhoneMedia = useCallback(async () => {
     try {
+      if (FyloModule && FyloModule.getRecentMedia) {
+        const recent = await FyloModule.getRecentMedia(25).catch(() => null);
+        if (Array.isArray(recent) && recent.length > 0) {
+          const sorted = recent.sort((a, b) => {
+            const timeA = Number(a.modified || a.mtime || 0);
+            const timeB = Number(b.modified || b.mtime || 0);
+            return timeB - timeA;
+          });
+          setPhoneRecentMedia(sorted.slice(0, 20));
+          return;
+        }
+      }
+
       if (!FyloModule || !FyloModule.listDirectory) return;
       let result = await FyloModule.listDirectory('/storage/emulated/0/DCIM/Camera').catch(() => null);
       if (!result || !Array.isArray(result.items) || result.items.length === 0) {
@@ -2837,8 +3110,12 @@ export default function App() {
       if (result && Array.isArray(result.items)) {
         const media = result.items
           .filter((item) => !item.isDir && (isImageFile(item.ext) || isVideoFile(item.ext)))
-          .sort((a, b) => (b.mtime || 0) - (a.mtime || 0))
-          .slice(0, 15);
+          .sort((a, b) => {
+            const timeA = Number(a.modified || a.mtime || 0);
+            const timeB = Number(b.modified || b.mtime || 0);
+            return timeB - timeA;
+          })
+          .slice(0, 20);
         setPhoneRecentMedia(media);
       }
     } catch (e) {
@@ -2921,18 +3198,31 @@ export default function App() {
         showToast('⚠️ Local file path is not available');
         return;
       }
+
+      // For Documents (PDF, DOCX, XLSX, TXT, etc.): directly present native Android app chooser (Google Drive, Adobe, Word, etc.)
+      if (isDocumentFile(fileExt) && FyloModule && FyloModule.openDocumentWithApp) {
+        try {
+          await FyloModule.openDocumentWithApp(filePath, mimeType);
+          return;
+        } catch (docErr) {
+          console.warn('openDocumentWithApp failed, falling back to openFileWithChooser:', docErr);
+        }
+      }
+
       if (FyloModule && FyloModule.openFileWithChooser) {
         try {
           await FyloModule.openFileWithChooser(filePath, mimeType);
+          return;
         } catch (err) {
           console.warn('openFileWithChooser error:', err);
           showToast(err?.message || '⚠️ No app found on phone to open this file');
+          return;
         }
       } else {
         showToast('⚠️ Native app chooser is not available');
       }
     } else {
-      // source === 'pc'
+      // source === 'pc' or 'sharehub'
       const downloadUrl = file.downloadUrl
         ? file.downloadUrl
         : (pairedPc ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(file.path || '')}${pcAuthToken ? `&auth=${pcAuthToken}` : ''}` : null);
@@ -2942,8 +3232,7 @@ export default function App() {
         return;
       }
 
-      // For Video and Audio files: NEVER download the whole file just to stream it!
-      // Directly stream via external media players (VLC, MX Player, etc.) with 0-second buffering
+      // For Video and Audio files: stream directly via external media players (VLC, MX Player)
       if (isVideoFile(fileExt) || isAudioFile(fileExt)) {
         const streamMime = isVideoFile(fileExt) ? 'video/*' : 'audio/*';
         if (FyloModule && FyloModule.openUrlWithChooser) {
@@ -2958,12 +3247,46 @@ export default function App() {
         }
       }
 
+      // For Documents (PDF, DOCX, XLSX, etc.): Download to phone cache first, then directly open with system chooser (Google Drive, Acrobat, Word)
+      // This prevents Android from opening generic browser/downloader apps!
+      if (isDocumentFile(fileExt)) {
+        showToast(`Opening "${fileName}"...`);
+        let localPath = null;
+        if (FyloModule && FyloModule.downloadFileFromUrl) {
+          try {
+            const cleanName = (fileName || 'document').replace(/[\\/:*?"<>|]/g, '_');
+            localPath = await FyloModule.downloadFileFromUrl(downloadUrl, cleanName);
+          } catch (dlErr) {
+            console.warn('Document download before open failed:', dlErr);
+          }
+        }
+        if (localPath) {
+          if (FyloModule && FyloModule.openDocumentWithApp) {
+            try {
+              await FyloModule.openDocumentWithApp(localPath, mimeType);
+              return;
+            } catch (docErr) {
+              console.warn('openDocumentWithApp failed:', docErr);
+            }
+          }
+          if (FyloModule && FyloModule.openFileWithChooser) {
+            try {
+              await FyloModule.openFileWithChooser(localPath, mimeType);
+              return;
+            } catch (openErr) {
+              showToast(openErr?.message || '⚠️ No app found to open this document');
+              return;
+            }
+          }
+        }
+      }
+
       if (mode === 'download') {
         await handleDownloadPcFile(file.path, file.name);
         return;
       }
 
-      // Try opening directly via URL with Android native chooser (VLC, MX Player, Office, Drive, browsers)
+      // Try opening directly via URL with Android native chooser for other types
       if (FyloModule && FyloModule.openUrlWithChooser) {
         try {
           await FyloModule.openUrlWithChooser(downloadUrl, mimeType, `Open ${fileName}`);
@@ -2981,28 +3304,7 @@ export default function App() {
 
   const handleOpenPcFileInApp = async (file) => {
     if (!file) return;
-    const fileName = file.name || file.path?.split(/[\\/]/).pop() || 'file';
-    const fileExt = file.ext || (fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '');
-    const mimeType = getMimeTypeForExt(fileExt);
-    const downloadUrl = file.downloadUrl
-      ? file.downloadUrl
-      : (pairedPc ? `http://${pairedPc}/api/pc/explorer/file?path=${encodeURIComponent(file.path || '')}${pcAuthToken ? `&auth=${pcAuthToken}` : ''}` : null);
-
-    if (!downloadUrl) {
-      showToast('⚠️ Cannot access PC file without connection');
-      return;
-    }
-
-    if (FyloModule && FyloModule.openUrlWithChooser) {
-      try {
-        await FyloModule.openUrlWithChooser(downloadUrl, mimeType, `Open ${fileName}`);
-      } catch (err) {
-        console.warn('openUrlWithChooser failed:', err);
-        showToast('⚠️ No app found to stream this file directly. Please use "Download to Phone".');
-      }
-    } else {
-      showToast('⚠️ Native app chooser is not available');
-    }
+    await openExternalFileOrChooser(file, 'pc');
   };
 
   // ==========================================
@@ -3137,7 +3439,16 @@ export default function App() {
       return;
     }
 
-    // Non-media files (PDF, DOCX, APK, ZIP, etc.)
+    // Document files (PDF, DOCX, XLSX, TXT, etc.): Directly open in system app chooser (Google Drive, Adobe, Word)
+    if (isDocumentFile(fileExt)) {
+      openExternalFileOrChooser({
+        ...file,
+        path: resolvedPath,
+      }, isSentByPhone ? 'phone' : 'sharehub');
+      return;
+    }
+
+    // Other non-media files (APK, ZIP, etc.)
     if (isSentByPhone) {
       // If the file was sent from the phone (already on the phone): opens with phone app chooser.
       openExternalFileOrChooser({
@@ -3428,7 +3739,8 @@ export default function App() {
       {/* TAB 1: STREAMLINED BENTO HOME DASHBOARD (Matching Image 2) */}
       {/* ========================================================= */}
       {currentTab === 'home' && (
-        <View style={{ flex: 1, backgroundColor: isDarkMode ? '#000000' : '#F7F6F2' }} {...homePanResponder.panHandlers}>
+        <View style={{ flex: 1, backgroundColor: isDarkMode ? '#060a12' : '#F3F4F8' }} {...homePanResponder.panHandlers}>
+          <GeometricAestheticBackground isDark={isDarkMode} />
           <ScrollView contentContainerStyle={[styles.bentoScroll, isDarkMode ? styles.bentoScrollDark : styles.bentoScrollLight]}
             showsVerticalScrollIndicator={false}>
 
@@ -3452,10 +3764,10 @@ export default function App() {
           )}
 
           {/* ========================================================= */}
-          {/* 1. HERO CONNECTION STATUS CARD (Alpine Sunrise Landscape)  */}
+          {/* 1. HERO CONNECTION STATUS CARD (Geometric Aesthetic Art)   */}
           {/* ========================================================= */}
           <View style={[styles.bentoCardHero, !isDarkMode && styles.bentoCardHeroLight]}>
-            <AlpineSunriseLandscape isDark={isDarkMode} />
+            <GeometricHeroArt isDark={isDarkMode} />
 
             {pairedPc ? (
               // Connected State
@@ -3756,6 +4068,8 @@ export default function App() {
                             index: plIdx >= 0 ? plIdx : 0,
                             playlist: playlist.length > 0 ? playlist : [item],
                           });
+                        } else if (isDocumentFile(item.ext)) {
+                          openExternalFileOrChooser(item, 'pc');
                         } else {
                           setPcFileActionPrompt({ file: item, source: 'pc' });
                         }
@@ -3763,14 +4077,15 @@ export default function App() {
                       <View style={styles.sketchTileIconBox}>
                         {isDir ? (
                           <Win11FolderIcon size={32} />
-                        ) : isVid ? (
-                          <View style={[styles.sketchTileMediaThumb, { backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0' }]}>
-                            <Text style={{ color: '#ef4444', fontSize: 18 }}>▶</Text>
-                          </View>
-                        ) : isImg ? (
-                          <View style={[styles.sketchTileMediaThumb, { backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0' }]}>
-                            <Text style={{ color: '#3b82f6', fontSize: 18 }}>🖼️</Text>
-                          </View>
+                        ) : (isImg || isVid) ? (
+                          <HomeMediaThumbnail
+                            item={item}
+                            style={styles.sketchTileMediaThumb}
+                            isPc={true}
+                            pairedPc={pairedPc}
+                            pcAuthToken={pcAuthToken}
+                            serverPort={serverPort}
+                          />
                         ) : (
                           <FileBadgeIcon ext={item.ext} isDir={false} size={28} />
                         )}
@@ -3840,17 +4155,13 @@ export default function App() {
                           });
                         }
                       }}>
-                      <SafeImage
-                        uri={`file://${media.path}`}
+                      <HomeMediaThumbnail
+                        item={media}
                         style={styles.sketchMediaThumb}
-                        resizeMode="cover"
-                        fallbackText={media.name?.substring(0, 3)}
+                        isPc={false}
+                        serverPort={serverPort}
+                        pcAuthToken={pcAuthToken}
                       />
-                      {isVideoFile(media.ext) && (
-                        <View style={styles.sketchPlayBadge}>
-                          <Text style={{ color: '#ffffff', fontSize: 10 }}>▶</Text>
-                        </View>
-                      )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -4827,6 +5138,8 @@ export default function App() {
                                 index: idx >= 0 ? idx : 0,
                                 playlist: playlist.length > 0 ? playlist : [item],
                               });
+                            } else if (isDocumentFile(item.ext)) {
+                              openExternalFileOrChooser(item, 'pc');
                             } else {
                               setPcFileActionPrompt({
                                 file: item,
@@ -4897,6 +5210,8 @@ export default function App() {
                               index: idx >= 0 ? idx : 0,
                               playlist: playlist.length > 0 ? playlist : [item],
                             });
+                          } else if (isDocumentFile(item.ext)) {
+                            openExternalFileOrChooser(item, 'pc');
                           } else {
                             setPcFileActionPrompt({
                               file: item,
@@ -7431,29 +7746,34 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   bentoScrollDark: {
-    backgroundColor: '#000000',
+    backgroundColor: '#060a12',
   },
   bentoScrollLight: {
-    backgroundColor: '#F7F6F2',
+    backgroundColor: '#F3F4F8',
   },
   bentoCardHero: {
-    backgroundColor: '#0A0A0A',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
     borderRadius: 24,
     padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(37, 99, 235, 0.25)',
-    marginBottom: 12,
+    borderWidth: 1.2,
+    borderColor: 'rgba(56, 189, 248, 0.35)',
+    marginBottom: 14,
     position: 'relative',
     overflow: 'hidden',
+    shadowColor: '#38bdf8',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    elevation: 5,
   },
   bentoCardHeroLight: {
     backgroundColor: '#ffffff',
-    borderColor: 'rgba(26, 92, 74, 0.14)',
-    shadowColor: '#1A5C4A',
+    borderColor: 'rgba(37, 99, 235, 0.22)',
+    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 4,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -7629,35 +7949,44 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   sketchShareCard: {
-    backgroundColor: '#0A0A0A',
+    backgroundColor: 'rgba(30, 58, 138, 0.35)',
     borderRadius: 20,
     padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(37, 99, 235, 0.25)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(56, 189, 248, 0.35)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
   },
   sketchShareCardLight: {
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(37, 99, 235, 0.22)',
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
   },
   sketchShareIconWrap: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(37, 99, 235, 0.18)',
+    backgroundColor: '#2563eb',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#38bdf8',
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 4,
   },
   sketchShareIcon: {
     fontSize: 20,
-    color: '#3b82f6',
+    color: '#ffffff',
     fontWeight: '900',
   },
   sketchShareTitle: {
@@ -7670,28 +7999,34 @@ const styles = StyleSheet.create({
   },
   sketchShareSub: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: '#38bdf8',
+    fontWeight: '600',
     marginTop: 2,
   },
   sketchShareSubLight: {
-    color: '#64748b',
+    color: '#2563eb',
   },
   sketchClipboardCard: {
-    backgroundColor: '#0A0A0A',
+    backgroundColor: 'rgba(88, 28, 135, 0.28)',
     borderRadius: 20,
     padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(168, 85, 247, 0.35)',
     flex: 1,
     justifyContent: 'space-between',
+    shadowColor: '#a855f7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
   },
   sketchClipboardCardLight: {
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(147, 51, 234, 0.2)',
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: '#7c3aed',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
   },
   sketchClipboardHeader: {
@@ -7711,7 +8046,7 @@ const styles = StyleSheet.create({
   sketchCardLink: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563eb',
+    color: '#38bdf8',
   },
   sketchClipPreviewText: {
     fontSize: 11.5,
@@ -7723,14 +8058,18 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   sketchCopyBtn: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#7c3aed',
     borderRadius: 12,
     paddingVertical: 7,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#a855f7',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 3,
   },
   sketchCopyBtnLight: {
-    backgroundColor: '#1d4ed8',
+    backgroundColor: '#6d28d9',
   },
   sketchCopyBtnText: {
     color: '#ffffff',
@@ -7740,19 +8079,24 @@ const styles = StyleSheet.create({
   },
   sketchColRightCard: {
     flex: 1.15,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: 'rgba(15, 23, 42, 0.82)',
     borderRadius: 20,
     padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(56, 189, 248, 0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 3,
   },
   sketchColRightCardLight: {
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 6,
   },
   sketchShareHistoryHeader: {
@@ -7799,21 +8143,26 @@ const styles = StyleSheet.create({
 
   /* Sketch Cards 3 & 4 (Download from PC & Share to PC) */
   sketchSectionCard: {
-    backgroundColor: '#0A0A0A',
-    borderRadius: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.82)',
+    borderRadius: 22,
     padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginBottom: 12,
+    borderWidth: 1.2,
+    borderColor: 'rgba(56, 189, 248, 0.22)',
+    marginBottom: 14,
+    shadowColor: '#38bdf8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 3,
   },
   sketchSectionCardLight: {
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    borderColor: 'rgba(37, 99, 235, 0.16)',
+    elevation: 3,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
   },
   sketchSectionHeaderRow: {
     flexDirection: 'row',
@@ -7833,7 +8182,7 @@ const styles = StyleSheet.create({
   sketchSubHeader: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: '#3b82f6',
+    color: '#38bdf8',
     letterSpacing: 0.8,
     marginTop: 2,
   },
@@ -7857,7 +8206,11 @@ const styles = StyleSheet.create({
   },
   sketchCategoryPillActive: {
     backgroundColor: '#2563eb',
-    borderColor: '#3b82f6',
+    borderColor: '#38bdf8',
+    shadowColor: '#38bdf8',
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 2,
   },
   sketchCategoryPillActiveLight: {
     backgroundColor: '#2563eb',
@@ -7881,16 +8234,20 @@ const styles = StyleSheet.create({
   },
   sketchPcGridTile: {
     width: '23%',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
     borderRadius: 14,
     padding: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(56, 189, 248, 0.16)',
   },
   sketchPcGridTileLight: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    borderColor: 'rgba(37, 99, 235, 0.14)',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
   sketchTileIconBox: {
     width: 44,
@@ -7955,54 +8312,71 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   sketchMediaCard: {
-    width: 90,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 14,
-    padding: 6,
+    width: 96,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    borderRadius: 16,
+    padding: 7,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(56, 189, 248, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
   },
   sketchMediaCardLight: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    borderColor: 'rgba(37, 99, 235, 0.18)',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   sketchMediaThumbContainer: {
-    width: 78,
-    height: 78,
-    borderRadius: 10,
+    width: 82,
+    height: 82,
+    borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: '#1e293b',
+    backgroundColor: '#0f172a',
   },
   sketchMediaThumb: {
     width: '100%',
     height: '100%',
+    borderRadius: 12,
   },
   sketchPlayBadge: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    bottom: 5,
+    right: 5,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
     borderRadius: 8,
-    paddingHorizontal: 5,
+    paddingHorizontal: 6,
     paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
   },
   sketchMediaSendBtn: {
     marginTop: 6,
     width: '100%',
     backgroundColor: '#2563eb',
-    borderRadius: 8,
-    paddingVertical: 4,
+    borderRadius: 9,
+    paddingVertical: 5,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#38bdf8',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sketchMediaSendBtnLight: {
     backgroundColor: '#1d4ed8',
   },
   sketchMediaSendBtnText: {
     color: '#ffffff',
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '800',
   },
   sketchEmptyMediaPickBtn: {

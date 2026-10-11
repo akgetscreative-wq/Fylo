@@ -277,6 +277,18 @@
             display: flex;
             flex-direction: column;
             gap: 32px;
+            animation: fadeInView 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeInView {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .view-panel-hub {
@@ -744,26 +756,19 @@
         }
 
         #sidebar-qr-shelf {
-            margin-top: auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            padding: 16px;
-            background: rgba(0, 0, 0, 0.03);
-            border-radius: 24px;
-            border: 1px solid var(--border);
-            width: 100%;
+            display: none !important;
         }
 
-        #sidebar-qrcode svg {
-            width: 100% !important;
-            height: auto !important;
-            max-width: 140px;
+        #dash-qrcode svg {
+            width: 140px !important;
+            height: 140px !important;
             display: block;
-            background: white;
-            padding: 8px;
-            border-radius: 16px;
+        }
+
+        #phone-grid-qrcode svg {
+            width: 122px !important;
+            height: 122px !important;
+            display: block;
         }
 
         #sidebar-url {
@@ -3384,18 +3389,24 @@
         .dash-hero-drop {
             border: 2px dashed var(--accent);
             background: rgba(var(--accent-rgb), 0.05);
-            cursor: pointer;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
             text-align: center;
             min-height: 160px;
-            transition: all 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .dash-hero-drop:hover {
-            background: rgba(var(--accent-rgb), 0.1);
-            transform: scale(1.02);
+        .dash-hero-drop:not(.bento-card-expanded):hover {
+            background: rgba(var(--accent-rgb), 0.08);
+            transform: scale(1.01);
+        }
+
+        .dash-hero-drop.drag-over {
+            border-color: #3b82f6 !important;
+            background: rgba(59, 130, 246, 0.18) !important;
+            transform: scale(1.02) !important;
         }
 
         .drop-hero-content {
@@ -3403,8 +3414,161 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 24px 16px;
+            padding: 16px 12px;
             width: 100%;
+            flex: 1;
+            cursor: pointer;
+            border-radius: 16px;
+            transition: background 0.2s ease;
+        }
+
+        .drop-hero-content:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Expandable Bento Cards (Screen Cover & Smooth Minimise) */
+        .bento-expand-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            z-index: 1040;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .bento-expand-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .bento-close-btn {
+            display: none;
+        }
+
+        .bento-card.bento-card-expanded {
+            position: fixed !important;
+            top: 24px !important;
+            left: 24px !important;
+            right: 24px !important;
+            bottom: 24px !important;
+            width: calc(100vw - 48px) !important;
+            height: calc(100vh - 48px) !important;
+            max-width: none !important;
+            max-height: none !important;
+            z-index: 1050 !important;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border), 0 0 80px rgba(37, 99, 235, 0.15) !important;
+            backdrop-filter: blur(36px) !important;
+            -webkit-backdrop-filter: blur(36px) !important;
+            background: var(--card-bg) !important;
+            border-radius: 28px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            padding: 24px 28px !important;
+            overflow: hidden !important;
+            transform-origin: center center;
+            animation: bentoCardEnlarge 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+
+        @keyframes bentoCardEnlarge {
+            from {
+                opacity: 0.8;
+                transform: scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .bento-card.bento-card-expanded .bento-close-btn {
+            display: inline-flex !important;
+        }
+
+        .bento-card.bento-card-expanded .bento-card-header {
+            margin-bottom: 16px !important;
+            padding-bottom: 14px !important;
+            border-bottom: 1px solid var(--border) !important;
+        }
+
+        .bento-card.bento-card-expanded .bento-card-title {
+            font-size: 1.3rem !important;
+        }
+
+        /* Expanded Drop Hero Specifics */
+        .dash-hero-drop.bento-card-expanded {
+            border: 2px dashed var(--accent) !important;
+            background: rgba(37, 99, 235, 0.04) !important;
+        }
+
+        .dash-hero-drop.bento-card-expanded .drop-hero-content {
+            flex: 1 !important;
+            height: 100% !important;
+            max-height: none !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 40px !important;
+            border-radius: 20px !important;
+            background: rgba(255, 255, 255, 0.02) !important;
+            border: 1px dashed var(--border) !important;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .dash-hero-drop.bento-card-expanded .drop-hero-content:hover,
+        .dash-hero-drop.bento-card-expanded.drag-over .drop-hero-content {
+            background: rgba(37, 99, 235, 0.08) !important;
+            border-color: var(--accent) !important;
+        }
+
+        .dash-hero-drop.bento-card-expanded .drop-hero-icon-wrap {
+            width: 84px !important;
+            height: 84px !important;
+            margin-bottom: 20px !important;
+        }
+
+        .dash-hero-drop.bento-card-expanded .drop-hero-svg {
+            width: 44px !important;
+            height: 44px !important;
+        }
+
+        .dash-hero-drop.bento-card-expanded .drop-hero-title {
+            font-size: 1.6rem !important;
+            margin-bottom: 8px !important;
+        }
+
+        .dash-hero-drop.bento-card-expanded .drop-hero-sub {
+            font-size: 0.95rem !important;
+            max-width: 520px !important;
+            margin-bottom: 24px !important;
+            line-height: 1.5 !important;
+        }
+
+        .dash-hero-drop.bento-card-expanded .drop-hero-btn-row {
+            flex-direction: row !important;
+            max-width: 460px !important;
+            gap: 14px !important;
+        }
+
+        /* Expanded Shared Files Specifics */
+        .dash-card-shared.bento-card-expanded .dash-shared-list {
+            flex: 1 !important;
+            max-height: none !important;
+            overflow-y: auto !important;
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)) !important;
+            gap: 12px !important;
+            padding: 12px 4px !important;
+            align-content: start !important;
+        }
+
+        .dash-card-shared.bento-card-expanded .dash-shared-list .queue-item-row {
+            margin-bottom: 0 !important;
+            padding: 14px 16px !important;
         }
 
         .drop-hero-icon-wrap {
@@ -5279,6 +5443,9 @@
         </div>
     </div>
 
+    <!-- Bento Card Expand Backdrop -->
+    <div id="bento-expand-backdrop" class="bento-expand-backdrop" onclick="collapseExpandedBentoCard()"></div>
+
     <!-- Fylo v4: Startup Fullscreen Blue Gradient Landing Interface -->
     <div id="startup-landing" class="hidden-landing">
         <div class="landing-ambient-glow"></div>
@@ -5453,10 +5620,6 @@
                     <span>Settings</span>
                 </li>
             </ul>
-            <div class="sidebar-qr-container hidden" id="sidebar-qr-shelf">
-                <div id="sidebar-qrcode"></div>
-                <div id="sidebar-url"></div>
-            </div>
         </sidebar>
 
         <main class="main-content">
@@ -5544,9 +5707,23 @@
 
                 <!-- Bento Grid (Landscape-optimized, clean cards, real data only) -->
                 <div class="dash-bento-grid">
-                    <!-- 1. HERO DROP ZONE: Drag & Drop files anywhere to share instantly -->
-                    <div class="bento-card dash-hero-drop" id="dash-drop-hero" onclick="$('#file-input').click()">
-                        <div class="drop-hero-content">
+                    <!-- 1. HERO DROP ZONE: Share to PC / Drag & Drop files anywhere to share instantly -->
+                    <div class="bento-card dash-hero-drop" id="dash-drop-hero">
+                        <div class="bento-card-header" style="width: 100%; margin-bottom: 8px;">
+                            <div class="bento-card-title">
+                                <span class="card-header-icon">📤</span>
+                                <span id="dash-share-title">Share to PC</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <button class="bento-icon-btn bento-expand-btn" id="btn-expand-drop-hero" data-card="dash-drop-hero" title="Expand card (⛶)" onclick="event.stopPropagation(); toggleBentoCardExpand('dash-drop-hero')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="expand-icon-svg" style="width:14px; height:14px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                                </button>
+                                <button class="bento-icon-btn bento-close-btn" data-card="dash-drop-hero" title="Minimise card (Esc)" onclick="event.stopPropagation(); collapseExpandedBentoCard()">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:14px; height:14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="drop-hero-content" onclick="$('#file-input').click()">
                             <div class="drop-hero-icon-wrap">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="drop-hero-svg">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -5671,16 +5848,24 @@
                         </div>
                     </div>
 
-                    <!-- 3. REAL SHARED FILES QUEUE -->
-                    <div class="bento-card dash-card-shared" style="display: flex; flex-direction: column;">
+                    <!-- 3. REAL SHARED FILES QUEUE (Download from PC) -->
+                    <div class="bento-card dash-card-shared" id="dash-card-shared" style="display: flex; flex-direction: column;">
                         <div class="bento-card-header">
                             <div class="bento-card-title">
                                 <span class="card-header-icon">⚡</span>
-                                <span>Active Shared Files</span>
+                                <span id="dash-shared-header-title">Download from PC</span>
                             </div>
-                            <button class="bento-icon-btn" onclick="switchView('view-hub')" title="Open Share Hub">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-                            </button>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <button class="bento-icon-btn bento-expand-btn" id="btn-expand-shared-card" data-card="dash-card-shared" title="Expand card (⛶)" onclick="toggleBentoCardExpand('dash-card-shared')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="expand-icon-svg" style="width:14px; height:14px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                                </button>
+                                <button class="bento-icon-btn bento-close-btn" data-card="dash-card-shared" title="Minimise card (Esc)" onclick="collapseExpandedBentoCard()">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:14px; height:14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                                <button class="bento-icon-btn" onclick="switchView('view-hub')" title="Open Share Hub">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                                </button>
+                            </div>
                         </div>
                         <div class="dash-shared-list" id="dash-shared-list" style="flex: 1; overflow-y: auto; max-height: 380px;">
                             <div style="text-align: center; padding: 40px 16px; color: var(--text-light); font-size: 0.85rem;">
@@ -5721,17 +5906,25 @@
                             </button>
                         </div>
 
-                        <!-- Remembered Devices Card -->
-                        <div class="bento-card" id="dash-saved-devices-card" style="padding: 18px 20px;">
-                            <div class="bento-card-header">
+                        <!-- Square QR Code Tile: Instant Phone Pairing -->
+                        <div class="bento-card dash-card-qr-tile" id="dash-card-qr-tile" style="padding: 16px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px solid rgba(59, 130, 246, 0.28); background: var(--card-bg); box-shadow: var(--glass-shadow); border-radius: 20px;">
+                            <div class="bento-card-header" style="width: 100%; margin-bottom: 8px;">
                                 <div class="bento-card-title">
-                                    <span class="card-header-icon">💾</span>
-                                    <span>Remembered Devices</span>
+                                    <span class="card-header-icon">📷</span>
+                                    <span>Pair Phone</span>
                                 </div>
-                                <span class="dash-stat-badge" id="dash-saved-badge" style="font-size: 0.72rem;">0 Saved</span>
+                                <span class="dash-stat-badge live" style="font-size: 0.7rem; padding: 2px 7px;">Ready</span>
                             </div>
-                            <div id="dash-saved-devices-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-                                <span style="font-size: 0.8rem; color: var(--text-light); opacity: 0.7;">No remembered devices yet. Scan QR code from phone to pair.</span>
+
+                            <div class="dash-qr-square-box" style="width: 156px; height: 156px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.14); margin: 4px 0 8px 0; cursor: pointer;" onclick="showQRModal()" title="Click to view enlarged QR code">
+                                <div id="dash-qrcode" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
+                            </div>
+
+                            <div id="dash-qr-url" style="font-size: 0.78rem; font-weight: 800; color: var(--text); word-break: break-all; line-height: 1.2;">
+                                Ready
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--text-light); margin-top: 3px;">
+                                Scan with phone camera or Fylo app
                             </div>
                         </div>
 
@@ -7291,7 +7484,102 @@
             'view-apk': { icon: '📥', title: 'Get Fylo Android App', tagline: 'Native mobile app for full phone filesystem access & gallery browsing' }
         };
 
-        function switchView(targetId) {
+        // ==========================================
+        // Bento Cards Expand & Minimise Management
+        // ==========================================
+        let currentlyExpandedCardId = null;
+        const BENTO_EXPAND_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="expand-icon-svg" style="width:14px; height:14px;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`;
+        const BENTO_MINIMIZE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="expand-icon-svg" style="width:14px; height:14px;"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>`;
+
+        function toggleBentoCardExpand(cardId) {
+            if (currentlyExpandedCardId === cardId) {
+                collapseExpandedBentoCard();
+            } else {
+                expandBentoCard(cardId);
+            }
+        }
+
+        function expandBentoCard(cardId) {
+            if (currentlyExpandedCardId && currentlyExpandedCardId !== cardId) {
+                collapseExpandedBentoCard();
+            }
+            const card = document.getElementById(cardId);
+            if (!card) return;
+
+            card.classList.add('bento-card-expanded');
+            currentlyExpandedCardId = cardId;
+
+            const backdrop = $('#bento-expand-backdrop');
+            if (backdrop) backdrop.classList.add('active');
+
+            const btn = card.querySelector('.bento-expand-btn');
+            if (btn) {
+                btn.innerHTML = BENTO_MINIMIZE_SVG;
+                btn.title = "Minimise card (Esc)";
+                btn.setAttribute('aria-label', "Minimise card");
+            }
+
+            if (cardId === 'dash-card-shared' && typeof loadDashboardData === 'function') {
+                loadDashboardData();
+            }
+        }
+
+        function collapseExpandedBentoCard() {
+            if (!currentlyExpandedCardId) return false;
+
+            const card = document.getElementById(currentlyExpandedCardId);
+            if (card) {
+                card.classList.remove('bento-card-expanded');
+                const btn = card.querySelector('.bento-expand-btn');
+                if (btn) {
+                    btn.innerHTML = BENTO_EXPAND_SVG;
+                    btn.title = "Expand card (⛶)";
+                    btn.setAttribute('aria-label', "Expand card");
+                }
+            }
+
+            currentlyExpandedCardId = null;
+
+            const backdrop = $('#bento-expand-backdrop');
+            if (backdrop) backdrop.classList.remove('active');
+
+            return true;
+        }
+        window.toggleBentoCardExpand = toggleBentoCardExpand;
+        window.expandBentoCard = expandBentoCard;
+        window.collapseExpandedBentoCard = collapseExpandedBentoCard;
+
+        // ==========================================
+        // View Navigation with HTML5 History & Stack
+        // ==========================================
+        let currentViewId = 'view-dashboard';
+        let navHistoryStack = ['view-dashboard'];
+        let isNavigatingHistory = false;
+        window.currentActivePanel = 'view-dashboard';
+
+        function switchView(targetId, addToHistory = true) {
+            if (!targetId || !viewMeta[targetId]) {
+                targetId = 'view-dashboard';
+            }
+
+            // Always collapse expanded card when switching views
+            collapseExpandedBentoCard();
+
+            const previousView = currentViewId;
+
+            // HTML5 History API integration & internal stack tracking
+            if (addToHistory && !isNavigatingHistory && targetId !== previousView) {
+                navHistoryStack.push(targetId);
+                try {
+                    window.history.pushState({ view: targetId }, '', '#' + targetId);
+                } catch (e) {
+                    console.warn('pushState error:', e);
+                }
+            }
+
+            currentViewId = targetId;
+            window.currentActivePanel = targetId;
+
             // Smoothly hide landing when navigating to a view
             $('#startup-landing')?.classList.add('hidden-landing');
 
@@ -7320,8 +7608,10 @@
                 }
             }
 
-            // Show/hide view panels
-            document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
+            // Show/hide view panels smoothly
+            document.querySelectorAll('.view-panel').forEach(p => {
+                if (p.id !== targetId) p.classList.add('hidden');
+            });
             const targetPanel = $(`#${targetId}`);
             if (targetPanel) targetPanel.classList.remove('hidden');
 
@@ -7358,8 +7648,57 @@
         }
 
         function returnToDashboard() {
-            switchView('view-dashboard');
+            if (collapseExpandedBentoCard()) {
+                return;
+            }
+            const active = currentViewId || (document.querySelector('.view-panel:not(.hidden)')?.id) || 'view-dashboard';
+            if (active === 'view-dashboard') return;
+
+            // If we have history stack entries, pop using window.history.back() for smooth state rewind
+            if (window.history.length > 1 && navHistoryStack.length > 1) {
+                window.history.back();
+            } else {
+                switchView('view-dashboard');
+            }
         }
+
+        // Popstate handler for smooth browser / mouse / keyboard back navigation
+        window.addEventListener('popstate', (e) => {
+            isNavigatingHistory = true;
+            try {
+                if (collapseExpandedBentoCard()) {
+                    return;
+                }
+
+                const stateView = e.state && e.state.view;
+                const hashView = window.location.hash ? window.location.hash.replace('#', '') : null;
+                let targetView = stateView || hashView || 'view-dashboard';
+
+                if (!viewMeta[targetView]) {
+                    targetView = 'view-dashboard';
+                }
+
+                if (navHistoryStack.length > 1) {
+                    navHistoryStack.pop();
+                }
+
+                switchView(targetView, false);
+            } finally {
+                isNavigatingHistory = false;
+            }
+        });
+
+        // Initialize HTML5 History API state on initial page load
+        (function initNavHistory() {
+            const hash = window.location.hash ? window.location.hash.replace('#', '') : '';
+            const initial = (hash && viewMeta[hash]) ? hash : 'view-dashboard';
+            currentViewId = initial;
+            window.currentActivePanel = initial;
+            navHistoryStack = [initial];
+            try {
+                window.history.replaceState({ view: initial }, '', '#' + initial);
+            } catch (e) {}
+        })();
 
         function enterDashboard() {
             $('#startup-landing')?.classList.add('hidden-landing');
@@ -7524,7 +7863,10 @@
                             `;
                         } else {
                             listEl.innerHTML = '';
-                            sharedFiles.slice(0, 10).forEach(file => {
+                            const filesToRender = (typeof currentlyExpandedCardId !== 'undefined' && currentlyExpandedCardId === 'dash-card-shared')
+                                ? sharedFiles
+                                : sharedFiles.slice(0, 10);
+                            filesToRender.forEach(file => {
                                 const row = document.createElement('div');
                                 row.className = 'queue-item-row';
                                 row.style.display = 'flex';
@@ -7991,10 +8333,15 @@
             try {
                 const qrRes = await apiFetch('/api/qrcode');
                 const svg = await qrRes.text();
+                window._lastQrSvg = svg;
+
                 if ($('#qr-img')) $('#qr-img').src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 
-                const shelfQr = $('#sidebar-qrcode');
-                if (shelfQr) shelfQr.innerHTML = svg;
+                const dashQr = $('#dash-qrcode');
+                if (dashQr) dashQr.innerHTML = svg;
+
+                const phoneGridQr = $('#phone-grid-qrcode');
+                if (phoneGridQr) phoneGridQr.innerHTML = svg;
 
                 const studioQr = $('#phone-pairing-qrcode');
                 if (studioQr) studioQr.innerHTML = svg;
@@ -8003,7 +8350,15 @@
                 if (landingQr) landingQr.innerHTML = svg;
 
                 const info = await (await apiFetch('/api/network-url')).json();
+                window._lastNetworkUrl = info.url;
+
                 if ($('#lan-url')) $('#lan-url').textContent = info.url;
+
+                const dashUrl = $('#dash-qr-url');
+                if (dashUrl) dashUrl.textContent = info.url;
+
+                const phoneGridUrl = $('#phone-grid-qr-url');
+                if (phoneGridUrl) phoneGridUrl.textContent = info.url;
 
                 const studioUrl = $('#pairing-studio-url');
                 if (studioUrl) studioUrl.textContent = info.url;
@@ -8069,15 +8424,6 @@
                 const mobilePcName = $('#mobile-pc-name');
                 if (mobilePcName) {
                     mobilePcName.textContent = me.name || (isHost ? 'Fylo Host PC' : 'Fylo PC');
-                }
-
-                const shelf = $('#sidebar-qr-shelf');
-                if (shelf) {
-                    if (!isHost) {
-                        shelf.classList.add('hidden');
-                    } else {
-                        shelf.classList.remove('hidden');
-                    }
                 }
 
                 const netSelectContainer = $('#network-select-container');
@@ -9696,6 +10042,29 @@ function iconLabel(ext, type) {
 
                 grid.appendChild(card);
             });
+
+            // Append Pair Phone QR tile into Phone Sync Grid
+            const qrCard = document.createElement('div');
+            qrCard.className = 'phone-card-item card phone-qr-tile';
+            qrCard.style.cssText = 'padding: 22px; border-radius: 20px; background: var(--card-bg); border: 2px dashed rgba(59, 130, 246, 0.45); box-shadow: var(--glass-shadow); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; cursor: pointer; min-height: 220px;';
+            qrCard.onclick = () => showQRModal();
+            qrCard.title = 'Click to view full screen QR code';
+            qrCard.innerHTML = `
+                <div style="font-weight: 800; font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: 8px;">
+                    <span>📱</span> <span>Scan to Pair Phone</span>
+                </div>
+                <div class="dash-qr-square-box" style="width: 136px; height: 136px; background: #ffffff; padding: 7px; border-radius: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0,0,0,0.12); margin: 4px 0;">
+                    <div id="phone-grid-qrcode" style="width: 122px; height: 122px; display: flex; align-items: center; justify-content: center;"></div>
+                </div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: var(--text);" id="phone-grid-qr-url">${window._lastNetworkUrl || 'Ready'}</div>
+                <div style="font-size: 0.72rem; color: var(--text-light);">Scan with Android camera or Fylo App</div>
+            `;
+            grid.appendChild(qrCard);
+
+            if (window._lastQrSvg) {
+                const el = $('#phone-grid-qrcode');
+                if (el) el.innerHTML = window._lastQrSvg;
+            }
         }
 
         function selectPhoneToBrowse(deviceOrId) {
@@ -11002,9 +11371,14 @@ function iconLabel(ext, type) {
         }
 
         // ==========================================
-        // Global Mouse Back / Forward Navigation
+        // Global Mouse & Keyboard Back / Forward Navigation
         // ==========================================
         function handleGlobalGoBack() {
+            // 0. If any bento card is expanded on dashboard, collapse it first
+            if (typeof collapseExpandedBentoCard === 'function' && collapseExpandedBentoCard()) {
+                return;
+            }
+
             // 1. If media viewer modal is open, close it
             const mediaModal = $('#media-preview-modal');
             if (mediaModal && !mediaModal.classList.contains('hidden')) {
@@ -11026,49 +11400,67 @@ function iconLabel(ext, type) {
                 return;
             }
 
-            // 4. In PC Explorer view: go back one folder or to dashboard
-            if (currentActivePanel === 'view-pc-explorer') {
+            const activePanel = (typeof currentViewId !== 'undefined' && currentViewId) || 
+                                (typeof currentActivePanel !== 'undefined' && currentActivePanel) || 
+                                document.querySelector('.view-panel:not(.hidden)')?.id || 
+                                'view-dashboard';
+
+            // 4. In PC Explorer view: go back one folder or to previous view/dashboard
+            if (activePanel === 'view-pc-explorer') {
                 const pcBackBtn = $('#pc-back-btn');
                 if (pcBackBtn && !pcBackBtn.disabled) {
                     pcBackBtn.click();
-                } else {
-                    switchView('view-dashboard');
+                    return;
                 }
-                return;
             }
 
             // 5. In Phone Explorer view: go back one folder or to phone list / dashboard
-            if (currentActivePanel === 'view-phone') {
-                if (isBrowsingPhone) {
+            if (activePanel === 'view-phone') {
+                if (typeof isBrowsingPhone !== 'undefined' && isBrowsingPhone) {
                     const phoneBackBtn = $('#phone-back-btn');
                     if (phoneBackBtn && !phoneBackBtn.disabled) {
                         phoneBackBtn.click();
-                    } else {
+                        return;
+                    } else if (typeof returnToPhoneList === 'function') {
                         returnToPhoneList();
+                        return;
                     }
+                }
+            }
+
+            // 6. Navigation between views: smoothly return to previous view or dashboard
+            if (activePanel !== 'view-dashboard') {
+                if (window.history.length > 1 && typeof navHistoryStack !== 'undefined' && navHistoryStack.length > 1) {
+                    window.history.back();
                 } else {
                     switchView('view-dashboard');
                 }
                 return;
-            }
-
-            // 6. Any other panel: switch back to dashboard
-            if (currentActivePanel !== 'view-dashboard') {
-                switchView('view-dashboard');
             }
         }
 
         function handleGlobalGoForward() {
-            if (currentActivePanel === 'view-pc-explorer') {
+            const activePanel = (typeof currentViewId !== 'undefined' && currentViewId) || 
+                                (typeof currentActivePanel !== 'undefined' && currentActivePanel) || 
+                                document.querySelector('.view-panel:not(.hidden)')?.id || 
+                                'view-dashboard';
+
+            if (activePanel === 'view-pc-explorer') {
                 const pcFwdBtn = $('#pc-fwd-btn');
                 if (pcFwdBtn && !pcFwdBtn.disabled) {
                     pcFwdBtn.click();
+                    return;
                 }
-            } else if (currentActivePanel === 'view-phone') {
+            } else if (activePanel === 'view-phone') {
                 const phoneFwdBtn = $('#phone-fwd-btn');
                 if (phoneFwdBtn && !phoneFwdBtn.disabled) {
                     phoneFwdBtn.click();
+                    return;
                 }
+            }
+
+            if (window.history.length > 1) {
+                window.history.forward();
             }
         }
 
@@ -11078,7 +11470,7 @@ function iconLabel(ext, type) {
             ipcRenderer.on('mouse-forward', handleGlobalGoForward);
         }
 
-        // Web Browser / Electron window mouse buttons listener (button 3 is XButton1 / Back)
+        // Web Browser / Electron window mouse buttons listener (button 3 is XButton1 / Back, button 4 is Forward)
         window.addEventListener('mouseup', (e) => {
             if (e.button === 3) {
                 e.preventDefault();
@@ -11088,6 +11480,59 @@ function iconLabel(ext, type) {
                 e.preventDefault();
                 e.stopPropagation();
                 handleGlobalGoForward();
+            }
+        });
+
+        window.addEventListener('auxclick', (e) => {
+            if (e.button === 3) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleGlobalGoBack();
+            } else if (e.button === 4) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleGlobalGoForward();
+            }
+        });
+
+        // Global Keyboard Back / Escape / Alt+Arrow Navigation
+        window.addEventListener('keydown', (e) => {
+            const target = e.target;
+            const isTyping = target && (
+                target.tagName === 'INPUT' ||
+                target.tagName === 'TEXTAREA' ||
+                target.tagName === 'SELECT' ||
+                target.isContentEditable ||
+                (target.getAttribute && target.getAttribute('contenteditable') === 'true')
+            );
+
+            // Escape key closes expanded cards first
+            if (e.key === 'Escape') {
+                if (typeof collapseExpandedBentoCard === 'function' && collapseExpandedBentoCard()) {
+                    e.preventDefault();
+                    return;
+                }
+            }
+
+            // Alt + Left Arrow (Standard browser back)
+            if (e.altKey && e.key === 'ArrowLeft') {
+                e.preventDefault();
+                handleGlobalGoBack();
+                return;
+            }
+
+            // Alt + Right Arrow (Standard browser forward)
+            if (e.altKey && e.key === 'ArrowRight') {
+                e.preventDefault();
+                handleGlobalGoForward();
+                return;
+            }
+
+            // Backspace when not typing in text fields
+            if (e.key === 'Backspace' && !isTyping) {
+                e.preventDefault();
+                handleGlobalGoBack();
+                return;
             }
         });
 
