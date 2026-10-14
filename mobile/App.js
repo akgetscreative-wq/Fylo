@@ -3696,7 +3696,7 @@ export default function App() {
     }
 
     // Document files (PDF, DOCX, XLSX, TXT, etc.): Directly open in system app chooser (Google Drive, Adobe, Word)
-    if (isDocumentFile(fileExt)) {
+    if (isDocumentFile(ext)) {
       openExternalFileOrChooser({
         ...file,
         path: resolvedPath,
