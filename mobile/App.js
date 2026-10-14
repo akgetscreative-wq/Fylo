@@ -7247,7 +7247,7 @@ export default function App() {
                   </TouchableOpacity>
                 </View>
               </View>
-            ) : (
+            ) : pairModalTab === 'manual' ? (
               <View>
                 <Text style={[styles.modalSubtitle, !isDarkMode && styles.modalSubtitleLight]}>
                   Enter the Host IP and Port displayed in your Fylo PC application:
