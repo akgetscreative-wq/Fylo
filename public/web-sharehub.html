@@ -932,6 +932,11 @@
       peer.on('open', (id) => {
         console.log('PeerJS initialized with ID:', id);
         updateStatus('waiting', 'Waiting for peer...');
+        if (pendingTargetPin) {
+          const target = pendingTargetPin;
+          pendingTargetPin = null;
+          connectToPin(target);
+        }
       });
 
       peer.on('connection', (conn) => {
@@ -1037,6 +1042,8 @@
       }
     }
 
+    let pendingTargetPin = null;
+
     // --- Connect to Room ---
     function connectToPin(pin) {
       if (!pin || pin.length !== 6 || !/^\d+$/.test(pin)) {
@@ -1049,15 +1056,30 @@
         return;
       }
 
+      if (!peer || peer.destroyed || !peer.open) {
+        console.log('Peer not open yet, queueing connection to:', pin);
+        pendingTargetPin = pin;
+        updateStatus('waiting', `Preparing connection to ${pin}...`);
+        if (!peer || peer.destroyed) {
+          initPeer(myPin || generatePin());
+        }
+        return;
+      }
+
       updateStatus('waiting', `Connecting to ${pin}...`);
       const targetPeerId = `${PEER_PREFIX}${pin}`;
       
-      const conn = peer.connect(targetPeerId, {
-        reliable: true,
-        serialization: 'none'
-      });
+      try {
+        const conn = peer.connect(targetPeerId, {
+          reliable: true,
+          serialization: 'none'
+        });
 
-      setupConnection(conn);
+        setupConnection(conn);
+      } catch (e) {
+        console.error('peer.connect error:', e);
+        showToast('Failed to initiate connection: ' + e.message, 'error');
+      }
     }
 
     // --- File Sending Protocol & Backpressure ---

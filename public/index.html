@@ -8115,9 +8115,14 @@
             }
         };
 
+        let pcWebPendingRemotePin = null;
+
         function setupPcWebPeer() {
             if (typeof Peer === 'undefined') return;
             const peerId = `${PC_PEER_PREFIX}${pcWebPin}`;
+            if (pcWebPeer && !pcWebPeer.destroyed && pcWebPeer.open) {
+                return;
+            }
             if (pcWebPeer && !pcWebPeer.destroyed) {
                 try { pcWebPeer.destroy(); } catch(e) {}
             }
@@ -8125,6 +8130,11 @@
                 pcWebPeer = new Peer(peerId, { config: PC_ICE_CONFIG, debug: 1 });
                 pcWebPeer.on('open', () => {
                     pcWebUpdateStatus('waiting', 'Ready for phone to connect');
+                    if (pcWebPendingRemotePin) {
+                        const target = pcWebPendingRemotePin;
+                        pcWebPendingRemotePin = null;
+                        window.pcWebJoinRoom(target);
+                    }
                 });
                 pcWebPeer.on('connection', (conn) => {
                     pcWebHandleConnection(conn);
@@ -8234,9 +8244,9 @@
             showToast(`Generated new Room PIN: ${pcWebPin}`);
         };
 
-        window.pcWebJoinRoom = function() {
+        window.pcWebJoinRoom = function(customPin) {
             const input = document.getElementById('pc-web-join-input');
-            const targetPin = (input?.value || '').trim();
+            const targetPin = (customPin || input?.value || '').trim();
             if (!/^\d{6}$/.test(targetPin)) {
                 showToast("Please enter a valid 6-digit PIN");
                 return;
@@ -8245,14 +8255,25 @@
                 showToast("Cannot connect to your own PIN");
                 return;
             }
-            if (!pcWebPeer || pcWebPeer.destroyed) {
-                setupPcWebPeer();
+            if (!pcWebPeer || pcWebPeer.destroyed || !pcWebPeer.open) {
+                pcWebPendingRemotePin = targetPin;
+                if (!pcWebPeer || pcWebPeer.destroyed) {
+                    setupPcWebPeer();
+                }
+                showToast(`Queueing connection to ${targetPin}...`);
+                pcWebUpdateStatus('waiting', `Preparing connection to Room ${targetPin}...`);
+                return;
             }
             const remotePeerId = `${PC_PEER_PREFIX}${targetPin}`;
             showToast(`Connecting to Room ${targetPin}...`);
             pcWebUpdateStatus('waiting', `Connecting to Room ${targetPin}...`);
-            const conn = pcWebPeer.connect(remotePeerId, { reliable: true, serialization: 'none' });
-            pcWebHandleConnection(conn);
+            try {
+                const conn = pcWebPeer.connect(remotePeerId, { reliable: true, serialization: 'none' });
+                pcWebHandleConnection(conn);
+            } catch (err) {
+                console.warn('pcWebJoinRoom error:', err);
+                showToast('Failed to connect: ' + err.message);
+            }
         };
 
         window.pcWebDisconnectSession = function() {
