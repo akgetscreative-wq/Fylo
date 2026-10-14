@@ -7130,12 +7130,11 @@ export default function App() {
                         gap: 8,
                       }}
                       onPress={() => {
-                        setShowPairModal(false);
-                        handleOpenWebShare();
+                        setPairModalTab('web');
                       }}>
                       <Text style={{ fontSize: 16 }}>🌐</Text>
                       <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>
-                        No PC on Wi-Fi? Connect via Web
+                        No PC on Wi-Fi? Connect via Web PIN
                       </Text>
                     </TouchableOpacity>
                   </View>
