@@ -41,6 +41,9 @@ import android.media.MediaScannerConnection;
 import android.webkit.MimeTypeMap;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
+import android.webkit.WebChromeClient;
+import android.webkit.PermissionRequest;
+import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.os.Handler;
 import android.os.Looper;
@@ -1957,6 +1960,7 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
     private long mCurrentInboundReceivedBytes = 0;
     private FileOutputStream mInboundFileOutputStream = null;
     private File mInboundTargetFile = null;
+    private final List<Runnable> mPendingBridgeTasks = new ArrayList<>();
 
     private void ensureWebBridge(final Runnable onReady) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
@@ -1970,6 +1974,28 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                         settings.setDomStorageEnabled(true);
                         settings.setAllowFileAccess(true);
                         settings.setAllowContentAccess(true);
+                        settings.setAllowFileAccessFromFileURLs(true);
+                        settings.setAllowUniversalAccessFromFileURLs(true);
+                        settings.setDatabaseEnabled(true);
+                        settings.setMediaPlaybackRequiresUserGesture(false);
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                        }
+                        mWebBridgeView.setWebChromeClient(new WebChromeClient() {
+                            @Override
+                            public void onPermissionRequest(final PermissionRequest request) {
+                                try {
+                                    request.grant(request.getResources());
+                                } catch (Throwable t) {
+                                    Log.e(TAG, "onPermissionRequest grant error: " + t.getMessage());
+                                }
+                            }
+                            @Override
+                            public boolean onConsoleMessage(ConsoleMessage cm) {
+                                Log.d(TAG, "[WebRTCBridgeJS] " + (cm != null ? cm.message() : "") + " (line " + (cm != null ? cm.lineNumber() : 0) + ")");
+                                return true;
+                            }
+                        });
                         mWebBridgeView.addJavascriptInterface(new WebBridgeInterface(), "AndroidBridge");
                         mWebBridgeView.loadUrl("file:///android_asset/webrtc_bridge.html");
                     } catch (Throwable t) {
@@ -1980,11 +2006,35 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                     if (mIsWebBridgeReady) {
                         onReady.run();
                     } else {
-                        new Handler(Looper.getMainLooper()).postDelayed(onReady, 600);
+                        synchronized (mPendingBridgeTasks) {
+                            mPendingBridgeTasks.add(onReady);
+                        }
+                        // Fallback flush after 2.5s in case onBridgeReady callback was missed
+                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                flushPendingBridgeTasks();
+                            }
+                        }, 2500);
                     }
                 }
             }
         });
+    }
+
+    private void flushPendingBridgeTasks() {
+        List<Runnable> tasksToRun = new ArrayList<>();
+        synchronized (mPendingBridgeTasks) {
+            tasksToRun.addAll(mPendingBridgeTasks);
+            mPendingBridgeTasks.clear();
+        }
+        for (Runnable r : tasksToRun) {
+            try {
+                r.run();
+            } catch (Throwable t) {
+                Log.e(TAG, "Error executing pending bridge task: " + t.getMessage(), t);
+            }
+        }
     }
 
     private class WebBridgeInterface {
@@ -1992,6 +2042,12 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         public void onBridgeReady() {
             mIsWebBridgeReady = true;
             Log.d(TAG, "WebRTC bridge HTML ready");
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+                @Override
+                public void run() {
+                    flushPendingBridgeTasks();
+                }
+            });
         }
 
         @JavascriptInterface

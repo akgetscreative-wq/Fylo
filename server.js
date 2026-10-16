@@ -562,7 +562,12 @@ app.get('/api/me', (req, res) => {
 });
 
 app.get('/api/qrcode', (req, res) => {
-    qrcode.toString(getSecureAccessUrl(), { type: 'svg', margin: 1 }, (err, svg) => {
+    let accessUrl = getSecureAccessUrl();
+    if (req.query.webpin && /^\d{6}$/.test(String(req.query.webpin).trim())) {
+        const cleanPin = String(req.query.webpin).trim();
+        accessUrl += (accessUrl.includes('?') ? '&' : '?') + 'webpin=' + encodeURIComponent(cleanPin);
+    }
+    qrcode.toString(accessUrl, { type: 'svg', margin: 1 }, (err, svg) => {
         if (err) return res.status(500).send('');
         res.type('image/svg+xml').send(svg);
     });

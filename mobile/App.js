@@ -2318,7 +2318,7 @@ export default function App() {
   // =========================================================
   // REQUIREMENT 6: REMOVE ANNOYING POPUPS (Non-blocking Toasts)
   // =========================================================
-  const handleConnectToPc = async (pcIp, token) => {
+  const handleConnectToPc = async (pcIp, token, webPin) => {
     if (!pcIp) {
       showToast('⚠️ Please enter PC address');
       return;
@@ -2409,7 +2409,12 @@ export default function App() {
         showToast(`⚠️ Pairing Failed: ${data?.error || 'PC rejected pairing request.'}`);
       }
     } catch (e) {
-      showToast(`⚠️ Connection Failed: Could not reach ${host}:${port}`);
+      if (webPin && /^\d{6}$/.test(webPin)) {
+        showToast(`🌐 Local Wi-Fi unreachable. Seamlessly connecting via Web P2P (PIN: ${webPin})...`);
+        handleConnectWebPeer(webPin);
+      } else {
+        showToast(`⚠️ Connection Failed: Could not reach ${host}:${port}`);
+      }
     }
   };
 
@@ -2428,17 +2433,22 @@ export default function App() {
       }
 
       // 2. Web room / PIN format check (e.g. fylo://pair?mode=web&pin=123456 or room=123456 or fylo-web:123456)
-      if (clean.includes('pin=') || clean.includes('room=') || clean.includes('web-sharehub') || clean.includes('fylo-web')) {
-        const match = clean.match(/(?:pin=|room=|fylo-web:)(\d{6})/);
+      if (clean.includes('pin=') || clean.includes('room=') || clean.includes('web-sharehub') || clean.includes('fylo-web') || clean.includes('webpin=')) {
+        const match = clean.match(/(?:pin=|room=|fylo-web:|webpin=)(\d{6})/);
         if (match && match[1]) {
-          handleConnectWebPeer(match[1]);
-          return;
+          const extractedPin = match[1];
+          // If it doesn't contain a host IP, directly connect via Web P2P
+          if (!clean.includes('http://') && !clean.includes('https://') && !clean.includes(':3000')) {
+            handleConnectWebPeer(extractedPin);
+            return;
+          }
         }
       }
 
       let host = '';
       let port = '3000';
       let token = '';
+      let embeddedWebPin = '';
 
       try {
         const urlStr = (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('fylo://'))
@@ -2450,6 +2460,7 @@ export default function App() {
           host = parsed.hostname;
           port = parsed.port || '3000';
           token = parsed.searchParams.get('auth') || parsed.searchParams.get('token') || '';
+          embeddedWebPin = parsed.searchParams.get('webpin') || parsed.searchParams.get('pin') || '';
         } else {
           throw new Error('URL not globally defined');
         }
@@ -2468,16 +2479,22 @@ export default function App() {
           try {
             const match = queryPart.match(/(?:auth|token)=([^&]+)/i);
             if (match && match[1]) token = decodeURIComponent(match[1]);
+            const pMatch = queryPart.match(/(?:webpin|pin)=(\d{6})/i);
+            if (pMatch && pMatch[1]) embeddedWebPin = pMatch[1];
           } catch (ignored) {}
         }
       }
 
       if (!host) {
+        if (embeddedWebPin && /^\d{6}$/.test(embeddedWebPin)) {
+          handleConnectWebPeer(embeddedWebPin);
+          return;
+        }
         showToast('⚠️ Invalid connection code format');
         return;
       }
 
-      handleConnectToPc(`${host}:${port}`, token);
+      handleConnectToPc(`${host}:${port}`, token, embeddedWebPin);
     } catch (err) {
       console.warn('handleParseAndConnectQr error:', err);
       showToast('⚠️ Could not process QR code');
@@ -2992,6 +3009,23 @@ export default function App() {
       }
     });
 
+    const subWebReady = DeviceEventEmitter.addListener('onWebPeerReady', (data) => {
+      console.log('WebRTC Peer ready:', data?.peerId);
+      addLog(`Web P2P ready (${data?.peerId})`);
+    });
+
+    const subWebError = DeviceEventEmitter.addListener('onWebPeerError', (data) => {
+      const err = data?.error || 'Connection error';
+      console.warn('WebRTC Peer error:', err);
+      if (err.includes('peer-unavailable')) {
+        showToast('⚠️ PC not found with that PIN. Ensure PC Fylo is open.');
+        addLog('Web P2P: PC peer unavailable for given PIN');
+      } else {
+        showToast(`⚠️ Web P2P: ${err}`);
+        addLog(`Web P2P error: ${err}`);
+      }
+    });
+
     if (FyloModule && FyloModule.initWebBridge) {
       FyloModule.initWebBridge().catch(() => {});
     }
@@ -3008,6 +3042,8 @@ export default function App() {
       subWebFileReceived.remove();
       subWebSendProgress.remove();
       subWebReceiveProgress.remove();
+      subWebReady.remove();
+      subWebError.remove();
       if (FyloModule && FyloModule.stopDiscovery) {
         FyloModule.stopDiscovery().catch(() => {});
       }

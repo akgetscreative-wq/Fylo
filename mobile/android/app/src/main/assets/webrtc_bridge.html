@@ -12,7 +12,19 @@
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' }
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                {
+                    urls: [
+                        'stun:openrelay.metered.ca:80',
+                        'turn:openrelay.metered.ca:80',
+                        'turn:openrelay.metered.ca:80?transport=tcp',
+                        'turn:openrelay.metered.ca:443',
+                        'turn:openrelay.metered.ca:443?transport=tcp'
+                    ],
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
             ]
         };
 
@@ -30,8 +42,17 @@
         let pendingRemotePeerId = null;
 
         window.initPeer = function(customPeerId) {
+            if (typeof Peer === 'undefined') {
+                log('PeerJS not yet defined, retrying in 300ms...');
+                setTimeout(() => window.initPeer(customPeerId), 300);
+                return;
+            }
             myPeerId = customPeerId || ('fylo-phone-' + Math.floor(100000 + Math.random() * 900000));
             if (peer && !peer.destroyed && peer.open) {
+                log('Peer already open: ' + peer.id);
+                if (window.AndroidBridge && window.AndroidBridge.onPeerReady) {
+                    window.AndroidBridge.onPeerReady(peer.id);
+                }
                 return;
             }
             if (peer && !peer.destroyed) {
@@ -39,7 +60,15 @@
             }
 
             try {
-                peer = new Peer(myPeerId, { config: ICE_CONFIG, debug: 1 });
+                peer = new Peer(myPeerId, {
+                    host: '0.peerjs.com',
+                    port: 443,
+                    path: '/',
+                    secure: true,
+                    pingInterval: 5000,
+                    config: ICE_CONFIG,
+                    debug: 1
+                });
 
                 peer.on('open', (id) => {
                     log('Peer open: ' + id);
@@ -58,14 +87,28 @@
                     setupConnection(conn);
                 });
 
+                peer.on('disconnected', () => {
+                    log('Peer disconnected from signaling. Reconnecting...');
+                    if (peer && !peer.destroyed) {
+                        try { peer.reconnect(); } catch(e) { window.initPeer(); }
+                    }
+                });
+
                 peer.on('error', (err) => {
-                    log('Peer error: ' + (err ? err.message || err.type : 'unknown'));
+                    const errStr = err ? (err.type || err.message || String(err)) : 'unknown';
+                    log('Peer error: ' + errStr);
                     if (window.AndroidBridge && window.AndroidBridge.onPeerError) {
-                        window.AndroidBridge.onPeerError(String(err));
+                        window.AndroidBridge.onPeerError(errStr);
+                    }
+                    if (errStr === 'unavailable-id') {
+                        setTimeout(() => window.initPeer(), 1000);
                     }
                 });
             } catch(e) {
                 log('Init peer error: ' + e);
+                if (window.AndroidBridge && window.AndroidBridge.onPeerError) {
+                    window.AndroidBridge.onPeerError(String(e));
+                }
             }
         };
 
@@ -235,6 +278,7 @@
             if (window.AndroidBridge && window.AndroidBridge.onBridgeReady) {
                 window.AndroidBridge.onBridgeReady();
             }
+            window.initPeer();
         };
     </script>
 </body>

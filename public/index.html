@@ -5950,8 +5950,12 @@
                                 <div id="dash-qr-url" style="font-size: 0.78rem; font-weight: 800; color: var(--text); word-break: break-all; line-height: 1.2;">
                                     Ready
                                 </div>
-                                <div style="font-size: 0.72rem; color: var(--text-light); margin-top: 3px;">
-                                    Scan with phone camera or Fylo app on same Wi-Fi
+                                <div style="margin-top: 6px; padding: 3px 10px; border-radius: 9px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.28); display: inline-flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-light);">🌐 Web PIN:</span>
+                                    <span id="dash-lan-web-pin" style="font-size: 0.95rem; font-weight: 900; letter-spacing: 2px; color: #38bdf8;">------</span>
+                                </div>
+                                <div style="font-size: 0.72rem; color: var(--text-light); margin-top: 4px;">
+                                    Scan QR with Fylo app or enter Web PIN
                                 </div>
                             </div>
 
@@ -7948,33 +7952,47 @@
                     }
                 }
 
+                if (connectedDev.isWebClient) {
+                    freeText = 'Web P2P Channel Online';
+                    percentUsed = 100;
+                }
+
                 if (internalFree) internalFree.textContent = freeText;
                 if (internalFill) internalFill.style.width = `${percentUsed}%`;
-                if (internalSub) internalSub.textContent = 'Click to browse phone files';
+                if (internalSub) internalSub.textContent = connectedDev.isWebClient ? 'Drag & drop files to share to phone via Web' : 'Click to browse phone files';
 
                 if (tileInternal) {
-                    tileInternal.onclick = () => openPhoneFolder('/storage/emulated/0');
+                    tileInternal.onclick = connectedDev.isWebClient ? () => switchView('view-web-sharehub') : () => openPhoneFolder('/storage/emulated/0');
                 }
                 if (tileMedia) {
-                    tileMedia.onclick = () => openPhoneFolder('/storage/emulated/0/DCIM');
+                    tileMedia.onclick = connectedDev.isWebClient ? () => switchView('view-web-sharehub') : () => openPhoneFolder('/storage/emulated/0/DCIM');
                 }
 
                 // Shortcuts
-                if (shortcutsCaption) shortcutsCaption.textContent = 'Phone Folders';
+                if (shortcutsCaption) shortcutsCaption.textContent = connectedDev.isWebClient ? 'Web Sharing' : 'Phone Folders';
                 if (quickChips) quickChips.style.display = 'grid';
                 if (shortcutsEmpty) shortcutsEmpty.style.display = 'none';
 
                 // Wire shortcut chips
                 document.querySelectorAll('#dash-phone-quick-chips .quick-chip-btn').forEach(btn => {
                     btn.onclick = () => {
-                        const folder = btn.getAttribute('data-phone-folder');
-                        openPhoneFolder(folder || '/storage/emulated/0');
+                        if (connectedDev.isWebClient) {
+                            switchView('view-web-sharehub');
+                        } else {
+                            const folder = btn.getAttribute('data-phone-folder');
+                            openPhoneFolder(folder || '/storage/emulated/0');
+                        }
                     };
                 });
 
                 // Show phone disconnect button in header
                 const phoneDisconnectBtn = $('#dash-phone-disconnect-btn');
-                if (phoneDisconnectBtn) phoneDisconnectBtn.style.display = 'inline-flex';
+                if (phoneDisconnectBtn) {
+                    phoneDisconnectBtn.style.display = 'inline-flex';
+                    phoneDisconnectBtn.onclick = connectedDev.isWebClient
+                        ? () => { if (typeof pcWebDisconnectSession === 'function') pcWebDisconnectSession(); }
+                        : () => disconnectConnectedPhone();
+                }
             } else {
                 // Disconnected state
                 if (modelLabel) {
@@ -8031,7 +8049,19 @@
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' }
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                {
+                    urls: [
+                        'stun:openrelay.metered.ca:80',
+                        'turn:openrelay.metered.ca:80',
+                        'turn:openrelay.metered.ca:80?transport=tcp',
+                        'turn:openrelay.metered.ca:443',
+                        'turn:openrelay.metered.ca:443?transport=tcp'
+                    ],
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
             ]
         };
 
@@ -8054,6 +8084,9 @@
 
             const dashPinVal = document.getElementById('dash-web-pin-val');
             if (dashPinVal) dashPinVal.textContent = pcWebPin;
+
+            const lanWebPin = document.getElementById('dash-lan-web-pin');
+            if (lanWebPin) lanWebPin.textContent = pcWebPin;
 
             // Render QR Code in native view and dashboard
             try {
@@ -8088,6 +8121,11 @@
                 console.warn('pcWeb QR error:', e);
             }
 
+            // Also reload network QR info so the primary QR embeds the webpin
+            if (typeof loadNetworkInfo === 'function') {
+                loadNetworkInfo().catch(() => {});
+            }
+
             if (!pcWebPeer || pcWebPeer.destroyed) {
                 setupPcWebPeer();
             }
@@ -8118,7 +8156,14 @@
         let pcWebPendingRemotePin = null;
 
         function setupPcWebPeer() {
-            if (typeof Peer === 'undefined') return;
+            if (typeof Peer === 'undefined') {
+                console.warn('PeerJS library not yet loaded, retrying setupPcWebPeer in 500ms...');
+                setTimeout(setupPcWebPeer, 500);
+                return;
+            }
+            if (!pcWebPin) {
+                pcWebPin = pcWebGeneratePin();
+            }
             const peerId = `${PC_PEER_PREFIX}${pcWebPin}`;
             if (pcWebPeer && !pcWebPeer.destroyed && pcWebPeer.open) {
                 return;
@@ -8127,8 +8172,17 @@
                 try { pcWebPeer.destroy(); } catch(e) {}
             }
             try {
-                pcWebPeer = new Peer(peerId, { config: PC_ICE_CONFIG, debug: 1 });
+                pcWebPeer = new Peer(peerId, {
+                    host: '0.peerjs.com',
+                    port: 443,
+                    path: '/',
+                    secure: true,
+                    pingInterval: 5000,
+                    config: PC_ICE_CONFIG,
+                    debug: 1
+                });
                 pcWebPeer.on('open', () => {
+                    console.log('pcWebPeer open on signaling server with ID:', peerId);
                     pcWebUpdateStatus('waiting', 'Ready for phone to connect');
                     if (pcWebPendingRemotePin) {
                         const target = pcWebPendingRemotePin;
@@ -8137,13 +8191,26 @@
                     }
                 });
                 pcWebPeer.on('connection', (conn) => {
+                    console.log('pcWebPeer incoming connection:', conn.peer);
                     pcWebHandleConnection(conn);
+                });
+                pcWebPeer.on('disconnected', () => {
+                    console.warn('pcWebPeer disconnected from signaling. Reconnecting...');
+                    if (pcWebPeer && !pcWebPeer.destroyed) {
+                        try { pcWebPeer.reconnect(); } catch(e) { setupPcWebPeer(); }
+                    }
                 });
                 pcWebPeer.on('error', (err) => {
                     console.warn('pcWebPeer error:', err);
                     if (err.type === 'unavailable-id') {
                         pcWebPin = pcWebGeneratePin();
                         window.initPcWebShareHub();
+                    } else if (err.type === 'network' || err.type === 'server-error') {
+                        setTimeout(() => {
+                            if (pcWebPeer && !pcWebPeer.destroyed) {
+                                try { pcWebPeer.reconnect(); } catch(e) { setupPcWebPeer(); }
+                            }
+                        }, 3000);
                     }
                 });
             } catch (err) {
@@ -8162,7 +8229,7 @@
                 window._isWebShareConnected = true;
                 const remotePin = conn.peer.replace(PC_PEER_PREFIX, '').replace('fylo-phone-', '');
                 pcWebUpdateStatus('connected', `Connected with Phone (${remotePin})`);
-                showToast(`🌐 Phone connected via Web (Room: ${remotePin})`);
+                showToast(`🌐 Android Phone connected via Web P2P (Room: ${remotePin})`, 'success');
 
                 const disconnectBtn = document.getElementById('pc-web-disconnect-btn');
                 if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
@@ -8174,6 +8241,39 @@
                     qrStat.textContent = 'Connected (Web)';
                     qrStat.style.background = 'rgba(16, 185, 129, 0.2)';
                     qrStat.style.color = '#34d399';
+                }
+
+                // Inject Web P2P phone into mobileDeviceList and update PC Homepage Phone card
+                if (typeof mobileDeviceList !== 'undefined' && Array.isArray(mobileDeviceList)) {
+                    const existingIdx = mobileDeviceList.findIndex(d => d.id === 'web-phone-' + remotePin || d.isWebClient);
+                    const webDeviceObj = {
+                        id: 'web-phone-' + remotePin,
+                        name: 'Android Phone',
+                        model: 'Web P2P Channel (PIN ' + remotePin + ')',
+                        online: true,
+                        isWebClient: true,
+                        battery: 100,
+                        ip: 'Encrypted WebRTC P2P',
+                        connectedAt: Date.now()
+                    };
+                    if (existingIdx >= 0) {
+                        mobileDeviceList[existingIdx] = webDeviceObj;
+                    } else {
+                        mobileDeviceList.unshift(webDeviceObj);
+                    }
+                }
+
+                // Update PC Top Navigation Phone indicator
+                const topPhoneVal = $('#top-phone-val');
+                const topPhoneDot = $('#top-phone-dot');
+                if (topPhoneVal) topPhoneVal.textContent = `Phone (Web P2P Room ${remotePin})`;
+                if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
+
+                if (typeof renderDashboardPhoneCard === 'function') {
+                    renderDashboardPhoneCard();
+                }
+                if (typeof loadMobileDevices === 'function') {
+                    loadMobileDevices();
                 }
             });
 
@@ -8205,6 +8305,26 @@
                 qrStat.textContent = 'Ready';
                 qrStat.style.background = '';
                 qrStat.style.color = '';
+            }
+
+            // Remove Web P2P phone from mobileDeviceList and update PC Homepage Phone card
+            if (typeof mobileDeviceList !== 'undefined' && Array.isArray(mobileDeviceList)) {
+                const idx = mobileDeviceList.findIndex(d => d.isWebClient);
+                if (idx >= 0) {
+                    mobileDeviceList.splice(idx, 1);
+                }
+            }
+
+            const topPhoneVal = $('#top-phone-val');
+            const topPhoneDot = $('#top-phone-dot');
+            if (topPhoneVal) topPhoneVal.textContent = 'No Phone Connected';
+            if (topPhoneDot) topPhoneDot.classList.remove('live-pulse');
+
+            if (typeof renderDashboardPhoneCard === 'function') {
+                renderDashboardPhoneCard();
+            }
+            if (typeof loadMobileDevices === 'function') {
+                loadMobileDevices();
             }
         }
 
@@ -8970,7 +9090,10 @@
 
         async function loadNetworkInfo() {
             try {
-                const qrRes = await apiFetch('/api/qrcode');
+                const qrEndpoint = (typeof pcWebPin !== 'undefined' && pcWebPin) 
+                    ? `/api/qrcode?webpin=${encodeURIComponent(pcWebPin)}` 
+                    : '/api/qrcode';
+                const qrRes = await apiFetch(qrEndpoint);
                 const svg = await qrRes.text();
                 window._lastQrSvg = svg;
 
@@ -8978,6 +9101,9 @@
 
                 const dashQr = $('#dash-qrcode');
                 if (dashQr) dashQr.innerHTML = svg;
+                if ($('#dash-lan-web-pin') && typeof pcWebPin !== 'undefined' && pcWebPin) {
+                    $('#dash-lan-web-pin').textContent = pcWebPin;
+                }
 
                 const phoneGridQr = $('#phone-grid-qrcode');
                 if (phoneGridQr) phoneGridQr.innerHTML = svg;
