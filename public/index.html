@@ -8388,7 +8388,7 @@
             showToast(`Connecting to Room ${targetPin}...`);
             pcWebUpdateStatus('waiting', `Connecting to Room ${targetPin}...`);
             try {
-                const conn = pcWebPeer.connect(remotePeerId, { reliable: true, serialization: 'none' });
+                const conn = pcWebPeer.connect(remotePeerId, { reliable: true, serialization: 'raw' });
                 pcWebHandleConnection(conn);
             } catch (err) {
                 console.warn('pcWebJoinRoom error:', err);

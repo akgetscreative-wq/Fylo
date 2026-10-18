@@ -1088,7 +1088,7 @@
       try {
         const conn = peer.connect(targetPeerId, {
           reliable: true,
-          serialization: 'none'
+          serialization: 'raw'
         });
 
         setupConnection(conn);

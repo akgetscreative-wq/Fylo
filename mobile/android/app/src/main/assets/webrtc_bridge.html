@@ -126,7 +126,7 @@
             }
             log('Connecting to remote peer: ' + remotePeerId);
             try {
-                const conn = peer.connect(remotePeerId, { reliable: true, serialization: 'none' });
+                const conn = peer.connect(remotePeerId, { reliable: true, serialization: 'raw' });
                 setupConnection(conn);
             } catch(e) {
                 log('Connect error: ' + e);
