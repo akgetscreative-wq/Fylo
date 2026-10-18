@@ -8548,9 +8548,12 @@
             if (actionEl) {
                 actionEl.style.display = 'block';
                 actionEl.innerHTML = `
-                    <a href="${url}" download="${name}" class="btn btn-accent" style="padding: 4px 12px; font-size: 0.76rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                        💾 Save ${name}
-                    </a>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                        <span style="font-size: 0.76rem; font-weight: 700; color: #34d399; background: rgba(52, 211, 153, 0.12); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.25); display: inline-flex; align-items: center; gap: 4px;">✓ Saved Already</span>
+                        <a href="${url}" download="${name}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.74rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; opacity: 0.85;">
+                            Save copy ⤓
+                        </a>
+                    </div>
                 `;
             }
 

@@ -53,6 +53,7 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
@@ -1113,6 +1114,81 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         } catch (Throwable e) {
             Log.e(TAG, "openDocumentWithApp error: " + e.getMessage(), e);
             safePromise.reject("OPEN_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void checkIfFileSaved(String fileName, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            if (fileName == null || fileName.trim().isEmpty()) {
+                safePromise.resolve(null);
+                return;
+            }
+            String cleanName = fileName.trim().replaceAll("[\\\\/:*?\"<>|]", "_");
+            File publicDownloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            File fyloDir = new File(publicDownloads, "Fylo");
+            File fyloSharedDir = new File(publicDownloads, "FyloShared");
+            File appExtFiles = reactContext.getExternalFilesDir(null);
+            File appFylo = new File(appExtFiles != null ? appExtFiles : reactContext.getFilesDir(), "Fylo");
+
+            File[] candidates = new File[] {
+                new File(fyloDir, cleanName),
+                new File(publicDownloads, cleanName),
+                new File(fyloSharedDir, cleanName),
+                new File(appFylo, cleanName)
+            };
+
+            for (File cand : candidates) {
+                if (cand.exists() && cand.length() > 0) {
+                    safePromise.resolve(cand.getAbsolutePath());
+                    return;
+                }
+            }
+            safePromise.resolve(null);
+        } catch (Throwable t) {
+            safePromise.resolve(null);
+        }
+    }
+
+    @ReactMethod
+    public void checkIfFilesSaved(ReadableArray fileNames, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            WritableMap result = Arguments.createMap();
+            if (fileNames == null || fileNames.size() == 0) {
+                safePromise.resolve(result);
+                return;
+            }
+            File publicDownloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            File fyloDir = new File(publicDownloads, "Fylo");
+            File fyloSharedDir = new File(publicDownloads, "FyloShared");
+            File appExtFiles = reactContext.getExternalFilesDir(null);
+            File appFylo = new File(appExtFiles != null ? appExtFiles : reactContext.getFilesDir(), "Fylo");
+
+            for (int i = 0; i < fileNames.size(); i++) {
+                String fileName = fileNames.getString(i);
+                if (fileName == null || fileName.trim().isEmpty()) continue;
+                String cleanName = fileName.trim().replaceAll("[\\\\/:*?\"<>|]", "_");
+
+                File[] candidates = new File[] {
+                    new File(fyloDir, cleanName),
+                    new File(publicDownloads, cleanName),
+                    new File(fyloSharedDir, cleanName),
+                    new File(appFylo, cleanName)
+                };
+
+                for (File cand : candidates) {
+                    if (cand.exists() && cand.length() > 0) {
+                        result.putString(fileName, cand.getAbsolutePath());
+                        break;
+                    }
+                }
+            }
+            safePromise.resolve(result);
+        } catch (Throwable t) {
+            Log.w(TAG, "checkIfFilesSaved error: " + t.getMessage());
+            safePromise.resolve(Arguments.createMap());
         }
     }
 

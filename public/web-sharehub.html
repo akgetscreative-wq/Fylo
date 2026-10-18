@@ -1275,8 +1275,20 @@
       const blob = new Blob(transfer.chunks, { type: transfer.meta.mimeType || 'application/octet-stream' });
       const downloadUrl = URL.createObjectURL(blob);
 
+      // Automatically save to device downloads
+      try {
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = transfer.meta.name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          try { document.body.removeChild(a); } catch(e) {}
+        }, 1000);
+      } catch(e) {}
+
       markTransferComplete(transfer.card, 'Received', downloadUrl, transfer.meta.name);
-      showToast(`Received ${transfer.meta.name}!`, 'success');
+      showToast(`Received & saved ${transfer.meta.name}!`, 'success');
     }
 
     // --- Transfer UI Management ---
@@ -1353,10 +1365,12 @@
       if (downloadUrl && actionsEl) {
         actionsEl.style.display = 'block';
         actionsEl.innerHTML = `
-          <a class="download-btn" href="${downloadUrl}" download="${escapeHtml(downloadName)}">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Save File
-          </a>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.78rem; font-weight: 700; color: #34d399; background: rgba(52, 211, 153, 0.12); padding: 5px 12px; border-radius: 9999px; border: 1px solid rgba(52, 211, 153, 0.25); display: inline-flex; align-items: center; gap: 4px;">✓ Saved Already</span>
+            <a class="download-btn" href="${downloadUrl}" download="${escapeHtml(downloadName)}" style="padding: 5px 10px; font-size: 0.75rem; opacity: 0.85;">
+              Download Copy ⤓
+            </a>
+          </div>
         `;
       }
     }

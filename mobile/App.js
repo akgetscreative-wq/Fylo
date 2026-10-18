@@ -2977,19 +2977,29 @@ export default function App() {
 
     const subWebFileReceived = DeviceEventEmitter.addListener('onWebFileReceived', (file) => {
       if (file && file.name) {
+        const fileKey = file.fileId || file.id || file.name;
+        setDownloadedSharedIds((prev) => {
+          const next = new Set(prev);
+          next.add(fileKey);
+          next.add(file.name);
+          if (file.path) next.add(file.path);
+          return next;
+        });
         setShareHubFiles((prev) => [
           {
+            id: fileKey,
             name: file.name,
             path: file.path,
             size: file.size,
             source: 'pc',
             direction: 'received',
             time: Date.now(),
+            isSaved: true,
           },
           ...prev,
         ]);
-        showToast(`📥 Received ${file.name} from PC!`);
-        addLog(`Received file via Web P2P: ${file.name}`);
+        showToast(`📥 Received & saved ${file.name} to Downloads/Fylo!`);
+        addLog(`Received and saved file via Web P2P: ${file.name}`);
       }
     });
 
@@ -3697,11 +3707,69 @@ export default function App() {
     showToast(`✓ Saved ${count} file(s) to Downloads/Fylo 📥`);
   };
 
+  // Background verification of saved ShareHub files on phone storage
+  useEffect(() => {
+    if (!Array.isArray(sharedHubFiles) || sharedHubFiles.length === 0) return;
+    if (!FyloModule || !FyloModule.checkIfFilesSaved) return;
+
+    const unverifiedNames = sharedHubFiles
+      .filter((f) => f.direction === 'received' && f.name)
+      .map((f) => f.name);
+
+    if (unverifiedNames.length === 0) return;
+
+    let isMounted = true;
+    FyloModule.checkIfFilesSaved(unverifiedNames)
+      .then((savedMap) => {
+        if (!isMounted || !savedMap) return;
+        const savedKeys = Object.keys(savedMap);
+        if (savedKeys.length === 0) return;
+
+        setDownloadedSharedIds((prev) => {
+          const next = new Set(prev);
+          savedKeys.forEach((name) => {
+            next.add(name);
+            const path = savedMap[name];
+            if (path) next.add(path);
+          });
+          sharedHubFiles.forEach((f) => {
+            if (savedMap[f.name]) {
+              if (f.id) next.add(f.id);
+            }
+          });
+          return next;
+        });
+
+        setSharedHubFiles((prev) =>
+          prev.map((f) => {
+            if (savedMap[f.name]) {
+              return {
+                ...f,
+                path: savedMap[f.name],
+                phonePath: savedMap[f.name],
+                isSaved: true,
+              };
+            }
+            return f;
+          })
+        );
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [sharedHubFiles]);
+
   const handleSharedHubItemPress = (file) => {
     if (!file) return;
     const isSentByPhone = file.direction === 'sent' || file.uploadedBy === 'Mobile Phone' || file.ownerSessionId === 'mobile';
     const ext = file.ext || (file.name || '').split('.').pop().toLowerCase();
     const resolvedPath = file.phonePath || file.path || file.name;
+    const isSaved = downloadedSharedIds.has(file.id) ||
+                    downloadedSharedIds.has(file.name) ||
+                    Boolean(file.isSaved) ||
+                    (Boolean(file.path) && !file.path.startsWith('http') && !file.path.includes('\\'));
 
     if (isAudioFile(ext)) {
       playInbuiltAudio(file, isSentByPhone ? 'phone' : 'pc');
@@ -3736,19 +3804,19 @@ export default function App() {
       openExternalFileOrChooser({
         ...file,
         path: resolvedPath,
-      }, isSentByPhone ? 'phone' : 'sharehub');
+      }, (isSentByPhone || isSaved) ? 'phone' : 'sharehub');
       return;
     }
 
     // Other non-media files (APK, ZIP, etc.)
-    if (isSentByPhone) {
-      // If the file was sent from the phone (already on the phone): opens with phone app chooser.
+    if (isSentByPhone || isSaved) {
+      // If the file was sent from the phone or already saved to the phone: opens directly with phone app chooser.
       openExternalFileOrChooser({
         ...file,
         path: resolvedPath,
       }, 'phone');
     } else {
-      // If the file is from PC and non-media: shows the sleek file action prompt with "⬇️ Save to Phone", "↗ Open with App", and "Cancel".
+      // If the file is from PC, non-media, and not saved: shows the sleek file action prompt with "⬇️ Save to Phone", "↗ Open with App", and "Cancel".
       setPcFileActionPrompt({
         file,
         source: 'sharehub',
@@ -4695,16 +4763,38 @@ export default function App() {
               )}
             </View>
 
-            {filteredShareHubFiles.some((f) => f.direction === 'received') && (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.shareHubSaveAllBtn}
-                onPress={handleDownloadAllSharedHubFiles}>
-                <Text style={styles.shareHubSaveAllBtnText}>
-                  Save All From PC ({filteredShareHubFiles.filter((f) => f.direction === 'received').length}) ↓
-                </Text>
-              </TouchableOpacity>
-            )}
+            {(() => {
+              const receivedFiles = filteredShareHubFiles.filter((f) => f.direction === 'received');
+              if (receivedFiles.length === 0) return null;
+              const unsavedCount = receivedFiles.filter((f) => {
+                const isSaved = downloadedSharedIds.has(f.id) ||
+                                downloadedSharedIds.has(f.name) ||
+                                Boolean(f.isSaved) ||
+                                (Boolean(f.path) && !f.path.startsWith('http') && !f.path.includes('\\'));
+                return !isSaved;
+              }).length;
+
+              if (unsavedCount > 0) {
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.shareHubSaveAllBtn}
+                    onPress={handleDownloadAllSharedHubFiles}>
+                    <Text style={styles.shareHubSaveAllBtnText}>
+                      Save Unsaved ({unsavedCount}) ↓
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }
+
+              return (
+                <View style={[styles.shareHubSaveAllBtn, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
+                  <Text style={[styles.shareHubSaveAllBtnText, { color: '#34d399' }]}>
+                    ✓ All Saved to Phone
+                  </Text>
+                </View>
+              );
+            })()}
           </View>
 
           {/* Action buttons row: "+ Send to PC" and "Clear Local List" */}
@@ -4770,7 +4860,10 @@ export default function App() {
               /* GRID MODE (3 COLUMNS) */
               <View style={styles.responsiveGridWrap}>
                 {filteredShareHubFiles.map((file, idx) => {
-                  const isSaved = downloadedSharedIds.has(file.id || file.name);
+                  const isSaved = downloadedSharedIds.has(file.id) ||
+                                  downloadedSharedIds.has(file.name) ||
+                                  Boolean(file.isSaved) ||
+                                  (Boolean(file.path) && !file.path.startsWith('http') && !file.path.includes('\\'));
                   const isReceived = file.direction === 'received';
                   const ext = file.ext || (file.name || '').split('.').pop().toLowerCase();
                   const isImg = isImageFile(ext);
@@ -4859,7 +4952,10 @@ export default function App() {
               /* LIST MODE */
               <View style={styles.shareHubList}>
                 {filteredShareHubFiles.map((file, idx) => {
-                  const isSaved = downloadedSharedIds.has(file.id || file.name);
+                  const isSaved = downloadedSharedIds.has(file.id) ||
+                                  downloadedSharedIds.has(file.name) ||
+                                  Boolean(file.isSaved) ||
+                                  (Boolean(file.path) && !file.path.startsWith('http') && !file.path.includes('\\'));
                   const isReceived = file.direction === 'received';
                   const ext = file.ext || (file.name || '').split('.').pop().toLowerCase();
                   const isImg = isImageFile(ext);
