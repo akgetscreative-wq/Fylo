@@ -2016,7 +2016,7 @@ export default function App() {
     sendHeartbeat();
     const heartbeatTimer = setInterval(sendHeartbeat, 3500); // 3.5s ping interval
     return () => clearInterval(heartbeatTimer);
-  }, [pairedPc, pcAuthToken, storageInfo, readOnlyMode, batteryLevel]);
+  }, [pairedPc, connectionMode, pcAuthToken, storageInfo, readOnlyMode, batteryLevel]);
 
   // Periodic continuous clipboard sync when paired with PC
   useEffect(() => {
@@ -2369,7 +2369,7 @@ export default function App() {
           'X-Auth-Token': token ? token.trim() : '',
         },
         body: JSON.stringify(payload),
-      }, 7000);
+      }, webPin ? 2000 : 7000); // Fast 2s timeout when Web P2P fallback PIN is available!
 
       const roundTrip = Date.now() - startTime;
       const data = await safeJson(res);
@@ -2437,8 +2437,8 @@ export default function App() {
         const match = clean.match(/(?:pin=|room=|fylo-web:|webpin=)(\d{6})/);
         if (match && match[1]) {
           const extractedPin = match[1];
-          // If it doesn't contain a host IP, directly connect via Web P2P
-          if (!clean.includes('http://') && !clean.includes('https://') && !clean.includes(':3000')) {
+          // If explicitly in web mode or standalone sharehub page or no local port, directly connect via Web P2P
+          if (clean.includes('mode=web') || clean.includes('web-sharehub') || (!clean.includes('http://') && !clean.includes('https://') && !clean.includes(':3000'))) {
             handleConnectWebPeer(extractedPin);
             return;
           }
@@ -2460,7 +2460,7 @@ export default function App() {
           host = parsed.hostname;
           port = parsed.port || '3000';
           token = parsed.searchParams.get('auth') || parsed.searchParams.get('token') || '';
-          embeddedWebPin = parsed.searchParams.get('webpin') || parsed.searchParams.get('pin') || '';
+          embeddedWebPin = parsed.searchParams.get('webpin') || parsed.searchParams.get('pin') || parsed.searchParams.get('room') || '';
         } else {
           throw new Error('URL not globally defined');
         }
@@ -2479,7 +2479,7 @@ export default function App() {
           try {
             const match = queryPart.match(/(?:auth|token)=([^&]+)/i);
             if (match && match[1]) token = decodeURIComponent(match[1]);
-            const pMatch = queryPart.match(/(?:webpin|pin)=(\d{6})/i);
+            const pMatch = queryPart.match(/(?:webpin|pin|room)=(\d{6})/i);
             if (pMatch && pMatch[1]) embeddedWebPin = pMatch[1];
           } catch (ignored) {}
         }

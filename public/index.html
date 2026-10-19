@@ -8051,17 +8051,7 @@
                 { urls: 'stun:stun2.l.google.com:19302' },
                 { urls: 'stun:stun3.l.google.com:19302' },
                 { urls: 'stun:stun4.l.google.com:19302' },
-                {
-                    urls: [
-                        'stun:openrelay.metered.ca:80',
-                        'turn:openrelay.metered.ca:80',
-                        'turn:openrelay.metered.ca:80?transport=tcp',
-                        'turn:openrelay.metered.ca:443',
-                        'turn:openrelay.metered.ca:443?transport=tcp'
-                    ],
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                }
+                { urls: 'stun:stun.cloudflare.com:3478' }
             ]
         };
 
@@ -8223,13 +8213,27 @@
                 try { pcWebActiveConn.close(); } catch(e) {}
             }
             pcWebActiveConn = conn;
+            try {
+                if (conn.dataChannel) {
+                    conn.dataChannel.binaryType = 'arraybuffer';
+                }
+            } catch(e) {}
 
             conn.on('open', () => {
+                try {
+                    if (conn.dataChannel) {
+                        conn.dataChannel.binaryType = 'arraybuffer';
+                    }
+                } catch(e) {}
                 pcWebIsConnected = true;
                 window._isWebShareConnected = true;
                 const remotePin = conn.peer.replace(PC_PEER_PREFIX, '').replace('fylo-phone-', '');
                 pcWebUpdateStatus('connected', `Connected with Phone (${remotePin})`);
                 showToast(`🌐 Android Phone connected via Web P2P (Room: ${remotePin})`, 'success');
+
+                try {
+                    conn.send(JSON.stringify({ type: 'handshake-ack', client: 'pc', name: 'Fylo Desktop' }));
+                } catch(e) {}
 
                 const disconnectBtn = document.getElementById('pc-web-disconnect-btn');
                 if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
@@ -8244,18 +8248,20 @@
                 }
 
                 // Inject Web P2P phone into mobileDeviceList and update PC Homepage Phone card
+                const webDeviceObj = {
+                    id: 'web-phone-' + remotePin,
+                    name: 'Android Phone',
+                    model: 'Web P2P Channel (PIN ' + remotePin + ')',
+                    online: true,
+                    isWebClient: true,
+                    battery: 100,
+                    ip: 'Encrypted WebRTC P2P',
+                    connectedAt: Date.now()
+                };
+                window._webClientDevice = webDeviceObj;
+
                 if (typeof mobileDeviceList !== 'undefined' && Array.isArray(mobileDeviceList)) {
                     const existingIdx = mobileDeviceList.findIndex(d => d.id === 'web-phone-' + remotePin || d.isWebClient);
-                    const webDeviceObj = {
-                        id: 'web-phone-' + remotePin,
-                        name: 'Android Phone',
-                        model: 'Web P2P Channel (PIN ' + remotePin + ')',
-                        online: true,
-                        isWebClient: true,
-                        battery: 100,
-                        ip: 'Encrypted WebRTC P2P',
-                        connectedAt: Date.now()
-                    };
                     if (existingIdx >= 0) {
                         mobileDeviceList[existingIdx] = webDeviceObj;
                     } else {
@@ -8271,9 +8277,6 @@
 
                 if (typeof renderDashboardPhoneCard === 'function') {
                     renderDashboardPhoneCard();
-                }
-                if (typeof loadMobileDevices === 'function') {
-                    loadMobileDevices();
                 }
             });
 
@@ -8293,6 +8296,7 @@
         function pcWebOnDisconnected() {
             pcWebIsConnected = false;
             window._isWebShareConnected = false;
+            window._webClientDevice = null;
             pcWebActiveConn = null;
             pcWebUpdateStatus('waiting', 'Waiting for phone to connect...');
             const disconnectBtn = document.getElementById('pc-web-disconnect-btn');
@@ -8322,9 +8326,6 @@
 
             if (typeof renderDashboardPhoneCard === 'function') {
                 renderDashboardPhoneCard();
-            }
-            if (typeof loadMobileDevices === 'function') {
-                loadMobileDevices();
             }
         }
 
@@ -8410,6 +8411,10 @@
             if (typeof data === 'string') {
                 try {
                     const msg = JSON.parse(data);
+                    if (msg.type === 'handshake-ack') {
+                        console.log('pcWeb handshake ACK received:', msg);
+                        return;
+                    }
                     if (msg.type === 'file-meta') {
                         pcWebInbound.set(msg.fileId, {
                             meta: msg,
@@ -8428,16 +8433,25 @@
                 } catch(e) {}
             } else {
                 // Binary chunk
+                const byteLen = data ? (data.byteLength || data.size || 0) : 0;
                 for (const [fileId, item] of pcWebInbound.entries()) {
                     if (item.receivedBytes < item.meta.size) {
                         item.chunks.push(data);
-                        item.receivedBytes += data.byteLength;
+                        item.receivedBytes += byteLen;
                         pcWebUpdateTransferProgress(fileId, item.receivedBytes, item.meta.size);
+                        if (item.receivedBytes >= item.meta.size) {
+                            const blob = new Blob(item.chunks, { type: item.meta.mimeType || 'application/octet-stream' });
+                            pcWebFinishInboundFile(fileId, item.meta.name, blob);
+                            pcWebInbound.delete(fileId);
+                        }
                         break;
                     }
                 }
             }
         }
+
+        const pcWebOutboundQueue = [];
+        let pcWebIsSending = false;
 
         window.pcWebHandleFileInput = function(files) {
             if (!files || files.length === 0) return;
@@ -8446,59 +8460,89 @@
                 return;
             }
             Array.from(files).forEach(file => {
-                pcWebSendFile(file);
+                pcWebOutboundQueue.push(file);
             });
+            pcWebProcessOutboundQueue();
         };
 
-        async function pcWebSendFile(file) {
-            const fileId = 'web-' + Math.random().toString(36).substring(2, 9);
-            const meta = {
-                type: 'file-meta',
-                fileId: fileId,
-                name: file.name,
-                size: file.size,
-                mimeType: file.type
-            };
-
-            pcWebAddTransferCard(fileId, file.name, file.size, 'outgoing');
-            try {
-                pcWebActiveConn.send(JSON.stringify(meta));
-            } catch (e) {
-                showToast("Failed to send file meta");
-                return;
-            }
-
-            const chunkSize = 64 * 1024;
-            let offset = 0;
-
-            const reader = new FileReader();
-            function sendNextChunk() {
-                if (offset >= file.size) {
-                    pcWebActiveConn.send(JSON.stringify({ type: 'file-complete', fileId }));
-                    pcWebMarkTransferDone(fileId);
-                    showToast(`Sent ${file.name}!`);
-                    return;
+        async function pcWebProcessOutboundQueue() {
+            if (pcWebIsSending || pcWebOutboundQueue.length === 0) return;
+            pcWebIsSending = true;
+            while (pcWebOutboundQueue.length > 0) {
+                if (!pcWebActiveConn || !pcWebIsConnected) {
+                    pcWebOutboundQueue.length = 0;
+                    break;
                 }
-                const slice = file.slice(offset, offset + chunkSize);
-                reader.onload = (e) => {
-                    try {
-                        pcWebActiveConn.send(e.target.result);
-                        offset += e.target.result.byteLength;
-                        pcWebUpdateTransferProgress(fileId, offset, file.size);
-
-                        // Backpressure handling
-                        if (pcWebActiveConn.dataChannel && pcWebActiveConn.dataChannel.bufferedAmount > 1024 * 1024) {
-                            setTimeout(sendNextChunk, 40);
-                        } else {
-                            setTimeout(sendNextChunk, 2);
-                        }
-                    } catch (err) {
-                        console.warn("Send chunk error:", err);
-                    }
-                };
-                reader.readAsArrayBuffer(slice);
+                const file = pcWebOutboundQueue.shift();
+                try {
+                    await pcWebSendSingleFile(file);
+                } catch(err) {
+                    console.warn("Error sending file:", err);
+                }
             }
-            sendNextChunk();
+            pcWebIsSending = false;
+        }
+
+        function pcWebSendSingleFile(file) {
+            return new Promise((resolve) => {
+                const fileId = 'web-' + Math.random().toString(36).substring(2, 9);
+                const meta = {
+                    type: 'file-meta',
+                    fileId: fileId,
+                    name: file.name,
+                    size: file.size,
+                    mimeType: file.type || 'application/octet-stream'
+                };
+
+                pcWebAddTransferCard(fileId, file.name, file.size, 'outgoing');
+                try {
+                    pcWebActiveConn.send(JSON.stringify(meta));
+                } catch (e) {
+                    showToast("Failed to send file meta");
+                    return resolve();
+                }
+
+                const chunkSize = 64 * 1024;
+                let offset = 0;
+                const reader = new FileReader();
+
+                function sendNextChunk() {
+                    if (!pcWebActiveConn || !pcWebIsConnected) {
+                        return resolve();
+                    }
+                    if (offset >= file.size) {
+                        try {
+                            pcWebActiveConn.send(JSON.stringify({ type: 'file-complete', fileId }));
+                        } catch(e) {}
+                        pcWebMarkTransferDone(fileId);
+                        showToast(`Sent ${file.name}!`);
+                        return resolve();
+                    }
+                    const slice = file.slice(offset, offset + chunkSize);
+                    reader.onload = (e) => {
+                        try {
+                            if (!pcWebActiveConn || !pcWebIsConnected) {
+                                return resolve();
+                            }
+                            pcWebActiveConn.send(e.target.result);
+                            offset += e.target.result.byteLength;
+                            pcWebUpdateTransferProgress(fileId, offset, file.size);
+
+                            // Backpressure handling
+                            if (pcWebActiveConn.dataChannel && pcWebActiveConn.dataChannel.bufferedAmount > 1024 * 1024) {
+                                setTimeout(sendNextChunk, 35);
+                            } else {
+                                setTimeout(sendNextChunk, 2);
+                            }
+                        } catch (err) {
+                            console.warn("Send chunk error:", err);
+                            resolve();
+                        }
+                    };
+                    reader.readAsArrayBuffer(slice);
+                }
+                setTimeout(sendNextChunk, 15);
+            });
         }
 
         function pcWebAddTransferCard(fileId, name, size, direction) {
@@ -10902,6 +10946,12 @@ function iconLabel(ext, type) {
                     }
                     if (!deduped.some(x => x.id === d.id)) {
                         deduped.push(d);
+                    }
+                }
+
+                if (window._isWebShareConnected && window._webClientDevice) {
+                    if (!deduped.some(x => x.id === window._webClientDevice.id || x.isWebClient)) {
+                        deduped.unshift(window._webClientDevice);
                     }
                 }
                 mobileDeviceList = deduped;

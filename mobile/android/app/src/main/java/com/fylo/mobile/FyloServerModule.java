@@ -2352,17 +2352,21 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                     final long fileSize = file.length();
                     final String mimeType = getFileMimeType(filePath);
 
-                    final String metaJson = String.format(
-                        "{\"type\":\"file-meta\",\"fileId\":\"%s\",\"name\":\"%s\",\"size\":%d,\"mimeType\":\"%s\"}",
-                        fileId, fileName.replace("\"", "\\\""), fileSize, mimeType
-                    );
+                    org.json.JSONObject metaObj = new org.json.JSONObject();
+                    metaObj.put("type", "file-meta");
+                    metaObj.put("fileId", fileId);
+                    metaObj.put("name", fileName);
+                    metaObj.put("size", fileSize);
+                    metaObj.put("mimeType", mimeType);
+                    final String metaJson = metaObj.toString();
+                    final String base64Meta = Base64.encodeToString(metaJson.getBytes("UTF-8"), Base64.NO_WRAP);
 
                     final Handler mainHandler = new Handler(Looper.getMainLooper());
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             if (mWebBridgeView != null) {
-                                mWebBridgeView.evaluateJavascript("window.sendMeta('" + metaJson.replace("'", "\\'") + "');", null);
+                                mWebBridgeView.evaluateJavascript("window.sendMeta(decodeURIComponent(escape(window.atob('" + base64Meta + "'))));", null);
                             }
                         }
                     });
@@ -2404,12 +2408,16 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                     }
 
                     Thread.sleep(30);
-                    final String completeJson = String.format("{\"type\":\"file-complete\",\"fileId\":\"%s\"}", fileId);
+                    org.json.JSONObject completeObj = new org.json.JSONObject();
+                    completeObj.put("type", "file-complete");
+                    completeObj.put("fileId", fileId);
+                    final String completeJson = completeObj.toString();
+                    final String base64Complete = Base64.encodeToString(completeJson.getBytes("UTF-8"), Base64.NO_WRAP);
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             if (mWebBridgeView != null) {
-                                mWebBridgeView.evaluateJavascript("window.sendComplete('" + completeJson.replace("'", "\\'") + "');", null);
+                                mWebBridgeView.evaluateJavascript("window.sendComplete(decodeURIComponent(escape(window.atob('" + base64Complete + "'))));", null);
                             }
                         }
                     });

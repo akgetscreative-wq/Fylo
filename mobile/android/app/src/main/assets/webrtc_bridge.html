@@ -14,17 +14,7 @@
                 { urls: 'stun:stun2.l.google.com:19302' },
                 { urls: 'stun:stun3.l.google.com:19302' },
                 { urls: 'stun:stun4.l.google.com:19302' },
-                {
-                    urls: [
-                        'stun:openrelay.metered.ca:80',
-                        'turn:openrelay.metered.ca:80',
-                        'turn:openrelay.metered.ca:80?transport=tcp',
-                        'turn:openrelay.metered.ca:443',
-                        'turn:openrelay.metered.ca:443?transport=tcp'
-                    ],
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                }
+                { urls: 'stun:stun.cloudflare.com:3478' }
             ]
         };
 
@@ -102,6 +92,12 @@
                     }
                     if (errStr === 'unavailable-id') {
                         setTimeout(() => window.initPeer(), 1000);
+                    } else if (errStr === 'network' || errStr === 'server-error' || errStr === 'socket-error' || errStr === 'socket-closed') {
+                        setTimeout(() => {
+                            if (peer && !peer.destroyed) {
+                                try { peer.reconnect(); } catch(e) { window.initPeer(); }
+                            }
+                        }, 2500);
                     }
                 });
             } catch(e) {
@@ -138,12 +134,28 @@
                 try { activeConn.close(); } catch(e) {}
             }
             activeConn = conn;
+            try {
+                if (conn.dataChannel) {
+                    conn.dataChannel.binaryType = 'arraybuffer';
+                }
+            } catch(e) {}
 
             conn.on('open', () => {
                 log('Data channel open with: ' + conn.peer);
+                try {
+                    if (conn.dataChannel) {
+                        conn.dataChannel.binaryType = 'arraybuffer';
+                    }
+                } catch(e) {}
+
                 if (window.AndroidBridge && window.AndroidBridge.onPeerConnected) {
                     window.AndroidBridge.onPeerConnected(conn.peer);
                 }
+
+                // Send handshake ACK
+                try {
+                    conn.send(JSON.stringify({ type: 'handshake-ack', client: 'android' }));
+                } catch(e) {}
             });
 
             conn.on('data', (data) => {
@@ -181,6 +193,10 @@
             if (typeof data === 'string') {
                 try {
                     const msg = JSON.parse(data);
+                    if (msg.type === 'handshake-ack') {
+                        log('Handshake ACK received from PC');
+                        return;
+                    }
                     if (msg.type === 'file-meta') {
                         if (window.AndroidBridge && window.AndroidBridge.onFileMeta) {
                             window.AndroidBridge.onFileMeta(msg.fileId, msg.name, msg.size, msg.mimeType || '');
@@ -193,8 +209,7 @@
                 } catch(e) {
                     log('Parse incoming JSON error: ' + e);
                 }
-            } else {
-                // Binary ArrayBuffer chunk received
+            } else if (data instanceof ArrayBuffer || (data && data.byteLength !== undefined)) {
                 try {
                     const base64 = arrayBufferToBase64(data);
                     if (window.AndroidBridge && window.AndroidBridge.onFileChunk) {
@@ -203,6 +218,15 @@
                 } catch(e) {
                     log('Binary chunk handling error: ' + e);
                 }
+            } else if (data instanceof Blob) {
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const base64 = arrayBufferToBase64(reader.result);
+                    if (window.AndroidBridge && window.AndroidBridge.onFileChunk) {
+                        window.AndroidBridge.onFileChunk(base64);
+                    }
+                };
+                reader.readAsArrayBuffer(data);
             }
         }
 
