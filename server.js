@@ -7,7 +7,25 @@ const qrcode = require('qrcode');
 const archiver = require('archiver');
 const http = require('http');
 const dgram = require('dgram');
-const { app: electronApp, BrowserWindow, ipcMain, dialog, clipboard, shell } = require('electron');
+const { app: electronApp, BrowserWindow, ipcMain, dialog, clipboard, shell, Tray, Menu, Notification, nativeImage } = require('electron');
+
+// Single-instance lock for Windows Tray & Startup
+if (electronApp && typeof electronApp.requestSingleInstanceLock === 'function') {
+    const gotTheLock = electronApp.requestSingleInstanceLock();
+    if (!gotTheLock) {
+        console.log('[Fylo] Another instance is already running. Handing over and exiting.');
+        electronApp.quit();
+    } else {
+        electronApp.on('second-instance', () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                if (!mainWindow.isVisible()) mainWindow.show();
+                if (mainWindow.isMinimized()) mainWindow.restore();
+                mainWindow.focus();
+                wakeServerFromDormancy('Second instance opened');
+            }
+        });
+    }
+}
 
 const app = express();
 const PORT = 3000;
@@ -33,6 +51,54 @@ try {
         fs.writeFileSync(adminPassPath, adminPassword, 'utf8');
     }
 } catch (e) {}
+
+// System Settings (Startup, Tray, Standby Power Mode)
+const SETTINGS_PATH = path.join(os.homedir(), '.fylo-settings.json');
+let systemSettings = {
+    startOnBoot: false,
+    startMinimized: false,
+    dormantMode: true
+};
+
+function loadSystemSettings() {
+    try {
+        if (fs.existsSync(SETTINGS_PATH)) {
+            const data = fs.readFileSync(SETTINGS_PATH, 'utf8');
+            systemSettings = { ...systemSettings, ...JSON.parse(data) };
+        }
+    } catch (e) {
+        console.warn('[Settings] Failed to load settings:', e.message);
+    }
+}
+
+function persistSystemSettings(newSettings) {
+    if (newSettings && typeof newSettings === 'object') {
+        systemSettings = { ...systemSettings, ...newSettings };
+    }
+    try {
+        fs.writeFileSync(SETTINGS_PATH, JSON.stringify(systemSettings, null, 2), 'utf8');
+    } catch (e) {
+        console.warn('[Settings] Failed to save settings:', e.message);
+    }
+    applyStartupSettings(systemSettings);
+}
+
+function applyStartupSettings(settings) {
+    if (electronApp && typeof electronApp.setLoginItemSettings === 'function') {
+        try {
+            electronApp.setLoginItemSettings({
+                openAtLogin: !!settings.startOnBoot,
+                openAsHidden: !!settings.startMinimized,
+                args: settings.startMinimized ? ['--hidden'] : []
+            });
+            console.log(`[Startup] setLoginItemSettings: openAtLogin=${!!settings.startOnBoot}, openAsHidden=${!!settings.startMinimized}`);
+        } catch (e) {
+            console.warn('[Startup] Failed to apply setLoginItemSettings:', e.message);
+        }
+    }
+}
+
+loadSystemSettings();
 
 app.use(express.json());
 
@@ -137,6 +203,9 @@ function probeAndActivateDevice(device) {
                             savedDevices[device.id].model = phoneModel;
                             savedDevices[device.id].lastSeen = Date.now();
                             persistSavedDevices();
+                        }
+                        if (typeof wakeServerFromDormancy === 'function') {
+                            wakeServerFromDormancy(phoneName);
                         }
                         console.log(`[AutoConnect] Successfully linked device: ${phoneName} (${device.ip}:${device.port})`);
                         resolve(true);
@@ -1111,7 +1180,7 @@ try {
 } catch(e) {}
 
 setInterval(() => {
-    if (!clipboardSyncEnabled) return;
+    if (!clipboardSyncEnabled || isDormant) return;
     try {
         const currentText = clipboard.readText();
         if (currentText !== lastSystemClipboardText) {
@@ -1573,6 +1642,7 @@ app.post('/api/devices/saved/:id/toggle-autoconnect', (req, res) => {
 // Active auto-connect daemon:
 // Every 10 seconds, for any saved device marked autoConnect: true that is not currently active, probe it and automatically re-link it
 setInterval(async () => {
+    if (isDormant) return;
     const now = Date.now();
     for (const id in savedDevices) {
         const d = savedDevices[id];
@@ -1585,6 +1655,28 @@ setInterval(async () => {
         }
     }
 }, 10000);
+
+// System Settings API Endpoints
+app.get('/api/system-settings', (req, res) => {
+    res.json({
+        success: true,
+        settings: systemSettings,
+        isDormant,
+        isElectron: !!electronApp
+    });
+});
+
+app.post('/api/system-settings', (req, res) => {
+    const { startOnBoot, startMinimized, dormantMode } = req.body || {};
+    const updates = {};
+    if (typeof startOnBoot === 'boolean') updates.startOnBoot = startOnBoot;
+    if (typeof startMinimized === 'boolean') updates.startMinimized = startMinimized;
+    if (typeof dormantMode === 'boolean') updates.dormantMode = dormantMode;
+
+    persistSystemSettings(updates);
+    if (typeof updateTrayMenu === 'function') updateTrayMenu();
+    res.json({ success: true, settings: systemSettings, isDormant });
+});
 
 // Update mobile device capabilities (e.g. storage access permission)
 app.post(['/api/device/update-capabilities', '/api/mobile/update-capabilities'], (req, res) => {
@@ -2609,6 +2701,183 @@ app.post('/api/mobile/fs/trash-file', (req, res) => {
 });
 
 
+let isDormant = false;
+let mainWindow = null;
+let appTray = null;
+let isQuitting = false;
+let beaconTimer = null;
+
+function hasActiveConnections() {
+    const activeMobile = Object.keys(mobileDevices || {}).length;
+    const activePc = Object.keys(devices || {}).length;
+    return (activeMobile + activePc) > 0;
+}
+
+function enterDormantMode() {
+    if (isDormant) return;
+    if (!systemSettings.dormantMode) return;
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) return;
+    if (hasActiveConnections()) return;
+
+    isDormant = true;
+    if (beaconTimer) {
+        clearInterval(beaconTimer);
+        beaconTimer = null;
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('power-mode-change', 'dormant');
+    }
+    updateTrayMenu();
+    console.log('[Fylo Power] Entered Ultra-Low Power Standby mode (~0% CPU, UDP knock ready)');
+}
+
+function wakeServerFromDormancy(sourceName) {
+    const wasDormant = isDormant;
+    isDormant = false;
+
+    if (!beaconTimer) {
+        startBeaconTimer();
+    }
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('power-mode-change', 'active');
+    }
+    updateTrayMenu();
+
+    if (wasDormant) {
+        console.log(`[Fylo Power] Woke from Ultra-Low Standby! Source: ${sourceName || 'Device knock'}`);
+        if (electronApp && Notification && typeof Notification.isSupported === 'function' && Notification.isSupported()) {
+            try {
+                if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+                    new Notification({
+                        title: 'Fylo Auto-Connected',
+                        body: `Seamlessly linked with ${sourceName || 'Android phone'}`,
+                        silent: true
+                    }).show();
+                }
+            } catch (e) {}
+        }
+    }
+}
+
+function createTray() {
+    if (appTray || !electronApp) return;
+    try {
+        const iconPath = path.join(electronApp.getAppPath(), 'icon.ico');
+        let trayIcon;
+        if (fs.existsSync(iconPath)) {
+            trayIcon = nativeImage.createFromPath(iconPath);
+        } else {
+            trayIcon = nativeImage.createEmpty();
+        }
+
+        appTray = new Tray(trayIcon);
+        appTray.setToolTip('Fylo - Seamless Sharing');
+
+        updateTrayMenu();
+
+        appTray.on('double-click', () => {
+            toggleWindowVisibility();
+        });
+
+        appTray.on('click', () => {
+            toggleWindowVisibility();
+        });
+    } catch (e) {
+        console.warn('[Tray] Failed to create system tray:', e.message);
+    }
+}
+
+function toggleWindowVisibility() {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+        createWindow();
+        return;
+    }
+    if (mainWindow.isVisible()) {
+        mainWindow.hide();
+        if (systemSettings.dormantMode && !hasActiveConnections()) {
+            enterDormantMode();
+        }
+    } else {
+        wakeServerFromDormancy('Tray Open');
+        mainWindow.show();
+        mainWindow.focus();
+    }
+}
+
+function updateTrayMenu() {
+    if (!appTray) return;
+    try {
+        const connectedCount = Object.keys(mobileDevices || {}).length;
+        let statusLabel = '🟢 Status: Active (Listening)';
+        if (isDormant) {
+            statusLabel = '🌙 Status: Standby (~0% CPU)';
+        } else if (connectedCount > 0) {
+            statusLabel = `🟢 Status: Connected (${connectedCount} device${connectedCount > 1 ? 's' : ''})`;
+        }
+
+        const contextMenu = Menu.buildFromTemplate([
+            { label: statusLabel, enabled: false },
+            { type: 'separator' },
+            {
+                label: 'Open Fylo',
+                click: () => {
+                    wakeServerFromDormancy('Tray Open');
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        mainWindow.show();
+                        mainWindow.focus();
+                    } else {
+                        createWindow();
+                    }
+                }
+            },
+            { type: 'separator' },
+            {
+                label: 'Start with Windows',
+                type: 'checkbox',
+                checked: !!systemSettings.startOnBoot,
+                click: (item) => {
+                    persistSystemSettings({ startOnBoot: item.checked });
+                }
+            },
+            {
+                label: 'Start Minimized to Tray',
+                type: 'checkbox',
+                checked: !!systemSettings.startMinimized,
+                click: (item) => {
+                    persistSystemSettings({ startMinimized: item.checked });
+                }
+            },
+            {
+                label: 'Ultra-Low Power Standby',
+                type: 'checkbox',
+                checked: !!systemSettings.dormantMode,
+                click: (item) => {
+                    persistSystemSettings({ dormantMode: item.checked });
+                    if (!item.checked && isDormant) {
+                        wakeServerFromDormancy('Setting disabled');
+                    } else if (item.checked && mainWindow && !mainWindow.isVisible() && !hasActiveConnections()) {
+                        enterDormantMode();
+                    }
+                }
+            },
+            { type: 'separator' },
+            {
+                label: 'Quit Fylo',
+                click: () => {
+                    isQuitting = true;
+                    teardownConnections();
+                    electronApp.quit();
+                }
+            }
+        ]);
+
+        appTray.setContextMenu(contextMenu);
+    } catch (e) {
+        console.warn('[Tray] Error updating tray menu:', e.message);
+    }
+}
+
 setInterval(() => {
     const now = Date.now();
     for (const id in devices) {
@@ -2621,12 +2890,18 @@ setInterval(() => {
             delete mobileDevices[id];
         }
     }
+    if (systemSettings.dormantMode && !hasActiveConnections() && mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+        enterDormantMode();
+    }
 }, 10000);
 
 function createWindow() {
-    const win = new BrowserWindow({
+    const shouldStartHidden = process.argv.includes('--hidden') || !!systemSettings.startMinimized;
+
+    mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
+        show: !shouldStartHidden,
         icon: path.join(electronApp.getAppPath(), 'icon.ico'),
         autoHideMenuBar: true,
         webPreferences: {
@@ -2634,18 +2909,36 @@ function createWindow() {
             contextIsolation: false
         }
     });
-    win.webContents.on('console-message', (event, level, message, line, sourceId) => {
+
+    if (shouldStartHidden) {
+        console.log('[Fylo Startup] Starting hidden in system tray (Ultra-Low Power Standby mode)');
+        enterDormantMode();
+    }
+
+    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
         console.log(`[RENDERER] (${level}) ${message} [${sourceId}:${line}]`);
     });
 
-    win.loadURL(`http://localhost:${PORT}`);
+    mainWindow.loadURL(`http://localhost:${PORT}`);
 
     // Mouse back & forward button navigation in Windows Electron
-    win.on('app-command', (event, cmd) => {
+    mainWindow.on('app-command', (event, cmd) => {
         if (cmd === 'browser-backward') {
-            win.webContents.send('mouse-back');
+            mainWindow.webContents.send('mouse-back');
         } else if (cmd === 'browser-forward') {
-            win.webContents.send('mouse-forward');
+            mainWindow.webContents.send('mouse-forward');
+        }
+    });
+
+    // Hide to tray on window close unless explicitly quitting
+    mainWindow.on('close', (event) => {
+        if (!isQuitting) {
+            event.preventDefault();
+            mainWindow.hide();
+            if (systemSettings.dormantMode && !hasActiveConnections()) {
+                enterDormantMode();
+            }
+            return false;
         }
     });
 
@@ -2660,14 +2953,14 @@ function createWindow() {
     });
 
     ipcMain.on('trigger-electron-download', (event, url) => {
-        win.webContents.session.downloadURL(url);
+        mainWindow.webContents.session.downloadURL(url);
     });
 
     ipcMain.on('toggle-clipboard-sync', (event, enabled) => {
         clipboardSyncEnabled = enabled;
     });
 
-    win.webContents.session.on('will-download', (event, item, webContents) => {
+    mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
         const urlParts = item.getURL().split('/');
         let fileIdRaw = urlParts[urlParts.length - 1];
         if (fileIdRaw.includes('?')) {
@@ -2679,7 +2972,7 @@ function createWindow() {
 
         item.on('updated', (event, state) => {
             if (state === 'progressing') {
-                win.webContents.send('download-progress', {
+                mainWindow.webContents.send('download-progress', {
                     id: fileId,
                     received: item.getReceivedBytes(),
                     total: item.getTotalBytes()
@@ -2689,7 +2982,7 @@ function createWindow() {
 
         item.once('done', (event, state) => {
             delete activeDownloads[fileId];
-            win.webContents.send('download-done', {
+            mainWindow.webContents.send('download-done', {
                 id: fileId,
                 success: state === 'completed',
                 savePath: item.getSavePath()
@@ -2698,7 +2991,7 @@ function createWindow() {
     });
 
     ipcMain.handle('select-folder', async () => {
-        const result = await dialog.showOpenDialog(win, {
+        const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openDirectory']
         });
         if (!result.canceled && result.filePaths.length > 0) {
@@ -2714,7 +3007,7 @@ function createWindow() {
 
     // Select folders to share
     ipcMain.handle('select-folders-to-share', async () => {
-        const result = await dialog.showOpenDialog(win, {
+        const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openDirectory', 'multiSelections'],
             title: 'Select Folders to Share'
         });
@@ -2744,6 +3037,25 @@ function createWindow() {
 const DISCOVERY_PORT = 41234;
 let udpServer = null;
 
+function startBeaconTimer() {
+    if (beaconTimer) clearInterval(beaconTimer);
+    beaconTimer = setInterval(() => {
+        if (!udpServer || isDormant) return;
+        try {
+            const beacon = JSON.stringify({
+                type: 'FYLO_PC_BEACON',
+                name: os.hostname() || 'Windows Host',
+                ip: getActiveIp(),
+                port: PORT,
+                token: secretToken,
+                version: '4.0.0'
+            });
+            const buf = Buffer.from(beacon, 'utf8');
+            udpServer.send(buf, 0, buf.length, DISCOVERY_PORT, '255.255.255.255', () => {});
+        } catch (e) {}
+    }, 3500);
+}
+
 function startUdpDiscovery() {
     try {
         udpServer = dgram.createSocket({ type: 'udp4', reuseAddr: true });
@@ -2761,7 +3073,15 @@ function startUdpDiscovery() {
                     parsed = JSON.parse(str);
                 } catch(e) {}
 
-                if (str.includes('FYLO_DISCOVERY_PING') || (parsed && (parsed.type === 'FYLO_DISCOVERY_PING' || parsed.type === 'FYLO_PHONE_BEACON'))) {
+                if (str.includes('FYLO_DISCOVERY_PING') || (parsed && (parsed.type === 'FYLO_DISCOVERY_PING' || parsed.type === 'FYLO_PHONE_BEACON' || parsed.type === 'FYLO_WAKE_KNOCK'))) {
+                    const senderIp = (rinfo.address || '').replace(/^::ffff:/, '');
+                    const phoneId = parsed?.deviceId || parsed?.id;
+                    const phoneName = parsed?.name || parsed?.model || 'Android Phone';
+                    const phonePort = parsed?.port ? parseInt(parsed.port, 10) : 8080;
+
+                    // Immediately wake server from standby!
+                    wakeServerFromDormancy(phoneName);
+
                     const beacon = JSON.stringify({
                         type: 'FYLO_PC_BEACON',
                         name: os.hostname() || 'Windows Host',
@@ -2772,10 +3092,6 @@ function startUdpDiscovery() {
                     });
                     const buf = Buffer.from(beacon, 'utf8');
                     udpServer.send(buf, 0, buf.length, rinfo.port, rinfo.address, () => {});
-
-                    const senderIp = (rinfo.address || '').replace(/^::ffff:/, '');
-                    const phoneId = parsed?.deviceId || parsed?.id;
-                    const phonePort = parsed?.port ? parseInt(parsed.port, 10) : 8080;
 
                     if (phoneId && savedDevices[phoneId] && savedDevices[phoneId].autoConnect !== false) {
                         savedDevices[phoneId].ip = senderIp;
@@ -2812,26 +3128,12 @@ function startUdpDiscovery() {
         udpServer.bind(DISCOVERY_PORT, () => {
             try {
                 udpServer.setBroadcast(true);
-                console.log(`[UDP Discovery] Active and broadcasting on port ${DISCOVERY_PORT}`);
+                console.log(`[UDP Discovery] Active and listening on port ${DISCOVERY_PORT}`);
             } catch (e) {}
         });
 
-        // Periodic beacon broadcast every 3.5s for zero-config auto discovery
-        setInterval(() => {
-            if (!udpServer) return;
-            try {
-                const beacon = JSON.stringify({
-                    type: 'FYLO_PC_BEACON',
-                    name: os.hostname() || 'Windows Host',
-                    ip: getActiveIp(),
-                    port: PORT,
-                    token: secretToken,
-                    version: '4.0.0'
-                });
-                const buf = Buffer.from(beacon, 'utf8');
-                udpServer.send(buf, 0, buf.length, DISCOVERY_PORT, '255.255.255.255', () => {});
-            } catch (e) {}
-        }, 3500);
+        // Start 3.5s beacon interval
+        startBeaconTimer();
 
     } catch (e) {
         console.warn('[UDP Discovery] Initialization error:', e.message);
@@ -2843,6 +3145,7 @@ if (electronApp && typeof electronApp.whenReady === 'function') {
         app.listen(PORT, () => {
             startUdpDiscovery();
             createWindow();
+            createTray();
         });
         electronApp.on('activate', () => {
             if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -2850,12 +3153,15 @@ if (electronApp && typeof electronApp.whenReady === 'function') {
     });
 
     electronApp.on('before-quit', () => {
+        isQuitting = true;
         teardownConnections();
     });
 
     electronApp.on('window-all-closed', () => {
-        teardownConnections();
-        if (process.platform !== 'darwin') electronApp.quit();
+        if (!systemSettings.startOnBoot && !systemSettings.startMinimized && !systemSettings.dormantMode) {
+            teardownConnections();
+            if (process.platform !== 'darwin') electronApp.quit();
+        }
     });
 } else if (!module.parent) {
     app.listen(PORT, () => {
@@ -2884,11 +3190,13 @@ function teardownConnections() {
 }
 
 process.on('SIGINT', () => {
+    isQuitting = true;
     teardownConnections();
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
+    isQuitting = true;
     teardownConnections();
     process.exit(0);
 });

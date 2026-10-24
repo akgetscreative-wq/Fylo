@@ -2932,17 +2932,33 @@ export default function App() {
 
   // Auto-Discovery of PC on local Wi-Fi & Resumable Transfer Progress Listeners
   useEffect(() => {
-    const subDiscovery = DeviceEventEmitter.addListener('onDeviceDiscovered', (device) => {
+    const subDiscovery = DeviceEventEmitter.addListener('onDeviceDiscovered', async (device) => {
       if (!device || !device.ip) return;
+      const key = `${device.ip}:${device.port || 3000}`;
       setDiscoveredDevices((prev) => {
-        const key = `${device.ip}:${device.port || 3000}`;
         const exists = prev.some((d) => `${d.ip}:${d.port || 3000}` === key);
         if (!exists) {
-          addLog(`Discovered PC: ${device.name || 'Windows PC'} (${device.ip}:${device.port || 3000})`);
+          addLog(`Discovered PC: ${device.name || 'Windows PC'} (${key})`);
           return [...prev, device];
         }
         return prev;
       });
+
+      // Seamless Auto-Pairing with Saved PC on discovery / wake knock response
+      if (!pairedPc) {
+        try {
+          if (FyloModule && FyloModule.getSavedPairedDevice) {
+            const saved = await FyloModule.getSavedPairedDevice();
+            if (saved && saved.paired_pc && saved.paired_pc.trim() !== '') {
+              const savedHost = saved.paired_pc.trim();
+              if (savedHost === key || savedHost.startsWith(device.ip)) {
+                addLog(`Instant Auto-Connect with saved PC: ${key}`);
+                handleConnectToPc(key, device.token || saved.pc_token || '');
+              }
+            }
+          }
+        } catch (e) {}
+      }
     });
 
     const subProgress = DeviceEventEmitter.addListener('onTransferProgress', (prog) => {

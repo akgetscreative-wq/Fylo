@@ -1390,8 +1390,24 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
     private void sendDiscoveryPing() {
         try {
             if (mDiscoverySocket != null && !mDiscoverySocket.isClosed()) {
-                String ping = "{\"type\":\"FYLO_DISCOVERY_PING\"}";
-                byte[] pingBytes = ping.getBytes(StandardCharsets.UTF_8);
+                Context ctx = reactContext != null ? reactContext : getReactApplicationContext();
+                SharedPreferences prefs = ctx.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+                String deviceId = prefs.getString("device_id", "");
+                String savedPc = prefs.getString("paired_pc", "");
+                String brand = Build.MANUFACTURER != null ? Build.MANUFACTURER : "";
+                String model = Build.MODEL != null ? Build.MODEL : "Android";
+                String name = brand.isEmpty() ? model : (brand + " " + model);
+
+                org.json.JSONObject pingObj = new org.json.JSONObject();
+                pingObj.put("type", "FYLO_DISCOVERY_PING");
+                pingObj.put("deviceId", deviceId);
+                pingObj.put("name", name);
+                pingObj.put("model", model);
+                pingObj.put("port", 8080);
+
+                byte[] pingBytes = pingObj.toString().getBytes(StandardCharsets.UTF_8);
+
+                // Broadcast discovery knock to local subnet
                 DatagramPacket pingPacket = new DatagramPacket(
                     pingBytes,
                     pingBytes.length,
@@ -1399,6 +1415,26 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                     UDP_DISCOVERY_PORT
                 );
                 mDiscoverySocket.send(pingPacket);
+
+                // Also knock directly to saved PC host IP (bypasses any router AP isolation delays)
+                if (savedPc != null && !savedPc.isEmpty()) {
+                    String pcHost = savedPc;
+                    if (pcHost.contains(":")) {
+                        pcHost = pcHost.split(":")[0];
+                    }
+                    pcHost = pcHost.trim();
+                    if (!pcHost.isEmpty() && !pcHost.equals("127.0.0.1")) {
+                        try {
+                            DatagramPacket directPacket = new DatagramPacket(
+                                pingBytes,
+                                pingBytes.length,
+                                InetAddress.getByName(pcHost),
+                                UDP_DISCOVERY_PORT
+                            );
+                            mDiscoverySocket.send(directPacket);
+                        } catch (Throwable ignored) {}
+                    }
+                }
             }
         } catch (Throwable ignored) {}
     }

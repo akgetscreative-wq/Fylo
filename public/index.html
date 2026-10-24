@@ -6224,6 +6224,43 @@
                             Remote network devices (phones and web clients) have strictly read-only access — they can only view and download files. Only this host PC is permitted to modify or delete files, keeping your storage 100% secure with no password hassle.
                         </p>
                     </div>
+
+                    <!-- System Startup & Standby Power Settings -->
+                    <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <h4 style="font-size: 1rem; color: var(--text);">⚡ Windows Startup & Standby Mode</h4>
+                            <span id="power-mode-badge" class="phone-readonly-badge" style="background: rgba(59, 130, 246, 0.15); color: #38bdf8; border-color: rgba(59, 130, 246, 0.3);">Standby Ready</span>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 16px; line-height: 1.5;">
+                            Keep Fylo ready for instant file sharing without draining PC resources. When your phone app opens, Fylo wakes instantly.
+                        </p>
+
+                        <div style="display: flex; flex-direction: column; gap: 14px;">
+                            <label style="display: flex; align-items: center; justify-content: space-between; gap: 20px; cursor: pointer;">
+                                <div>
+                                    <div style="font-weight: 700; font-size: 0.88rem; color: var(--text);">Start with Windows</div>
+                                    <div style="font-size: 0.78rem; color: var(--text-light);">Automatically launch Fylo when your PC turns on or logs in</div>
+                                </div>
+                                <input type="checkbox" id="settings-start-on-boot" style="width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;" onchange="updateSystemSetting('startOnBoot', this.checked)">
+                            </label>
+
+                            <label style="display: flex; align-items: center; justify-content: space-between; gap: 20px; cursor: pointer;">
+                                <div>
+                                    <div style="font-weight: 700; font-size: 0.88rem; color: var(--text);">Start Minimized to System Tray</div>
+                                    <div style="font-size: 0.78rem; color: var(--text-light);">Launch quietly in the Windows system tray without popping up a window</div>
+                                </div>
+                                <input type="checkbox" id="settings-start-minimized" style="width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;" onchange="updateSystemSetting('startMinimized', this.checked)">
+                            </label>
+
+                            <label style="display: flex; align-items: center; justify-content: space-between; gap: 20px; cursor: pointer;">
+                                <div>
+                                    <div style="font-weight: 700; font-size: 0.88rem; color: var(--text);">Ultra-Low Power Standby Mode</div>
+                                    <div style="font-size: 0.78rem; color: var(--text-light);">Drop CPU usage to ~0% when no phone is active. Wakes in milliseconds when Android app opens</div>
+                                </div>
+                                <input type="checkbox" id="settings-dormant-mode" checked style="width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;" onchange="updateSystemSetting('dormantMode', this.checked)">
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -10648,6 +10685,71 @@ function iconLabel(ext, type) {
             }
         }
 
+        function updatePowerModeBadge(isDormant) {
+            const badge = document.getElementById('power-mode-badge');
+            if (!badge) return;
+            if (isDormant) {
+                badge.textContent = '🌙 Standby (~0% CPU)';
+                badge.style.color = '#a78bfa';
+                badge.style.background = 'rgba(167, 139, 250, 0.15)';
+                badge.style.borderColor = 'rgba(167, 139, 250, 0.3)';
+            } else {
+                badge.textContent = '🟢 Standby Ready / Active';
+                badge.style.color = '#38bdf8';
+                badge.style.background = 'rgba(56, 189, 248, 0.15)';
+                badge.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+            }
+        }
+
+        async function initSystemStartupSettings() {
+            try {
+                const res = await apiFetch('/api/system-settings');
+                if (res && res.settings) {
+                    const startBoot = $('#settings-start-on-boot');
+                    const startMin = $('#settings-start-minimized');
+                    const dormant = $('#settings-dormant-mode');
+                    if (startBoot) startBoot.checked = !!res.settings.startOnBoot;
+                    if (startMin) startMin.checked = !!res.settings.startMinimized;
+                    if (dormant) dormant.checked = res.settings.dormantMode !== false;
+
+                    window._isDormant = !!res.isDormant;
+                    updatePowerModeBadge(res.isDormant);
+                }
+            } catch (e) {}
+        }
+
+        async function updateSystemSetting(key, val) {
+            try {
+                const res = await apiFetch('/api/system-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [key]: val })
+                });
+                if (res && res.settings) {
+                    window._isDormant = !!res.isDormant;
+                    updatePowerModeBadge(res.isDormant);
+                }
+            } catch (e) {
+                console.warn('Failed to update system setting:', e);
+            }
+        }
+
+        if (ipcRenderer) {
+            ipcRenderer.on('power-mode-change', (event, mode) => {
+                window._isDormant = (mode === 'dormant');
+                updatePowerModeBadge(window._isDormant);
+                if (!window._isDormant) {
+                    if (typeof loadMobileDevices === 'function') loadMobileDevices();
+                    if (typeof loadFiles === 'function') loadFiles();
+                    if (typeof loadDashboardData === 'function') loadDashboardData();
+                    if (typeof animateBg === 'function' && !isBgAnimRunning && !document.hidden) {
+                        isBgAnimRunning = true;
+                        requestAnimationFrame(animateBg);
+                    }
+                }
+            });
+        }
+
         if ($('#change-folder-btn')) {
             $('#change-folder-btn').addEventListener('click', async () => {
                 if (ipcRenderer) {
@@ -13465,6 +13567,7 @@ function iconLabel(ext, type) {
                 await initSettingsFolder();
                 initSettingsClipboardSync();
                 initSettingsClientName();
+                await initSystemStartupSettings();
                 initSidebarState();
                 if (isMobile) {
                     switchView('view-pc-explorer');
@@ -13474,14 +13577,19 @@ function iconLabel(ext, type) {
                 console.error(e);
             }
 
-            setInterval(sendHeartbeat, 3000);
-            setInterval(loadFiles, 4000);
-            setInterval(loadDevices, 2000);
-            setInterval(loadMobileDevices, 2000);
-            setInterval(loadSavedDevicesList, 3000);
-            setInterval(loadDashboardData, 3000);
-            setInterval(loadClipboard, 4000);
-            setInterval(checkStreamRequests, 1500);
+            const skipIfIdle = (fn) => () => {
+                if (document.hidden || window._isDormant) return;
+                fn();
+            };
+
+            setInterval(skipIfIdle(sendHeartbeat), 3000);
+            setInterval(skipIfIdle(loadFiles), 4000);
+            setInterval(skipIfIdle(loadDevices), 2000);
+            setInterval(skipIfIdle(loadMobileDevices), 2000);
+            setInterval(skipIfIdle(loadSavedDevicesList), 3000);
+            setInterval(skipIfIdle(loadDashboardData), 3000);
+            setInterval(skipIfIdle(loadClipboard), 4000);
+            setInterval(skipIfIdle(checkStreamRequests), 1500);
         }
 
         // Interactive magnetized canvas particles grid
@@ -13567,7 +13675,13 @@ function iconLabel(ext, type) {
             mouseSpeed = 0;
         });
 
+        let isBgAnimRunning = true;
         function animateBg() {
+            if (document.hidden || window._isDormant) {
+                isBgAnimRunning = false;
+                return;
+            }
+            isBgAnimRunning = true;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Update active ripple wave fronts
@@ -13654,6 +13768,19 @@ function iconLabel(ext, type) {
 
             requestAnimationFrame(animateBg);
         }
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !window._isDormant) {
+                if (typeof loadMobileDevices === 'function') loadMobileDevices();
+                if (typeof loadFiles === 'function') loadFiles();
+                if (typeof loadDashboardData === 'function') loadDashboardData();
+                if (typeof loadSavedDevicesList === 'function') loadSavedDevicesList();
+                if (!isBgAnimRunning) {
+                    isBgAnimRunning = true;
+                    requestAnimationFrame(animateBg);
+                }
+            }
+        });
 
         animateBg();
 
