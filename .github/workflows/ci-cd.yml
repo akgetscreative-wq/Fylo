@@ -1,0 +1,156 @@
+name: CI/CD Build & Release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*', '[0-9]+.*' ]
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish/Update GitHub Release'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  # 1. ANDROID APK BUILD (Ubuntu)
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: mobile/package.json
+
+      - run: cd mobile && npm install
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.6'
+
+      - name: Generate Keystore
+        run: |
+          mkdir -p mobile/android/app
+          if [ ! -f mobile/android/app/debug.keystore ]; then
+            keytool -genkey -v -keystore mobile/android/app/debug.keystore \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Build Release APK
+        run: |
+          cd mobile/android
+          gradle wrapper --gradle-version 8.6
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p artifacts-android
+          VERSION=$(node -p "require('./package.json').version")
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk "artifacts-android/fylo-${VERSION}.apk"
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk "artifacts-android/fylo-android.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fylo-android-apk
+          path: artifacts-android/*.apk
+          retention-days: 30
+
+  # 2. WINDOWS PC EXECUTABLE BUILD (Windows)
+  build-windows:
+    name: Build Windows PC App
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package.json
+
+      - run: npm install
+
+      - name: Build Windows Executable
+        run: npm run dist
+
+      - name: Prepare Artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts-windows -Force
+          Get-ChildItem -Path dist -Filter "*.exe" | ForEach-Object {
+            Copy-Item $_.FullName -Destination "artifacts-windows/$($_.Name)"
+            Copy-Item $_.FullName -Destination "artifacts-windows/fylo-windows.exe"
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fylo-windows-exe
+          path: artifacts-windows/*.exe
+          retention-days: 30
+
+  # 3. PUBLISH / UPDATE GITHUB RELEASES (Both APK + Windows EXE)
+  release:
+    name: Publish Release Assets
+    needs: [build-android, build-windows]
+    if: github.event_name != 'pull_request' && (github.event.inputs.publish_release != 'false')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: fylo-android-apk
+          path: release-assets
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: fylo-windows-exe
+          path: release-assets
+
+      - name: Generate Checksums
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt 2>/dev/null || true
+          ls -lh
+
+      - name: Upload to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+          elif gh release view "4.0.0" >/dev/null 2>&1 && [ "$VERSION" = "4.0.0" ]; then
+            TAG_NAME="4.0.0"
+          elif gh release view "v${VERSION}" >/dev/null 2>&1; then
+            TAG_NAME="v${VERSION}"
+          else
+            TAG_NAME="${VERSION}"
+          fi
+
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            echo "Updating existing release ${TAG_NAME}..."
+            gh release upload "${TAG_NAME}" release-assets/* --clobber
+          else
+            echo "Creating new release ${TAG_NAME}..."
+            gh release create "${TAG_NAME}" release-assets/* \
+              --title "Fylo ${TAG_NAME}" \
+              --generate-notes \
+              --latest
+          fi
