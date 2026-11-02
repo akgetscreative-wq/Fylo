@@ -5416,6 +5416,178 @@
             }
         }
 
+
+/* ====================================================
+   SERENE GEOMETRIC MOVING LANDSCAPE BACKDROP & RECENTS
+   ==================================================== */
+.serene-landscape-art {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1;
+    opacity: 0.65;
+    transition: opacity 0.6s ease;
+}
+
+:root[data-theme="dark"] .serene-landscape-art {
+    opacity: 0.42;
+    --serene-sky-top: #081514;
+    --serene-sky-mid: #102422;
+    --serene-sky-bot: #193530;
+}
+
+:root[data-theme="light"] .serene-landscape-art {
+    opacity: 0.72;
+    --serene-sky-top: #d2e4de;
+    --serene-sky-mid: #b8cfc7;
+    --serene-sky-bot: #9ebdb3;
+}
+
+.serene-svg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.serene-sun, .serene-sun-glow {
+    animation: sereneCelestialFloat 14s ease-in-out infinite alternate;
+    transform-origin: 720px 190px;
+}
+.serene-sun-glow {
+    animation-duration: 9s;
+}
+
+@keyframes sereneCelestialFloat {
+    0% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-12px) scale(1.04); }
+    100% { transform: translateY(6px) scale(0.98); }
+}
+
+.serene-birds {
+    animation: sereneBirdGlide 38s linear infinite;
+}
+@keyframes sereneBirdGlide {
+    0% { transform: translate(-300px, 15px); }
+    50% { transform: translate(450px, -20px); }
+    100% { transform: translate(1100px, 10px); }
+}
+
+.serene-clouds {
+    animation: sereneMistDrift 45s ease-in-out infinite alternate;
+}
+@keyframes sereneMistDrift {
+    0% { transform: translateX(-40px); }
+    100% { transform: translateX(50px); }
+}
+
+.ripple-wave {
+    animation: sereneRippleShimmer 6s ease-in-out infinite alternate;
+}
+.r1 { animation-delay: 0s; }
+.r2 { animation-delay: 1.2s; }
+.r3 { animation-delay: 2.4s; }
+.r4 { animation-delay: 3.6s; }
+.r5 { animation-delay: 4.8s; }
+
+@keyframes sereneRippleShimmer {
+    0% { opacity: 0.18; stroke-dasharray: 20 10; stroke-dashoffset: 0; }
+    50% { opacity: 0.55; stroke-dasharray: 40 15; stroke-dashoffset: 25; }
+    100% { opacity: 0.22; stroke-dasharray: 25 12; stroke-dashoffset: 50; }
+}
+
+/* Dynamic Phone Recents Grid / Shelf */
+.dash-recents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.recent-thumb-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 6px;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.recent-thumb-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.recent-thumb-img-wrap {
+    position: relative;
+    width: 100%;
+    height: 82px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.recent-thumb-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.recent-thumb-fallback {
+    font-size: 1.8rem;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+.recent-video-pill {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+}
+.recent-thumb-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 6px;
+}
+.recent-thumb-meta {
+    font-size: 0.68rem;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+.phone-recents-shelf-grid {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+}
+.phone-recents-shelf-grid .recent-thumb-card {
+    min-width: 120px;
+    max-width: 120px;
+    flex-shrink: 0;
+}
+
     </style>
     <!-- PeerJS & QRCode.js for Direct In-App Web ShareHub -->
     <script src="/peerjs.min.js"></script>
@@ -5425,8 +5597,102 @@
 
 <body>
     <div class="ambient-wrapper">
-        <canvas id="canvas-bg"
-            style="position: absolute; top:0; left:0; width:100%; height:100%; z-index:2; pointer-events:none;"></canvas>
+        <!-- Serene Geometric Animated Moving Landscape (Inspired by reference art) -->
+        <div class="serene-landscape-art" id="serene-landscape-art">
+            <svg class="serene-svg" viewBox="0 0 1440 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="var(--serene-sky-top, #0a1917)" />
+                        <stop offset="60%" stop-color="var(--serene-sky-mid, #142a27)" />
+                        <stop offset="100%" stop-color="var(--serene-sky-bot, #1b3834)" />
+                    </linearGradient>
+                    <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#fffdf0" />
+                        <stop offset="100%" stop-color="#faedcd" />
+                    </linearGradient>
+                    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#faedcd" stop-opacity="0.45" />
+                        <stop offset="50%" stop-color="#e9edc9" stop-opacity="0.18" />
+                        <stop offset="100%" stop-color="#e9edc9" stop-opacity="0" />
+                    </radialGradient>
+                    <linearGradient id="mtnGradFar" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#b5aa82" stop-opacity="0.85" />
+                        <stop offset="100%" stop-color="#60776b" stop-opacity="0.9" />
+                    </linearGradient>
+                    <linearGradient id="mtnGradMid" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#416158" />
+                        <stop offset="100%" stop-color="#2a453e" />
+                    </linearGradient>
+                    <linearGradient id="lakeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#41665e" stop-opacity="0.75" />
+                        <stop offset="50%" stop-color="#2c4c45" stop-opacity="0.85" />
+                        <stop offset="100%" stop-color="#19332e" stop-opacity="0.95" />
+                    </linearGradient>
+                </defs>
+
+                <!-- 1. Sky & Sun/Moon Halo -->
+                <rect width="1440" height="800" fill="url(#skyGrad)" opacity="0.6" />
+                <circle class="serene-sun-glow" cx="720" cy="190" r="140" fill="url(#sunGlow)" />
+                <circle class="serene-sun" cx="720" cy="190" r="48" fill="url(#sunGrad)" />
+
+                <!-- 2. Gentle Drifting Birds in Flight -->
+                <g class="serene-birds">
+                    <path class="bird bird1" d="M 460 140 Q 470 132 480 140 Q 490 132 500 140 Q 490 136 480 142 Q 470 136 460 140 Z" fill="#2d4943" />
+                    <path class="bird bird2" d="M 495 120 Q 503 113 512 120 Q 520 113 528 120 Q 520 116 512 121 Q 503 116 495 120 Z" fill="#2d4943" />
+                    <path class="bird bird3" d="M 530 155 Q 537 148 545 155 Q 553 148 560 155 Q 553 151 545 156 Q 537 151 530 155 Z" fill="#2d4943" />
+                    <path class="bird bird4" d="M 565 130 Q 572 124 580 130 Q 587 124 595 130 Q 587 127 580 131 Q 572 127 565 130 Z" fill="#2d4943" />
+                </g>
+
+                <!-- 3. Soft Ambient Floating Clouds -->
+                <g class="serene-clouds">
+                    <ellipse cx="260" cy="130" rx="220" ry="45" fill="#f4f8f5" opacity="0.14" />
+                    <ellipse cx="1180" cy="160" rx="280" ry="55" fill="#f4f8f5" opacity="0.12" />
+                    <ellipse cx="820" cy="240" rx="340" ry="50" fill="#f4f8f5" opacity="0.16" />
+                </g>
+
+                <!-- 4. Distant Warm Ochre & Sage Mountain Ridge -->
+                <path d="M 0 460 L 0 350 Q 240 280 480 340 T 960 290 Q 1200 240 1440 330 L 1440 540 L 0 540 Z" fill="url(#mtnGradFar)" opacity="0.8" />
+
+                <!-- 5. Midground Layered Forest Hills -->
+                <path d="M 0 490 Q 320 400 680 470 T 1440 430 L 1440 580 L 0 580 Z" fill="url(#mtnGradMid)" />
+
+                <!-- 6. Geometric Pine Tree Silhouette Rows -->
+                <g class="pine-trees-mid" fill="#213a34">
+                    <polygon points="120,490 140,430 160,490" />
+                    <polygon points="145,495 165,420 185,495" />
+                    <polygon points="170,498 190,435 210,498" />
+                    <polygon points="340,510 360,445 380,510" />
+                    <polygon points="365,512 385,430 405,512" />
+                    <polygon points="760,520 780,450 800,520" />
+                    <polygon points="785,525 805,435 825,525" />
+                    <polygon points="810,522 830,445 850,522" />
+                    <polygon points="1060,510 1080,440 1100,510" />
+                    <polygon points="1085,515 1105,425 1125,515" />
+                    <polygon points="1260,515 1285,435 1310,515" />
+                </g>
+
+                <!-- 7. Serene Reflecting Mirror Lake -->
+                <rect x="0" y="520" width="1440" height="280" fill="url(#lakeGrad)" />
+
+                <!-- 8. Gentle Lake Ripple Shimmer Lines -->
+                <g class="lake-ripples" stroke="#a7c4bc" stroke-width="1.8" opacity="0.32" stroke-linecap="round">
+                    <line class="ripple-wave r1" x1="380" y1="545" x2="680" y2="545" />
+                    <line class="ripple-wave r2" x1="720" y1="565" x2="1080" y2="565" />
+                    <line class="ripple-wave r3" x1="220" y1="595" x2="520" y2="595" />
+                    <line class="ripple-wave r4" x1="580" y1="630" x2="940" y2="630" />
+                    <line class="ripple-wave r5" x1="980" y1="670" x2="1320" y2="670" />
+                </g>
+
+                <!-- 9. Foreground Crisp Tall Geometric Pines -->
+                <g class="pine-trees-foreground" fill="#132420">
+                    <polygon points="-10,800 50,380 110,800" />
+                    <polygon points="40,800 95,430 150,800" />
+                    <polygon points="120,800 170,470 220,800" />
+                    <polygon points="1280,800 1340,410 1400,800" />
+                    <polygon points="1350,800 1410,390 1470,800" />
+                </g>
+            </svg>
+        </div>
         <div class="blob blob1"></div>
         <div class="blob blob2"></div>
         <div class="blob blob3"></div>
@@ -5822,44 +6088,23 @@
                         </div>
 
                         <!-- Phone Quick Access Folders -->
-                        <div class="bento-card dash-card-quick-access" id="dash-card-phone-shortcuts">
+                        <div class="bento-card dash-card-phone-recents" id="dash-card-phone-recents">
                             <div class="bento-card-header">
                                 <div class="bento-card-title">
-                                    <span class="card-header-icon">📂</span>
-                                    <span>Phone Quick Shortcuts</span>
+                                    <span class="card-header-icon">📸</span>
+                                    <span>Phone Recent Media</span>
                                 </div>
-                                <span class="bento-card-caption" id="dash-phone-shortcuts-caption">Offline</span>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="bento-card-caption" id="dash-phone-recents-caption">Offline</span>
+                                    <button class="btn btn-sm" id="dash-recents-refresh-btn" onclick="fetchAndRenderPhoneRecents()" style="padding: 3px 8px; font-size: 0.72rem; border-radius: 8px; display: none;" title="Refresh recent media">↻</button>
+                                </div>
                             </div>
-                            <div class="quick-access-chips" id="dash-phone-quick-chips" style="display: none;">
-                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/DCIM" title="Open DCIM (Camera)">
-                                    <span class="chip-emoji">📸</span>
-                                    <span class="chip-name">DCIM</span>
-                                </button>
-                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Download" title="Open Downloads">
-                                    <span class="chip-emoji">📥</span>
-                                    <span class="chip-name">Download</span>
-                                </button>
-                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Pictures" title="Open Pictures">
-                                    <span class="chip-emoji">🖼️</span>
-                                    <span class="chip-name">Pictures</span>
-                                </button>
-                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Documents" title="Open Documents">
-                                    <span class="chip-emoji" style="display:inline-flex; align-items:center;">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" style="width:18px;height:18px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                                    </span>
-                                    <span class="chip-name">Documents</span>
-                                </button>
-                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Movies" title="Open Movies">
-                                    <span class="chip-emoji">🎬</span>
-                                    <span class="chip-name">Movies</span>
-                                </button>
-                                <button class="quick-chip-btn" data-phone-folder="/storage/emulated/0/Music" title="Open Music">
-                                    <span class="chip-emoji">🎵</span>
-                                    <span class="chip-name">Music</span>
-                                </button>
-                            </div>
-                            <div id="dash-phone-shortcuts-empty" style="display: flex; align-items: center; justify-content: center; padding: 18px 12px; text-align: center; color: var(--text-light); font-size: 0.8rem; background: rgba(255, 255, 255, 0.02); border-radius: 12px; border: 1px dashed var(--border);">
-                                <span>📱 Phone shortcuts appear when connected</span>
+                            <!-- Live Recents Grid -->
+                            <div id="dash-phone-recents-container" class="dash-recents-grid" style="display: none;"></div>
+                            <div id="dash-phone-recents-empty" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px 14px; text-align: center; color: var(--text-light); font-size: 0.8rem; background: rgba(255, 255, 255, 0.02); border-radius: 14px; border: 1px dashed var(--border);">
+                                <div style="font-size: 1.6rem; margin-bottom: 6px; opacity: 0.7;">📸</div>
+                                <div style="font-weight: 700; color: var(--text); margin-bottom: 3px;">Recent Photos & Videos</div>
+                                <div style="font-size: 0.75rem; opacity: 0.75; max-width: 280px; line-height: 1.4;">Connect your phone to preview and access recently captured photos & clips here instantly.</div>
                             </div>
                         </div>
                     </div>
@@ -6452,61 +6697,16 @@
                     <!-- Common Folders Shelf -->
                     <div id="phone-common-shelf" class="phone-common-shelf" style="margin-top: 12px; margin-bottom: 12px;">
                         <div style="font-size: 0.78rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
-                            <span>📱 Quick Access Folders</span>
-                            <span style="font-size: 0.72rem; text-transform: none; opacity: 0.7;">Click any folder to view contents</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span>📸 Recent Phone Photos & Videos</span>
+                                <button class="btn btn-sm" onclick="loadPhoneExplorerRecents()" style="padding: 2px 7px; font-size: 0.7rem; border-radius: 6px;" title="Refresh Recents">↻</button>
+                            </div>
+                            <button class="btn btn-sm" onclick="fetchPhoneFolder('/storage/emulated/0', true)" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 8px;">
+                                📁 All Storage (/storage/emulated/0)
+                            </button>
                         </div>
-                        <div class="phone-common-grid">
-                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/DCIM/Camera">
-                                <div class="common-folder-icon" style="background: rgba(37, 99, 235, 0.15); color: #3b82f6;">📸</div>
-                                <div class="common-folder-info">
-                                    <div class="common-folder-title">Camera Photos</div>
-                                    <div class="common-folder-sub">DCIM / Camera</div>
-                                </div>
-                            </div>
-                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Download">
-                                <div class="common-folder-icon" style="background: rgba(0, 210, 211, 0.15); color: #00d2d3;">📥</div>
-                                <div class="common-folder-info">
-                                    <div class="common-folder-title">Downloads</div>
-                                    <div class="common-folder-sub">Download</div>
-                                </div>
-                            </div>
-                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Pictures">
-                                <div class="common-folder-icon" style="background: rgba(254, 202, 87, 0.15); color: #feca57;">🖼️</div>
-                                <div class="common-folder-info">
-                                    <div class="common-folder-title">Pictures</div>
-                                    <div class="common-folder-sub">Screenshots & Media</div>
-                                </div>
-                            </div>
-                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Movies">
-                                <div class="common-folder-icon" style="background: rgba(255, 71, 87, 0.15); color: #ff4757;">🎬</div>
-                                <div class="common-folder-info">
-                                    <div class="common-folder-title">Videos</div>
-                                    <div class="common-folder-sub">Movies & Clips</div>
-                                </div>
-                            </div>
-                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Music">
-                                <div class="common-folder-icon" style="background: rgba(72, 219, 251, 0.15); color: #48dbfb;">🎵</div>
-                                <div class="common-folder-info">
-                                    <div class="common-folder-title">Music</div>
-                                    <div class="common-folder-sub">Audio Tracks</div>
-                                </div>
-                            </div>
-                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Documents">
-                                <div class="common-folder-icon" style="background: rgba(37, 99, 235, 0.12); color: #2563eb; display:flex; align-items:center; justify-content:center;">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" style="width:20px;height:20px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                                </div>
-                                <div class="common-folder-info">
-                                    <div class="common-folder-title">Documents</div>
-                                    <div class="common-folder-sub">PDFs & Docs</div>
-                                </div>
-                            </div>
-                            <div class="common-folder-card quick-chip" data-path="/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media">
-                                <div class="common-folder-icon" style="background: rgba(37, 211, 102, 0.15); color: #25d366;">💬</div>
-                                <div class="common-folder-info">
-                                    <div class="common-folder-title">WhatsApp</div>
-                                    <div class="common-folder-sub">Media</div>
-                                </div>
-                            </div>
+                        <div id="phone-explorer-recents-grid" class="phone-recents-shelf-grid">
+                            <div style="color: var(--text-light); font-size: 0.78rem; padding: 12px;">Loading recent media from phone...</div>
                         </div>
                     </div>
 
@@ -7955,6 +8155,9 @@
 
             if (connectedDev) {
                 // Connected state
+                if (!connectedDev.isWebClient && typeof fetchAndRenderPhoneRecents === 'function') {
+                    fetchAndRenderPhoneRecents();
+                }
                 if (modelLabel) {
                     modelLabel.textContent = `${connectedDev.name || connectedDev.model || 'Android Phone'} (Online)`;
                     modelLabel.style.color = '#2ed573';
@@ -8088,8 +8291,24 @@
                 { urls: 'stun:stun2.l.google.com:19302' },
                 { urls: 'stun:stun3.l.google.com:19302' },
                 { urls: 'stun:stun4.l.google.com:19302' },
-                { urls: 'stun:stun.cloudflare.com:3478' }
-            ]
+                { urls: 'stun:stun.cloudflare.com:3478' },
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelay',
+                    credential: 'openrelay'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelay',
+                    credential: 'openrelay'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                    username: 'openrelay',
+                    credential: 'openrelay'
+                }
+            ],
+            iceCandidatePoolSize: 10
         };
 
         let pcWebPeer = null;
@@ -8256,7 +8475,7 @@
                 }
             } catch(e) {}
 
-            conn.on('open', () => {
+            function handlePcWebOpen() {
                 try {
                     if (conn.dataChannel) {
                         conn.dataChannel.binaryType = 'arraybuffer';
@@ -8315,7 +8534,13 @@
                 if (typeof renderDashboardPhoneCard === 'function') {
                     renderDashboardPhoneCard();
                 }
-            });
+            }
+
+            if (conn.open) {
+                handlePcWebOpen();
+            } else {
+                conn.on('open', handlePcWebOpen);
+            }
 
             conn.on('data', (data) => {
                 pcWebHandleIncomingData(data);
@@ -10742,11 +10967,7 @@ function iconLabel(ext, type) {
                     if (typeof loadMobileDevices === 'function') loadMobileDevices();
                     if (typeof loadFiles === 'function') loadFiles();
                     if (typeof loadDashboardData === 'function') loadDashboardData();
-                    if (typeof animateBg === 'function' && !isBgAnimRunning && !document.hidden) {
-                        isBgAnimRunning = true;
-                        requestAnimationFrame(animateBg);
-                    }
-                }
+                    /* bg animation removed */
             });
         }
 
@@ -13592,181 +13813,173 @@ function iconLabel(ext, type) {
             setInterval(skipIfIdle(checkStreamRequests), 1500);
         }
 
-        // Interactive magnetized canvas particles grid
-        const canvas = document.getElementById('canvas-bg');
-        const ctx = canvas.getContext('2d');
-        let points = [];
-        const spacing = 45;
-        let mouse = { x: -1000, y: -1000 };
-        let lastMousePos = { x: 0, y: 0 };
-        let mouseSpeed = 0;
-        let ripples = [];
-
-        function resizeCanvas() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
-            initPoints();
-        }
-
-        function initPoints() {
-            points = [];
-            const rows = Math.ceil(canvas.height / spacing) + 1;
-            const cols = Math.ceil(canvas.width / spacing) + 1;
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    const rand = Math.random();
-                    const colorStr = rand < 0.6 ? '255, 255, 255' : (rand < 0.8 ? '255, 143, 177' : '116, 185, 255');
-                    points.push({
-                        baseX: c * spacing,
-                        baseY: r * spacing,
-                        x: c * spacing,
-                        y: r * spacing,
-                        driftX: (Math.random() - 0.5) * 8,
-                        driftY: (Math.random() - 0.5) * 8,
-                        colorStr: colorStr
-                    });
-                }
-            }
-        }
-
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
+        // Serene Mouse Ambient Parallax (Gentle depth response without particle overhead)
         window.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const currX = e.clientX - rect.left;
-            const currY = e.clientY - rect.top;
-
-            const dx = currX - lastMousePos.x;
-            const dy = currY - lastMousePos.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            mouseSpeed = mouseSpeed * 0.7 + dist * 0.3;
-
-            lastMousePos.x = currX;
-            lastMousePos.y = currY;
-            mouse.x = currX;
-            mouse.y = currY;
-
-            const px = (e.clientX / window.innerWidth - 0.5) * 45;
-            const py = (e.clientY / window.innerHeight - 0.5) * 45;
+            const px = (e.clientX / window.innerWidth - 0.5) * 20;
+            const py = (e.clientY / window.innerHeight - 0.5) * 15;
             document.documentElement.style.setProperty('--mouse-x', `${px}px`);
             document.documentElement.style.setProperty('--mouse-y', `${py}px`);
-
-            // Generate concentric ripple trigger
-            const lastR = ripples[ripples.length - 1];
-            const distMoved = lastR ? Math.sqrt(Math.pow(mouse.x - lastR.originX, 2) + Math.pow(mouse.y - lastR.originY, 2)) : 999;
-            if (distMoved > 25) {
-                ripples.push({
-                    originX: mouse.x,
-                    originY: mouse.y,
-                    x: mouse.x,
-                    y: mouse.y,
-                    radius: 10,
-                    maxRadius: 200,
-                    speed: 5.5,
-                    opacity: 1
-                });
-            }
         });
 
-        window.addEventListener('mouseleave', () => {
-            mouse.x = -1000;
-            mouse.y = -1000;
-            mouseSpeed = 0;
-        });
+        // ==========================================
+        // DYNAMIC PHONE RECENTS (Real Camera & Media)
+        // ==========================================
+        let cachedPhoneRecents = [];
+        let isFetchingPhoneRecents = false;
 
-        let isBgAnimRunning = true;
-        function animateBg() {
-            if (document.hidden || window._isDormant) {
-                isBgAnimRunning = false;
+        async function fetchAndRenderPhoneRecents() {
+            if (isFetchingPhoneRecents) return;
+            const devs = (typeof mobileDeviceList !== 'undefined' && Array.isArray(mobileDeviceList)) ? mobileDeviceList : [];
+            const onlineDev = devs.find(d => d.online && !d.isWebClient);
+            const container = document.getElementById('dash-phone-recents-container');
+            const emptyBox = document.getElementById('dash-phone-recents-empty');
+            const caption = document.getElementById('dash-phone-recents-caption');
+            const refreshBtn = document.getElementById('dash-recents-refresh-btn');
+
+            if (!onlineDev) {
+                if (container) container.style.display = 'none';
+                if (emptyBox) emptyBox.style.display = 'flex';
+                if (caption) caption.textContent = 'Offline';
+                if (refreshBtn) refreshBtn.style.display = 'none';
                 return;
             }
-            isBgAnimRunning = true;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Update active ripple wave fronts
-            ripples = ripples.filter(r => {
-                r.radius += r.speed;
-                r.opacity = 1 - (r.radius / r.maxRadius);
-                return r.radius < r.maxRadius;
-            });
+            if (refreshBtn) refreshBtn.style.display = 'inline-flex';
+            if (caption) caption.textContent = 'Loading...';
+            isFetchingPhoneRecents = true;
 
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            try {
+                const devId = onlineDev.id || (typeof currentPhoneId !== 'undefined' ? currentPhoneId : '');
+                const res = await apiFetch(`/api/mobile/fs/recent?deviceId=${encodeURIComponent(devId)}&limit=12`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const items = data.items || [];
+                cachedPhoneRecents = items;
 
-            for (const p of points) {
-                let scale = 1;
-                let pushX = 0;
-                let pushY = 0;
-                let onWave = false;
-
-                // Check impact of all passing ripples
-                for (const r of ripples) {
-                    const dx = p.baseX - r.originX;
-                    const dy = p.baseY - r.originY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    const waveDiff = Math.abs(dist - r.radius);
-                    const waveWidth = 40; // Wave impact boundary width
-                    if (waveDiff < waveWidth) {
-                        onWave = true;
-                        const force = (waveWidth - waveDiff) / waveWidth; // Peak at 1.0, 0.0 at edges
-                        const intensity = force * r.opacity;
-                        
-                        // Push outward
-                        if (dist > 0) {
-                            pushX += (dx / dist) * intensity * 15;
-                            pushY += (dy / dist) * intensity * 15;
-                        }
-                        scale += intensity * 0.55;
+                if (items.length === 0) {
+                    if (caption) caption.textContent = 'No media found';
+                    if (container) container.style.display = 'none';
+                    if (emptyBox) {
+                        emptyBox.style.display = 'flex';
+                        emptyBox.innerHTML = `
+                            <div style="font-size: 1.6rem; margin-bottom: 6px; opacity: 0.7;">📸</div>
+                            <div style="font-weight: 700; color: var(--text);">No Camera Photos Yet</div>
+                            <div style="font-size: 0.75rem; opacity: 0.75; margin-top: 2px;">Photos taken on your phone will appear here instantly.</div>
+                        `;
                     }
+                    return;
                 }
 
-                // Magnet attraction pulls closest dots slightly to cursor
-                const mdx = mouse.x - p.baseX;
-                const mdy = mouse.y - p.baseY;
-                const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
-                if (mdist < 150) {
-                    const mforce = (150 - mdist) / 150;
-                    pushX += (mdx / mdist) * mforce * 8;
-                    pushY += (mdy / mdist) * mforce * 8;
-                    scale += mforce * 0.15;
+                if (caption) caption.textContent = `${items.length} Recent`;
+                if (emptyBox) emptyBox.style.display = 'none';
+                if (container) {
+                    container.style.display = 'grid';
+                    container.innerHTML = items.map(item => {
+                        const thumbUrl = `/api/mobile/fs/download?deviceId=${encodeURIComponent(devId)}&path=${encodeURIComponent(item.path)}`;
+                        const isVid = item.isVideo || item.ext === 'mp4' || item.ext === 'mkv' || item.ext === 'webm';
+                        const timeAgo = formatTimeAgo(item.modified || item.mtime);
+                        const safeJson = encodeURIComponent(JSON.stringify(item));
+                        const safeDevId = encodeURIComponent(devId);
+                        return `
+                            <div class="recent-thumb-card" onclick="openRecentMediaItem('${safeJson}', '${safeDevId}')" title="${escapeHtml(item.name)} (${formatBytes(item.size || 0)})">
+                                <div class="recent-thumb-img-wrap">
+                                    <img src="${thumbUrl}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                                    <div class="recent-thumb-fallback" style="display:none;">${isVid ? '🎬' : '🖼️'}</div>
+                                    ${isVid ? '<div class="recent-video-pill">▶ VIDEO</div>' : ''}
+                                </div>
+                                <div class="recent-thumb-title">${escapeHtml(item.name)}</div>
+                                <div class="recent-thumb-meta">${timeAgo} • ${formatBytes(item.size || 0)}</div>
+                            </div>
+                        `;
+                    }).join('');
                 }
-
-                let dotColor = isDark ? `rgba(${p.colorStr}, 0.12)` : 'rgba(0, 0, 0, 0.15)';
-                let waveColor = isDark ? `rgba(${p.colorStr}, 0.8)` : 'rgba(0, 0, 0, 0.75)';
-
-                if (isDark) {
-                    // Firefly drift / floating effect
-                    p.driftX = (p.driftX || 0) + (Math.random() - 0.5) * 0.1;
-                    p.driftY = (p.driftY || 0) + (Math.random() - 0.5) * 0.1;
-                    p.driftX = Math.max(-12, Math.min(12, p.driftX));
-                    p.driftY = Math.max(-12, Math.min(12, p.driftY));
-
-                    if (mdist < 220) {
-                        const proximity = (220 - mdist) / 220; // 0.0 to 1.0
-                        scale += proximity * 1.6; // Scale up size dynamically based on distance
-                        const alpha = 0.12 + proximity * 0.78;
-                        dotColor = `rgba(${p.colorStr}, ${alpha})`;
-                    } else {
-                        // Natural firefly glimmering
-                        const glimmer = Math.sin((Date.now() / 400) + (p.baseX * 0.015) + (p.baseY * 0.015)) * 0.06 + 0.14;
-                        dotColor = `rgba(${p.colorStr}, ${glimmer})`;
-                    }
-                }
-
-                // Springy ease to calculated coordinate offset
-                const targetX = p.baseX + pushX + (isDark ? p.driftX : 0);
-                const targetY = p.baseY + pushY + (isDark ? p.driftY : 0);
-                p.x += (targetX - p.x) * 0.15;
-                p.y += (targetY - p.y) * 0.15;
-
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, (isDark ? 1.4 : 1.5) * scale, 0, Math.PI * 2);
-                ctx.fillStyle = onWave ? waveColor : dotColor;
-                ctx.fill();
+            } catch (e) {
+                console.warn('fetchPhoneRecents error:', e);
+                if (caption) caption.textContent = 'Error loading';
+            } finally {
+                isFetchingPhoneRecents = false;
             }
+        }
 
-            requestAnimationFrame(animateBg);
+        async function loadPhoneExplorerRecents() {
+            const grid = document.getElementById('phone-explorer-recents-grid');
+            if (!grid) return;
+            const devs = (typeof mobileDeviceList !== 'undefined' && Array.isArray(mobileDeviceList)) ? mobileDeviceList : [];
+            const onlineDev = devs.find(d => d.online && !d.isWebClient);
+            const devId = (typeof currentPhoneId !== 'undefined' && currentPhoneId) ? currentPhoneId : (onlineDev ? onlineDev.id : '');
+            if (!devId) {
+                grid.innerHTML = '<div style="color: var(--text-light); font-size: 0.78rem; padding: 12px;">Connect a phone to browse recent camera media</div>';
+                return;
+            }
+            grid.innerHTML = '<div style="color: var(--text-light); font-size: 0.78rem; padding: 12px;">Loading recents...</div>';
+            try {
+                const res = await apiFetch(`/api/mobile/fs/recent?deviceId=${encodeURIComponent(devId)}&limit=16`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const items = data.items || [];
+                if (items.length === 0) {
+                    grid.innerHTML = '<div style="color: var(--text-light); font-size: 0.78rem; padding: 12px;">No recent photos or videos found on phone</div>';
+                    return;
+                }
+                grid.innerHTML = items.map(item => {
+                    const thumbUrl = `/api/mobile/fs/download?deviceId=${encodeURIComponent(devId)}&path=${encodeURIComponent(item.path)}`;
+                    const isVid = item.isVideo || item.ext === 'mp4' || item.ext === 'mkv' || item.ext === 'webm';
+                    const timeAgo = formatTimeAgo(item.modified || item.mtime);
+                    const safeJson = encodeURIComponent(JSON.stringify(item));
+                    const safeDevId = encodeURIComponent(devId);
+                    return `
+                        <div class="recent-thumb-card" onclick="openRecentMediaItem('${safeJson}', '${safeDevId}')" title="${escapeHtml(item.name)}">
+                            <div class="recent-thumb-img-wrap">
+                                <img src="${thumbUrl}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                                <div class="recent-thumb-fallback" style="display:none;">${isVid ? '🎬' : '🖼️'}</div>
+                                ${isVid ? '<div class="recent-video-pill">▶ VIDEO</div>' : ''}
+                            </div>
+                            <div class="recent-thumb-title">${escapeHtml(item.name)}</div>
+                            <div class="recent-thumb-meta">${timeAgo}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.warn('loadPhoneExplorerRecents error:', err);
+                grid.innerHTML = '<div style="color: var(--text-light); font-size: 0.78rem; padding: 12px;">Could not load phone recents</div>';
+            }
+        }
+
+        window.openRecentMediaItem = function(encodedJson, devId) {
+            try {
+                const item = JSON.parse(decodeURIComponent(encodedJson));
+                const targetDevId = decodeURIComponent(devId || '');
+                if (typeof openGallery === 'function') {
+                    const normalized = {
+                        name: item.name,
+                        path: item.path,
+                        size: item.size,
+                        isDir: false,
+                        ext: item.ext,
+                        isVideo: item.isVideo,
+                        url: `/api/mobile/fs/download?deviceId=${encodeURIComponent(targetDevId)}&path=${encodeURIComponent(item.path)}`
+                    };
+                    openGallery(normalized);
+                } else {
+                    window.open(`/api/mobile/fs/download?deviceId=${encodeURIComponent(targetDevId)}&path=${encodeURIComponent(item.path)}`, '_blank');
+                }
+            } catch(e) {
+                console.error('openRecentMediaItem error:', e);
+            }
+        };
+
+        function formatTimeAgo(timestamp) {
+            if (!timestamp) return 'Recent';
+            const diff = Date.now() - (typeof timestamp === 'number' && timestamp < 1e11 ? timestamp * 1000 : Number(timestamp));
+            if (isNaN(diff) || diff < 0) return 'Recent';
+            const mins = Math.floor(diff / 60000);
+            if (mins < 2) return 'Just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            if (days < 30) return `${days}d ago`;
+            return `${Math.floor(days / 30)}mo ago`;
         }
 
         document.addEventListener('visibilitychange', () => {
@@ -13775,14 +13988,9 @@ function iconLabel(ext, type) {
                 if (typeof loadFiles === 'function') loadFiles();
                 if (typeof loadDashboardData === 'function') loadDashboardData();
                 if (typeof loadSavedDevicesList === 'function') loadSavedDevicesList();
-                if (!isBgAnimRunning) {
-                    isBgAnimRunning = true;
-                    requestAnimationFrame(animateBg);
-                }
+                if (typeof fetchAndRenderPhoneRecents === 'function') fetchAndRenderPhoneRecents();
             }
         });
-
-        animateBg();
 
         init();
     </script>

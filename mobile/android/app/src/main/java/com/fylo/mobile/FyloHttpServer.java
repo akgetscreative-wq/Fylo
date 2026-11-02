@@ -12,6 +12,8 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.StatFs;
 import android.provider.MediaStore;
+import android.database.Cursor;
+import android.net.Uri;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -272,6 +274,8 @@ public class FyloHttpServer {
             // Routing
             if ("/api/info".equals(path)) {
                 handleInfo(out);
+            } else if ("/api/fs/recent".equals(path)) {
+                handleRecent(out, queryParams);
             } else if ("/api/fs/list".equals(path)) {
                 handleList(out, queryParams);
             } else if ("/api/fs/file".equals(path)) {
@@ -394,6 +398,86 @@ public class FyloHttpServer {
         json.put("storage", storage);
 
         sendJsonResponse(out, 200, json.toString());
+    }
+
+    private void handleRecent(OutputStream out, Map<String, String> queryParams) throws Exception {
+        if (!allowFullPhoneAccess) {
+            sendJsonResponse(out, 403, "{\"success\":false,\"error\":\"Full phone storage sharing is disabled by phone user.\",\"items\":[]}");
+            return;
+        }
+
+        int limit = 30;
+        try {
+            if (queryParams.containsKey("limit")) {
+                limit = Math.min(100, Math.max(1, Integer.parseInt(queryParams.get("limit"))));
+            }
+        } catch (Exception ignored) {}
+
+        JSONArray items = new JSONArray();
+        try {
+            Uri queryUri = MediaStore.Files.getContentUri("external");
+            String[] projection = {
+                MediaStore.Files.FileColumns._ID,
+                MediaStore.Files.FileColumns.DATA,
+                MediaStore.Files.FileColumns.DISPLAY_NAME,
+                MediaStore.Files.FileColumns.DATE_MODIFIED,
+                MediaStore.Files.FileColumns.SIZE,
+                MediaStore.Files.FileColumns.MEDIA_TYPE
+            };
+            String selection = MediaStore.Files.FileColumns.MEDIA_TYPE + "=" + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE
+                    + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + "=" + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO;
+            String sortOrder = MediaStore.MediaColumns.DATE_MODIFIED + " DESC";
+
+            try (Cursor cursor = context.getContentResolver().query(queryUri, projection, selection, null, sortOrder)) {
+                if (cursor != null) {
+                    int pathCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA);
+                    int nameCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
+                    int dateCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED);
+                    int sizeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE);
+                    int typeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MEDIA_TYPE);
+
+                    int count = 0;
+                    while (cursor.moveToNext() && count < limit) {
+                        String path = pathCol != -1 ? cursor.getString(pathCol) : null;
+                        if (path == null) continue;
+                        File f = new File(path);
+                        if (!f.exists()) continue;
+
+                        String name = nameCol != -1 ? cursor.getString(nameCol) : f.getName();
+                        long dateModified = dateCol != -1 ? cursor.getLong(dateCol) : 0;
+                        long size = sizeCol != -1 ? cursor.getLong(sizeCol) : f.length();
+                        int mediaType = typeCol != -1 ? cursor.getInt(typeCol) : 0;
+
+                        JSONObject item = new JSONObject();
+                        item.put("name", name != null ? name : f.getName());
+                        item.put("path", path);
+                        item.put("isDir", false);
+                        item.put("isDirectory", false);
+                        item.put("size", size);
+                        item.put("modified", dateModified > 0 ? dateModified * 1000L : f.lastModified());
+                        item.put("mtime", dateModified > 0 ? dateModified * 1000L : f.lastModified());
+
+                        String ext = "";
+                        int dotIdx = (name != null ? name : path).lastIndexOf('.');
+                        if (dotIdx > 0 && dotIdx < (name != null ? name : path).length() - 1) {
+                            ext = (name != null ? name : path).substring(dotIdx + 1).toLowerCase();
+                        }
+                        item.put("ext", ext);
+                        item.put("isVideo", mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO);
+                        item.put("isMedia", true);
+                        items.put(item);
+                        count++;
+                    }
+                }
+            }
+        } catch (Throwable e) {
+            Log.w(TAG, "handleRecent error: " + e.getMessage());
+        }
+
+        JSONObject resp = new JSONObject();
+        resp.put("success", true);
+        resp.put("items", items);
+        sendJsonResponse(out, 200, resp.toString());
     }
 
     private void handleList(OutputStream out, Map<String, String> queryParams) throws Exception {

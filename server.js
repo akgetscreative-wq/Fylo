@@ -1757,7 +1757,13 @@ app.get(['/fylo.apk', '/api/apk/download'], (req, res) => {
 // Proxy directory listing from mobile
 app.get('/api/mobile/fs/list', (req, res) => {
     const { deviceId, path: dirPath } = req.query;
-    const device = mobileDevices[deviceId];
+    let device = deviceId ? mobileDevices[deviceId] : null;
+    if (!device) {
+        const activeDevices = Object.values(mobileDevices).filter(d => (Date.now() - d.lastActive) <= 60000);
+        if (activeDevices.length > 0) {
+            device = activeDevices[0];
+        }
+    }
     if (!device) {
         const webDevice = devices[deviceId];
         if (webDevice) {
@@ -1817,6 +1823,59 @@ app.get('/api/mobile/fs/list', (req, res) => {
     request.setTimeout(12000, () => {
         request.destroy();
         if (!res.headersSent) res.status(504).json({ error: 'Mobile device request timed out.' });
+    });
+});
+
+// Proxy recent media/files from mobile
+app.get('/api/mobile/fs/recent', (req, res) => {
+    let { deviceId, limit } = req.query;
+    let device = deviceId ? mobileDevices[deviceId] : null;
+    if (!device) {
+        const activeDevices = Object.values(mobileDevices).filter(d => (Date.now() - d.lastActive) <= 60000);
+        if (activeDevices.length > 0) {
+            device = activeDevices[0];
+        }
+    }
+    if (!device) {
+        return res.status(404).json({ error: 'Mobile device not connected', items: [] });
+    }
+
+    if (Date.now() - device.lastActive > 35000) {
+        return res.status(503).json({ error: 'Mobile device is offline', offline: true, items: [] });
+    }
+
+    if (device.allowFullPhoneAccess === false) {
+        return res.status(403).json({
+            success: false,
+            error: 'Full phone storage sharing is disabled by phone user.',
+            items: []
+        });
+    }
+
+    device.lastActive = Date.now();
+    const targetUrl = `http://${device.ip}:${device.port}/api/fs/recent?limit=${encodeURIComponent(limit || 30)}&auth=${secretToken}`;
+
+    const request = http.get(targetUrl, (remoteRes) => {
+        let data = '';
+        remoteRes.on('data', chunk => data += chunk);
+        remoteRes.on('end', () => {
+            try {
+                const parsed = JSON.parse(data);
+                res.status(remoteRes.statusCode).json(parsed);
+            } catch (err) {
+                res.status(502).json({ error: 'Invalid response from mobile device', items: [] });
+            }
+        });
+    });
+
+    request.on('error', (err) => {
+        console.error('Mobile fs/recent proxy error:', err.message);
+        res.status(502).json({ error: 'Unable to reach mobile device', items: [] });
+    });
+
+    request.setTimeout(10000, () => {
+        request.destroy();
+        if (!res.headersSent) res.status(504).json({ error: 'Mobile device request timed out.', items: [] });
     });
 });
 
@@ -3140,9 +3199,61 @@ function startUdpDiscovery() {
     }
 }
 
+function tryKillStalePort3000(callback) {
+    if (process.platform === 'win32') {
+        const { exec } = require('child_process');
+        exec('netstat -ano | findstr :3000 | findstr LISTENING', (err, stdout) => {
+            if (!err && stdout) {
+                const lines = stdout.trim().split('\n');
+                const pids = new Set();
+                for (const line of lines) {
+                    const parts = line.trim().split(/\s+/);
+                    const pid = parts[parts.length - 1];
+                    if (pid && parseInt(pid, 10) > 0 && parseInt(pid, 10) !== process.pid) {
+                        pids.add(pid);
+                    }
+                }
+                if (pids.size > 0) {
+                    console.log(`[Port Conflict] Found stale processes occupying port 3000: ${Array.from(pids).join(', ')}. Terminating...`);
+                    let killed = 0;
+                    for (const pid of pids) {
+                        exec(`taskkill /F /PID ${pid}`, () => {
+                            killed++;
+                            if (killed === pids.size) {
+                                setTimeout(callback, 600);
+                            }
+                        });
+                    }
+                    return;
+                }
+            }
+            callback();
+        });
+    } else {
+        callback();
+    }
+}
+
+function startListeningWithRetry(onBound) {
+    const srv = http.createServer(app);
+    srv.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.warn(`[Server] Port ${PORT} already in use. Attempting automated recovery...`);
+            tryKillStalePort3000(() => {
+                console.log(`[Server] Retrying listen on port ${PORT}...`);
+                srv.listen(PORT, onBound);
+            });
+        } else {
+            console.error('[Server] Fatal listener error:', err);
+        }
+    });
+    srv.listen(PORT, onBound);
+    return srv;
+}
+
 if (electronApp && typeof electronApp.whenReady === 'function') {
     electronApp.whenReady().then(() => {
-        app.listen(PORT, () => {
+        startListeningWithRetry(() => {
             startUdpDiscovery();
             createWindow();
             createTray();
@@ -3164,7 +3275,7 @@ if (electronApp && typeof electronApp.whenReady === 'function') {
         }
     });
 } else if (!module.parent) {
-    app.listen(PORT, () => {
+    startListeningWithRetry(() => {
         startUdpDiscovery();
         console.log(`Fylo server running on http://127.0.0.1:${PORT}`);
     });

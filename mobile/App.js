@@ -427,327 +427,117 @@ const AlpineSunriseLandscape = React.memo(({ isDark = false }) => {
 // Backward-compatible alias
 const HeroDeskIllustration = AlpineSunriseLandscape;
 
-// Modern Geometric Aesthetic Artwork for Hero Connection Card
+// Serene Mountain Lake Geometric Vector Artwork for Hero Card (Inspired by reference art)
 const GeometricHeroArt = React.memo(({ isDark = true }) => {
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      {/* Radiant Glowing Neon Backdrop */}
+      {/* 1. Serene Morning Sky Aura */}
       <View style={{
-        position: 'absolute', top: -35, right: -25, width: 230, height: 165,
-        borderRadius: 85,
-        backgroundColor: isDark ? 'rgba(37, 99, 235, 0.28)' : 'rgba(56, 189, 248, 0.22)',
-        transform: [{ scaleX: 1.4 }],
-      }} />
-      <View style={{
-        position: 'absolute', top: -10, right: 45, width: 145, height: 145,
-        borderRadius: 72,
-        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.22)' : 'rgba(192, 132, 252, 0.18)',
+        position: 'absolute', top: -30, right: -20, width: 220, height: 160,
+        borderRadius: 80,
+        backgroundColor: isDark ? 'rgba(42, 157, 143, 0.18)' : 'rgba(168, 218, 220, 0.28)',
+        transform: [{ scaleX: 1.3 }],
       }} />
 
-      {/* Sleek Isometric Diamond Prisms */}
+      {/* 2. Soft Glowing Sun/Moon Disc */}
       <View style={{
-        position: 'absolute', top: 16, right: 28,
-        width: 60, height: 60, borderRadius: 14,
-        borderWidth: 1.5,
-        borderColor: isDark ? 'rgba(56, 189, 248, 0.5)' : 'rgba(37, 99, 235, 0.38)',
-        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.12)' : 'rgba(37, 99, 235, 0.08)',
-        transform: [{ rotate: '45deg' }],
-        shadowColor: '#38bdf8', shadowOpacity: 0.35, shadowRadius: 10, elevation: 3,
+        position: 'absolute', top: 12, right: 38,
+        width: 48, height: 48, borderRadius: 24,
+        backgroundColor: isDark ? '#fffdf0' : '#faedcd',
+        opacity: isDark ? 0.9 : 0.95,
+        shadowColor: '#faedcd', shadowOpacity: 0.6, shadowRadius: 14, elevation: 4,
       }}>
-        {/* Inner nested diamond */}
+        {/* Soft atmospheric halo */}
         <View style={{
-          position: 'absolute', top: 13, left: 13, width: 30, height: 30, borderRadius: 8,
-          borderWidth: 1, borderColor: isDark ? 'rgba(168, 85, 247, 0.55)' : 'rgba(147, 51, 234, 0.45)',
-          backgroundColor: isDark ? 'rgba(168, 85, 247, 0.22)' : 'rgba(147, 51, 234, 0.14)',
+          position: 'absolute', top: -8, left: -8, width: 64, height: 64, borderRadius: 32,
+          backgroundColor: isDark ? 'rgba(250, 237, 205, 0.15)' : 'rgba(250, 237, 205, 0.25)',
         }} />
       </View>
 
-      {/* Floating Angled Gradient Pill */}
+      {/* 3. Flying Silhouette Birds */}
+      <View style={{ position: 'absolute', top: 22, right: 105, flexDirection: 'row', gap: 6, opacity: isDark ? 0.45 : 0.6 }}>
+        <Text style={{ fontSize: 11, color: isDark ? '#a7c4bc' : '#2d4943', transform: [{ rotate: '-12deg' }] }}>⌵</Text>
+        <Text style={{ fontSize: 9, color: isDark ? '#a7c4bc' : '#2d4943', marginTop: 4, transform: [{ rotate: '-8deg' }] }}>⌵</Text>
+        <Text style={{ fontSize: 10, color: isDark ? '#a7c4bc' : '#2d4943', marginTop: -2, transform: [{ rotate: '-15deg' }] }}>⌵</Text>
+      </View>
+
+      {/* 4. Distant Ochre/Sage Mountain Silhouette */}
       <View style={{
-        position: 'absolute', top: 38, right: 102,
-        width: 95, height: 22, borderRadius: 11,
-        borderWidth: 1,
-        borderColor: isDark ? 'rgba(168, 85, 247, 0.4)' : 'rgba(147, 51, 234, 0.3)',
-        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.12)' : 'rgba(147, 51, 234, 0.08)',
-        transform: [{ rotate: '-28deg' }]
+        position: 'absolute', top: 45, right: -15, width: 160, height: 75,
+        backgroundColor: isDark ? 'rgba(181, 170, 130, 0.28)' : 'rgba(197, 184, 140, 0.35)',
+        borderTopLeftRadius: 55, borderTopRightRadius: 20,
+        transform: [{ rotate: '-14deg' }]
       }} />
 
-      {/* Glowing Neon Node Accents */}
+      {/* 5. Midground Spruce Mountain Ridge */}
       <View style={{
-        position: 'absolute', top: 22, right: 125,
-        width: 8, height: 8, borderRadius: 4,
-        backgroundColor: '#38bdf8',
-        shadowColor: '#38bdf8', shadowOpacity: 0.85, shadowRadius: 6, elevation: 4
-      }} />
-      <View style={{
-        position: 'absolute', top: 82, right: 20,
-        width: 6, height: 6, borderRadius: 3,
-        backgroundColor: '#a855f7',
-        shadowColor: '#a855f7', shadowOpacity: 0.85, shadowRadius: 5, elevation: 3
+        position: 'absolute', top: 62, right: 15, width: 140, height: 65,
+        backgroundColor: isDark ? 'rgba(54, 83, 77, 0.45)' : 'rgba(88, 121, 112, 0.35)',
+        borderTopLeftRadius: 40, borderTopRightRadius: 30,
+        transform: [{ rotate: '8deg' }]
       }} />
 
-      {/* Modern Tech Circuit Line */}
-      <View style={{
-        position: 'absolute', top: 92, right: 38, width: 62, height: 1.5,
-        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.35)' : 'rgba(37, 99, 235, 0.28)',
-        transform: [{ rotate: '15deg' }]
-      }} />
+      {/* 6. Geometric Pine Tree Silhouette Row */}
+      <View style={{ position: 'absolute', bottom: -5, right: 18, flexDirection: 'row', alignItems: 'flex-end', gap: 4, opacity: isDark ? 0.5 : 0.65 }}>
+        <View style={{ width: 0, height: 0, borderLeftWidth: 10, borderRightWidth: 10, borderBottomWidth: 32, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: isDark ? '#142521' : '#223c35' }} />
+        <View style={{ width: 0, height: 0, borderLeftWidth: 12, borderRightWidth: 12, borderBottomWidth: 42, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: isDark ? '#1b342e' : '#2b4d44' }} />
+        <View style={{ width: 0, height: 0, borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 26, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: isDark ? '#142521' : '#223c35' }} />
+        <View style={{ width: 0, height: 0, borderLeftWidth: 14, borderRightWidth: 14, borderBottomWidth: 48, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: isDark ? '#11201d' : '#1c342e' }} />
+      </View>
     </View>
   );
 });
 
-// Vibrant Geometric Vector Art & Mesh Background for Android Homepage
 const GeometricAestheticBackground = React.memo(({ isDark = true }) => {
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      {/* 1. Ambient Glowing Gradient Mesh Orbs */}
+      {/* 1. Calm Spruce & Sage Ambient Glowing Orbs */}
       <View style={{
-        position: 'absolute', top: -40, right: -60,
+        position: 'absolute', top: -50, right: -60,
         width: 320, height: 320, borderRadius: 160,
-        backgroundColor: isDark ? 'rgba(37, 99, 235, 0.16)' : 'rgba(56, 189, 248, 0.13)',
+        backgroundColor: isDark ? 'rgba(42, 157, 143, 0.12)' : 'rgba(168, 218, 220, 0.16)',
         transform: [{ scaleX: 1.3 }],
       }} />
       <View style={{
-        position: 'absolute', top: 250, left: -80,
-        width: 290, height: 290, borderRadius: 145,
-        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.13)' : 'rgba(192, 132, 252, 0.11)',
+        position: 'absolute', top: 240, left: -90,
+        width: 300, height: 300, borderRadius: 150,
+        backgroundColor: isDark ? 'rgba(82, 183, 136, 0.08)' : 'rgba(116, 198, 157, 0.12)',
         transform: [{ scaleY: 1.2 }],
       }} />
       <View style={{
-        position: 'absolute', top: 570, right: -40,
-        width: 270, height: 270, borderRadius: 135,
-        backgroundColor: isDark ? 'rgba(16, 185, 129, 0.10)' : 'rgba(52, 211, 153, 0.09)',
-      }} />
-      <View style={{
-        position: 'absolute', bottom: -50, left: 10,
-        width: 300, height: 300, borderRadius: 150,
-        backgroundColor: isDark ? 'rgba(59, 130, 246, 0.11)' : 'rgba(96, 165, 250, 0.09)',
+        position: 'absolute', top: 580, right: -40,
+        width: 280, height: 280, borderRadius: 140,
+        backgroundColor: isDark ? 'rgba(38, 70, 83, 0.12)' : 'rgba(82, 183, 136, 0.09)',
       }} />
 
-      {/* 2. Angled Geometric Accent Pills & Polygon Lines */}
+      {/* 2. Top Horizon Landscape Silhouettes */}
       <View style={{
-        position: 'absolute', top: 25, right: 18,
-        width: 140, height: 26, borderRadius: 13,
-        borderWidth: 1, borderColor: isDark ? 'rgba(56, 189, 248, 0.22)' : 'rgba(37, 99, 235, 0.18)',
-        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.05)' : 'rgba(37, 99, 235, 0.03)',
-        transform: [{ rotate: '-32deg' }]
-      }} />
-      <View style={{
-        position: 'absolute', top: 55, right: 62,
-        width: 72, height: 16, borderRadius: 8,
-        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.20)' : 'rgba(168, 85, 247, 0.15)',
-        transform: [{ rotate: '-32deg' }]
-      }} />
-
-      {/* Center left geometric diamonds & angled polygon accents */}
-      <View style={{
-        position: 'absolute', top: 375, left: 16,
-        width: 34, height: 34, borderRadius: 8,
-        borderWidth: 1.5, borderColor: isDark ? 'rgba(168, 85, 247, 0.28)' : 'rgba(147, 51, 234, 0.22)',
-        backgroundColor: isDark ? 'rgba(168, 85, 247, 0.07)' : 'rgba(147, 51, 234, 0.05)',
-        transform: [{ rotate: '45deg' }]
-      }} />
-      <View style={{
-        position: 'absolute', top: 405, left: 52,
-        width: 16, height: 16, borderRadius: 4,
-        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.22)' : 'rgba(37, 99, 235, 0.16)',
-        transform: [{ rotate: '45deg' }]
-      }} />
-      <View style={{
-        position: 'absolute', top: 345, left: -10,
-        width: 115, height: 22, borderRadius: 11,
-        borderWidth: 1, borderColor: isDark ? 'rgba(16, 185, 129, 0.22)' : 'rgba(5, 150, 105, 0.18)',
-        backgroundColor: isDark ? 'rgba(16, 185, 129, 0.04)' : 'rgba(5, 150, 105, 0.03)',
-        transform: [{ rotate: '28deg' }]
-      }} />
-
-      {/* Mid-bottom geometric polygon accents */}
-      <View style={{
-        position: 'absolute', top: 615, right: 22,
-        width: 26, height: 26, borderRadius: 6,
-        borderWidth: 1, borderColor: isDark ? 'rgba(56, 189, 248, 0.24)' : 'rgba(37, 99, 235, 0.19)',
-        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.06)' : 'rgba(37, 99, 235, 0.04)',
-        transform: [{ rotate: '45deg' }]
-      }} />
-      <View style={{
-        position: 'absolute', top: 675, right: -15,
-        width: 165, height: 32, borderRadius: 16,
-        borderWidth: 1, borderColor: isDark ? 'rgba(99, 102, 241, 0.22)' : 'rgba(79, 70, 229, 0.17)',
-        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.05)' : 'rgba(79, 70, 229, 0.03)',
-        transform: [{ rotate: '-38deg' }]
-      }} />
-
-      {/* Minimal modern geometric grid points */}
-      <View style={{ position: 'absolute', top: 175, right: 35, flexDirection: 'row', gap: 6 }}>
-        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
-        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
-        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
-      </View>
-      <View style={{ position: 'absolute', top: 187, right: 35, flexDirection: 'row', gap: 6 }}>
-        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
-        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(56,189,248,0.5)' : 'rgba(37,99,235,0.35)' }} />
-        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)' }} />
-      </View>
-    </View>
-  );
-});
-
-// 4. Meadow Monitor Scene for "Browse PC" (Matching Image 3)
-const MeadowMonitorScene = React.memo(({ isDark = false }) => {
-  const hillFar = isDark ? '#132A26' : '#A7D7C5';
-  const hillNear = isDark ? '#0D201D' : '#68A89A';
-  const pineGreen = isDark ? '#081715' : '#1A4D43';
-
-  return (
-    <View style={{ width: 85, height: 75, position: 'relative', overflow: 'hidden', borderRadius: 14 }} pointerEvents="none">
-      {/* Meadow Hills */}
-      <View style={{
-        position: 'absolute', bottom: -10, left: -20, width: 120, height: 55,
-        backgroundColor: hillFar,
-        borderRadius: 50, transform: [{ rotate: '-12deg' }], opacity: 0.6
-      }} />
-      <View style={{
-        position: 'absolute', bottom: -18, right: -15, width: 110, height: 55,
-        backgroundColor: hillNear,
-        borderRadius: 50, transform: [{ rotate: '10deg' }]
-      }} />
-
-      {/* Small Pine Conifers */}
-      <View style={{ position: 'absolute', bottom: 12, left: 4, flexDirection: 'row', alignItems: 'flex-end', gap: 1 }}>
-        <PineTree scale={0.55} color={pineGreen} />
-        <PineTree scale={0.7} color={pineGreen} />
-      </View>
-
-      {/* Desktop PC Monitor Standing in Meadow */}
-      <View style={{ position: 'absolute', top: 6, right: 8, alignItems: 'center' }}>
-        <View style={{
-          width: 52, height: 36, borderRadius: 5,
-          backgroundColor: isDark ? '#0F172A' : '#1A4D43',
-          padding: 2, borderWidth: 1.2, borderColor: isDark ? '#334155' : '#457B70',
-          shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3, elevation: 3
-        }}>
-          <View style={{
-            flex: 1, borderRadius: 3.5, backgroundColor: isDark ? '#1E293B' : '#E6F4F1',
-            alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
-          }}>
-            {/* Screen wallpaper landscape preview */}
-            <View style={{
-              position: 'absolute', bottom: -5, left: -5, right: -5, height: 16,
-              backgroundColor: isDark ? '#064E3B' : '#68A89A', borderRadius: 8
-            }} />
-            <View style={{
-              width: 12, height: 12, borderRadius: 6,
-              backgroundColor: isDark ? '#10B981' : '#1A4D43', opacity: 0.85
-            }} />
-          </View>
-        </View>
-        <View style={{ width: 6, height: 7, backgroundColor: isDark ? '#334155' : '#457B70' }} />
-        <View style={{ width: 22, height: 2.5, borderRadius: 1.5, backgroundColor: isDark ? '#475569' : '#2D5E54' }} />
-      </View>
-    </View>
-  );
-});
-
-// Backward-compatible alias
-const PcMonitorIllustration = MeadowMonitorScene;
-
-// 5. Golden Ridge Phone Scene for "Browse Phone" (Matching Image 3)
-const RidgePhoneScene = React.memo(({ isDark = false }) => {
-  const duneFar = isDark ? '#271F15' : '#FDE68A';
-  const duneNear = isDark ? '#382A18' : '#F59E0B';
-  const pineAmber = isDark ? '#1F170D' : '#B45309';
-
-  return (
-    <View style={{ width: 85, height: 75, position: 'relative', overflow: 'hidden', borderRadius: 14 }} pointerEvents="none">
-      {/* Amber Dunes / Alpine Ridge */}
-      <View style={{
-        position: 'absolute', bottom: -12, left: -15, width: 110, height: 50,
-        backgroundColor: duneFar,
-        borderRadius: 45, transform: [{ rotate: '-8deg' }], opacity: 0.7
-      }} />
-      <View style={{
-        position: 'absolute', bottom: -16, right: -15, width: 115, height: 52,
-        backgroundColor: duneNear,
-        borderRadius: 45, transform: [{ rotate: '12deg' }]
-      }} />
-
-      {/* Pine Trees along Ridge */}
-      <View style={{ position: 'absolute', bottom: 10, left: 6, flexDirection: 'row', alignItems: 'flex-end', gap: 1 }}>
-        <PineTree scale={0.5} color={pineAmber} />
-        <PineTree scale={0.65} color={pineAmber} />
-        <PineTree scale={0.45} color={pineAmber} />
-      </View>
-
-      {/* Modern Bezel-less Smartphone Standing on Ridge */}
-      <View style={{
-        position: 'absolute', top: 4, right: 12,
-        width: 32, height: 56, borderRadius: 7,
-        backgroundColor: isDark ? '#0F172A' : '#78350F',
-        padding: 1.5, borderWidth: 1, borderColor: isDark ? '#334155' : '#D97706',
-        shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 3, elevation: 3
+        position: 'absolute', top: 0, left: 0, right: 0, height: 160,
+        opacity: isDark ? 0.35 : 0.5, overflow: 'hidden'
       }}>
+        {/* Distant soft mountains */}
         <View style={{
-          flex: 1, borderRadius: 5, backgroundColor: isDark ? '#1E293B' : '#FEF3C7',
-          overflow: 'hidden', position: 'relative'
-        }}>
-          {/* Wallpaper with warm mountain ridge */}
-          <View style={{
-            position: 'absolute', bottom: -6, left: -5, right: -5, height: 24,
-            backgroundColor: isDark ? '#78350F' : '#F59E0B', borderRadius: 10
-          }} />
-          <View style={{
-            position: 'absolute', top: 6, right: 5, width: 10, height: 10,
-            borderRadius: 5, backgroundColor: isDark ? '#D97706' : '#FBBF24', opacity: 0.9
-          }} />
+          position: 'absolute', top: 20, left: -40, width: 280, height: 120,
+          backgroundColor: isDark ? '#264653' : '#a8dadc',
+          borderTopLeftRadius: 100, borderTopRightRadius: 70,
+          transform: [{ rotate: '-8deg' }]
+        }} />
+        <View style={{
+          position: 'absolute', top: 35, right: -30, width: 260, height: 110,
+          backgroundColor: isDark ? '#2a9d8f' : '#b7e4c7',
+          borderTopLeftRadius: 80, borderTopRightRadius: 90,
+          transform: [{ rotate: '6deg' }]
+        }} />
+        {/* Calming bird flight cluster */}
+        <View style={{ position: 'absolute', top: 26, left: 65, flexDirection: 'row', gap: 8, opacity: 0.6 }}>
+          <Text style={{ fontSize: 13, color: isDark ? '#95d5b2' : '#2d4943' }}>⌵</Text>
+          <Text style={{ fontSize: 10, color: isDark ? '#95d5b2' : '#2d4943', marginTop: 4 }}>⌵</Text>
+          <Text style={{ fontSize: 11, color: isDark ? '#95d5b2' : '#2d4943', marginTop: -3 }}>⌵</Text>
         </View>
       </View>
     </View>
   );
 });
-
-// Backward-compatible alias
-const PhoneIllustration = RidgePhoneScene;
-
-// 6. Send Files Background Landscape (Matching Image 3)
-const SendFilesLandscape = React.memo(({ isDark = false }) => (
-  <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-    <View style={{
-      position: 'absolute', bottom: -10, left: -20, right: -20, height: 45,
-      backgroundColor: isDark ? 'rgba(19, 42, 38, 0.5)' : '#D1FAE5',
-      borderRadius: 40, transform: [{ rotate: '-1.5deg' }], opacity: 0.65
-    }} />
-    <View style={{ position: 'absolute', bottom: 12, right: 30, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
-      <PineTree scale={0.6} color={isDark ? '#0D201D' : '#1A4D43'} />
-      <PineTree scale={0.8} color={isDark ? '#0D201D' : '#1A4D43'} />
-      <PineTree scale={0.5} color={isDark ? '#0D201D' : '#1A4D43'} />
-    </View>
-  </View>
-));
-
-// 7. Bottom Canvas Framing (Trees and hills framing the screen bottom)
-const BottomCanvasLandscape = React.memo(({ isDark = false }) => (
-  <View style={{ height: 42, marginTop: 12, position: 'relative', overflow: 'hidden' }} pointerEvents="none">
-    <View style={{
-      position: 'absolute', bottom: -20, left: -30, width: 220, height: 60,
-      backgroundColor: isDark ? '#0D201D' : '#A7D7C5',
-      borderRadius: 70, opacity: 0.45
-    }} />
-    <View style={{
-      position: 'absolute', bottom: -24, right: -30, width: 220, height: 60,
-      backgroundColor: isDark ? '#132A26' : '#68A89A',
-      borderRadius: 70, opacity: 0.45
-    }} />
-    <View style={{ position: 'absolute', bottom: 2, right: 16, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
-      <PineTree scale={0.65} color={isDark ? '#081715' : '#1A4D43'} />
-      <PineTree scale={0.85} color={isDark ? '#081715' : '#1A4D43'} />
-      <PineTree scale={0.55} color={isDark ? '#081715' : '#1A4D43'} />
-    </View>
-    <View style={{ position: 'absolute', bottom: 2, left: 16, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
-      <PineTree scale={0.6} color={isDark ? '#081715' : '#1A4D43'} />
-      <PineTree scale={0.8} color={isDark ? '#081715' : '#1A4D43'} />
-    </View>
-  </View>
-));
 
 // Aesthetic Vector Icons for premium UI look (No cheap OS emojis!)
 const VectorHomeIcon = React.memo(({ size = 18, color = '#3b82f6' }) => (
@@ -850,78 +640,131 @@ const VectorShareHubIcon = React.memo(({ size = 18, color = '#60a5fa' }) => (
   </View>
 ));
 
-// Floating Bottom Navigation Bar (Modern floating capsule tabs for quick navigation)
+// Floating Bottom Navigation Bar with Curved Pill Capsule & Elevated Center Home Button (Inspired by reference art)
 const FloatingBottomTabBar = React.memo(({ currentTab, setCurrentTab, isDark = false, pairedPc = null, bottomInset = 0 }) => {
-  const tabs = [
-    { id: 'home', label: 'Home', renderIcon: (c) => <VectorHomeIcon size={17} color={c} /> },
-    { id: 'sharehub', label: 'ShareHub', renderIcon: (c) => <VectorShareHubIcon size={17} color={c} /> },
-    { id: 'pc-explorer', label: 'PC', renderIcon: (c) => <VectorMonitorIcon size={17} color={c} /> },
-    { id: 'phone-explorer', label: 'Phone', renderIcon: (c) => <VectorPhoneIcon size={17} color={c} /> },
-    { id: 'clipboard', label: 'Clip', renderIcon: (c) => <VectorClipboardIcon size={17} color={c} /> },
-    { id: 'transfer', label: 'Transfers', renderIcon: (c) => <VectorLightningIcon size={17} color={c} /> },
+  const leftTabs = [
+    { id: 'sharehub', label: 'ShareHub', renderIcon: (c) => <VectorShareHubIcon size={18} color={c} /> },
+    { id: 'pc-explorer', label: 'PC Drive', renderIcon: (c) => <VectorMonitorIcon size={18} color={c} /> },
   ];
+
+  const rightTabs = [
+    { id: 'phone-explorer', label: 'Phone', renderIcon: (c) => <VectorPhoneIcon size={18} color={c} /> },
+    { id: 'transfer', label: 'Transfers', renderIcon: (c) => <VectorLightningIcon size={18} color={c} /> },
+  ];
+
+  const isHomeActive = currentTab === 'home';
 
   return (
     <View style={{
       position: 'absolute',
       bottom: Math.max(bottomInset, 0) + (Platform.OS === 'android' ? 12 : 16),
-      left: 14,
-      right: 14,
-      backgroundColor: isDark ? 'rgba(10, 10, 10, 0.96)' : 'rgba(255, 255, 255, 0.97)',
+      left: 18,
+      right: 18,
+      height: 64,
+      backgroundColor: isDark ? 'rgba(18, 34, 32, 0.96)' : 'rgba(255, 255, 255, 0.97)',
       borderRadius: 36,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-around',
-      paddingVertical: 6,
-      paddingHorizontal: 6,
+      justifyContent: 'space-between',
+      paddingHorizontal: 12,
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(37, 99, 235, 0.3)' : 'rgba(37, 99, 235, 0.2)',
-      shadowColor: '#2563eb',
+      borderColor: isDark ? 'rgba(82, 183, 136, 0.25)' : 'rgba(82, 183, 136, 0.3)',
+      shadowColor: '#52b788',
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: isDark ? 0.45 : 0.16,
-      shadowRadius: 12,
+      shadowOpacity: isDark ? 0.35 : 0.16,
+      shadowRadius: 14,
       elevation: 10,
       zIndex: 1000,
     }}>
-      {tabs.map((t) => {
-        const isActive = currentTab === t.id;
-        const iconColor = isActive
-          ? (isDark ? '#93c5fd' : '#ffffff')
-          : (isDark ? '#64748b' : '#64748b');
-        return (
-          <TouchableOpacity
-            key={t.id}
-            activeOpacity={0.75}
-            onPress={() => setCurrentTab(t.id)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 7,
-              paddingHorizontal: isActive ? 11 : 7,
-              borderRadius: 24,
-              backgroundColor: isActive
-                ? (isDark ? 'rgba(37, 99, 235, 0.3)' : '#2563eb')
-                : 'transparent',
-            }}>
-            <View style={{ marginRight: isActive ? 4 : 0 }}>
+      {/* Left Flank Tabs */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {leftTabs.map((t) => {
+          const isActive = currentTab === t.id;
+          const iconColor = isActive ? (isDark ? '#52b788' : '#2d6a4f') : (isDark ? '#6b8a82' : '#748c84');
+          return (
+            <TouchableOpacity
+              key={t.id}
+              activeOpacity={0.75}
+              onPress={() => setCurrentTab(t.id)}
+              style={{
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                borderRadius: 20,
+                backgroundColor: isActive ? (isDark ? 'rgba(82, 183, 136, 0.16)' : 'rgba(82, 183, 136, 0.12)') : 'transparent',
+              }}>
               {t.renderIcon(iconColor)}
-            </View>
-            {isActive && (
               <Text style={{
-                fontSize: 11.5,
-                fontWeight: '800',
-                color: isDark ? '#93c5fd' : '#ffffff',
+                fontSize: 10,
+                fontWeight: isActive ? '800' : '600',
+                color: iconColor,
+                marginTop: 2,
               }}>
                 {t.label}
               </Text>
-            )}
-          </TouchableOpacity>
-        );
-      })}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Dominant Elevated Center Home Button (Direct reference match) */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => setCurrentTab('home')}
+        style={{
+          width: 54,
+          height: 54,
+          borderRadius: 27,
+          backgroundColor: isHomeActive ? '#52b788' : (isDark ? '#2d5449' : '#e8f5ee'),
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: -22, // Elevated float
+          borderWidth: 3,
+          borderColor: isDark ? '#122220' : '#ffffff',
+          shadowColor: '#52b788',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: isHomeActive ? 0.5 : 0.2,
+          shadowRadius: 10,
+          elevation: 12,
+        }}>
+        <VectorHomeIcon size={22} color={isHomeActive ? '#ffffff' : (isDark ? '#95d5b2' : '#2d6a4f')} />
+      </TouchableOpacity>
+
+      {/* Right Flank Tabs */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {rightTabs.map((t) => {
+          const isActive = currentTab === t.id;
+          const iconColor = isActive ? (isDark ? '#52b788' : '#2d6a4f') : (isDark ? '#6b8a82' : '#748c84');
+          return (
+            <TouchableOpacity
+              key={t.id}
+              activeOpacity={0.75}
+              onPress={() => setCurrentTab(t.id)}
+              style={{
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                borderRadius: 20,
+                backgroundColor: isActive ? (isDark ? 'rgba(82, 183, 136, 0.16)' : 'rgba(82, 183, 136, 0.12)') : 'transparent',
+              }}>
+              {t.renderIcon(iconColor)}
+              <Text style={{
+                fontSize: 10,
+                fontWeight: isActive ? '800' : '600',
+                color: iconColor,
+                marginTop: 2,
+              }}>
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 });
-
 
 // Clean Vector File Badge Icon (Replaces random emojis with professional type badges)
 const FileBadgeIcon = ({ ext, isDir, size = 28 }) => {
