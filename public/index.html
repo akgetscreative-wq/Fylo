@@ -6102,7 +6102,7 @@
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="bento-card-caption" id="dash-phone-recents-caption">Offline</span>
-                                    <button class="btn btn-sm" id="dash-recents-refresh-btn" onclick="fetchAndRenderPhoneRecents()" style="padding: 3px 8px; font-size: 0.72rem; border-radius: 8px; display: none;" title="Refresh recent media">↻</button>
+                                    <button class="btn btn-sm" id="dash-recents-refresh-btn" onclick="fetchAndRenderPhoneRecents(true)" style="padding: 3px 8px; font-size: 0.72rem; border-radius: 8px; display: none;" title="Refresh recent media">↻</button>
                                 </div>
                             </div>
                             <!-- Live Recents Grid -->
@@ -8161,8 +8161,8 @@
 
             if (connectedDev) {
                 // Connected state
-                if (!connectedDev.isWebClient && typeof fetchAndRenderPhoneRecents === 'function') {
-                    fetchAndRenderPhoneRecents();
+                if (!connectedDev.isWebClient && typeof syncPhoneRecentsWithConnectedDevice === 'function') {
+                    syncPhoneRecentsWithConnectedDevice(connectedDev.id);
                 }
                 if (modelLabel) {
                     modelLabel.textContent = `${connectedDev.name || connectedDev.model || 'Android Phone'} (Online)`;
@@ -8241,6 +8241,9 @@
                 }
             } else {
                 // Disconnected state
+                if (typeof syncPhoneRecentsWithConnectedDevice === 'function') {
+                    syncPhoneRecentsWithConnectedDevice(null);
+                }
                 if (modelLabel) {
                     modelLabel.textContent = 'No Phone Linked';
                     modelLabel.style.color = 'var(--text-light)';
@@ -13826,9 +13829,51 @@ function iconLabel(ext, type) {
         // ==========================================
         let cachedPhoneRecents = [];
         let isFetchingPhoneRecents = false;
+        let activeRecentsDeviceId = null;
+        let lastRecentsFetchTime = 0;
 
-        async function fetchAndRenderPhoneRecents() {
+        function syncPhoneRecentsWithConnectedDevice(devId) {
+            if (!devId) {
+                if (activeRecentsDeviceId !== null) {
+                    activeRecentsDeviceId = null;
+                    resetPhoneRecentsOfflineState();
+                }
+                return;
+            }
+            if (activeRecentsDeviceId !== devId) {
+                activeRecentsDeviceId = devId;
+                // Newly connected device: fetch once!
+                fetchAndRenderPhoneRecents(true);
+            }
+        }
+
+        function resetPhoneRecentsOfflineState() {
+            const container = document.getElementById('dash-phone-recents-container');
+            const emptyBox = document.getElementById('dash-phone-recents-empty');
+            const caption = document.getElementById('dash-phone-recents-caption');
+            const refreshBtn = document.getElementById('dash-recents-refresh-btn');
+            cachedPhoneRecents = [];
+            if (container) container.style.display = 'none';
+            if (emptyBox) {
+                emptyBox.style.display = 'flex';
+                emptyBox.innerHTML = `
+                    <div style="font-size: 1.6rem; margin-bottom: 6px; opacity: 0.7;">📸</div>
+                    <div style="font-weight: 700; color: var(--text); margin-bottom: 3px;">Recent Photos & Videos</div>
+                    <div style="font-size: 0.75rem; opacity: 0.75; max-width: 280px; line-height: 1.4;">Connect your phone to preview and access recently captured photos & clips here instantly.</div>
+                `;
+            }
+            if (caption) caption.textContent = 'Offline';
+            if (refreshBtn) refreshBtn.style.display = 'none';
+        }
+
+        async function fetchAndRenderPhoneRecents(isUserTriggered = false) {
             if (isFetchingPhoneRecents) return;
+            const now = Date.now();
+            // Debounce automatic calls to at least 45 seconds to prevent spamming the phone
+            if (!isUserTriggered && (now - lastRecentsFetchTime < 45000) && cachedPhoneRecents.length > 0) {
+                return;
+            }
+
             const devs = (typeof mobileDeviceList !== 'undefined' && Array.isArray(mobileDeviceList)) ? mobileDeviceList : [];
             const onlineDev = devs.find(d => d.online && !d.isWebClient);
             const container = document.getElementById('dash-phone-recents-container');
@@ -13837,23 +13882,43 @@ function iconLabel(ext, type) {
             const refreshBtn = document.getElementById('dash-recents-refresh-btn');
 
             if (!onlineDev) {
-                if (container) container.style.display = 'none';
-                if (emptyBox) emptyBox.style.display = 'flex';
-                if (caption) caption.textContent = 'Offline';
-                if (refreshBtn) refreshBtn.style.display = 'none';
+                resetPhoneRecentsOfflineState();
                 return;
             }
 
             if (refreshBtn) refreshBtn.style.display = 'inline-flex';
-            if (caption) caption.textContent = 'Loading...';
+            if (caption && (isUserTriggered || cachedPhoneRecents.length === 0)) {
+                caption.textContent = isUserTriggered ? 'Refreshing...' : 'Checking...';
+            }
             isFetchingPhoneRecents = true;
+            lastRecentsFetchTime = now;
 
             try {
                 const devId = onlineDev.id || (typeof currentPhoneId !== 'undefined' ? currentPhoneId : '');
                 const res = await apiFetch(`/api/mobile/fs/recent?deviceId=${encodeURIComponent(devId)}&limit=12`);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
-                const items = data.items || [];
+
+                if (data.offline) {
+                    if (caption) caption.textContent = 'Offline';
+                    return;
+                }
+
+                if (data.permissionRequired) {
+                    if (caption) caption.textContent = 'Storage Off';
+                    if (container) container.style.display = 'none';
+                    if (emptyBox) {
+                        emptyBox.style.display = 'flex';
+                        emptyBox.innerHTML = `
+                            <div style="font-size: 1.6rem; margin-bottom: 6px; opacity: 0.7;">🔒</div>
+                            <div style="font-weight: 700; color: var(--text); margin-bottom: 3px;">Storage Access Disabled</div>
+                            <div style="font-size: 0.75rem; opacity: 0.75; max-width: 280px; line-height: 1.4;">Enable "Share Full Phone Storage" in the Fylo Android app settings.</div>
+                        `;
+                    }
+                    return;
+                }
+
+                const items = Array.isArray(data.items) ? data.items : [];
                 cachedPhoneRecents = items;
 
                 if (items.length === 0) {
@@ -13863,8 +13928,8 @@ function iconLabel(ext, type) {
                         emptyBox.style.display = 'flex';
                         emptyBox.innerHTML = `
                             <div style="font-size: 1.6rem; margin-bottom: 6px; opacity: 0.7;">📸</div>
-                            <div style="font-weight: 700; color: var(--text);">No Camera Photos Yet</div>
-                            <div style="font-size: 0.75rem; opacity: 0.75; margin-top: 2px;">Photos taken on your phone will appear here instantly.</div>
+                            <div style="font-weight: 700; color: var(--text); margin-bottom: 3px;">No Camera Photos Yet</div>
+                            <div style="font-size: 0.75rem; opacity: 0.75; max-width: 280px; line-height: 1.4;">Photos and videos captured on your phone will appear here.</div>
                         `;
                     }
                     return;
@@ -13894,8 +13959,10 @@ function iconLabel(ext, type) {
                     }).join('');
                 }
             } catch (e) {
-                console.warn('fetchPhoneRecents error:', e);
-                if (caption) caption.textContent = 'Error loading';
+                console.warn('fetchPhoneRecents notice:', e);
+                if (cachedPhoneRecents.length === 0) {
+                    if (caption) caption.textContent = 'Tap ↻ to refresh';
+                }
             } finally {
                 isFetchingPhoneRecents = false;
             }

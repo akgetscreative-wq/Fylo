@@ -1837,16 +1837,17 @@ app.get('/api/mobile/fs/recent', (req, res) => {
         }
     }
     if (!device) {
-        return res.status(404).json({ error: 'Mobile device not connected', items: [] });
+        return res.status(200).json({ success: false, offline: true, error: 'Mobile device not connected', items: [] });
     }
 
     if (Date.now() - device.lastActive > 35000) {
-        return res.status(503).json({ error: 'Mobile device is offline', offline: true, items: [] });
+        return res.status(200).json({ success: false, offline: true, error: 'Mobile device is offline', items: [] });
     }
 
     if (device.allowFullPhoneAccess === false) {
-        return res.status(403).json({
+        return res.status(200).json({
             success: false,
+            permissionRequired: true,
             error: 'Full phone storage sharing is disabled by phone user.',
             items: []
         });
@@ -1861,21 +1862,21 @@ app.get('/api/mobile/fs/recent', (req, res) => {
         remoteRes.on('end', () => {
             try {
                 const parsed = JSON.parse(data);
-                res.status(remoteRes.statusCode).json(parsed);
+                res.status(200).json(parsed);
             } catch (err) {
-                res.status(502).json({ error: 'Invalid response from mobile device', items: [] });
+                res.status(200).json({ success: false, error: 'Invalid response from mobile device', items: [] });
             }
         });
     });
 
     request.on('error', (err) => {
         console.error('Mobile fs/recent proxy error:', err.message);
-        res.status(502).json({ error: 'Unable to reach mobile device', items: [] });
+        res.status(200).json({ success: false, error: 'Unable to reach mobile device', items: [] });
     });
 
     request.setTimeout(10000, () => {
         request.destroy();
-        if (!res.headersSent) res.status(504).json({ error: 'Mobile device request timed out.', items: [] });
+        if (!res.headersSent) res.status(200).json({ success: false, error: 'Mobile device request timed out.', items: [] });
     });
 });
 
