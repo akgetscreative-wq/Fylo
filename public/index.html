@@ -3388,8 +3388,7 @@
             display: grid;
             grid-template-columns: 280px 1.25fr 290px 280px;
             gap: 18px;
-            align-items: stretch;
-            min-height: 600px;
+            align-items: start;
         }
 
         .dash-hero-drop {
@@ -3400,7 +3399,7 @@
             align-items: stretch;
             justify-content: flex-start;
             text-align: center;
-            min-height: 160px;
+            height: auto;
             transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -3421,9 +3420,8 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 16px 12px;
+            padding: 24px 14px;
             width: 100%;
-            flex: 1;
             cursor: pointer;
             border-radius: 16px;
             transition: background 0.2s ease;
@@ -4200,6 +4198,7 @@
             transition: box-shadow 0.25s ease, transform 0.25s ease;
             position: relative;
             overflow: hidden;
+            height: auto;
         }
 
         .bento-card:hover {
@@ -4452,27 +4451,31 @@
             display: flex;
             flex-direction: column;
             gap: 18px;
+            height: auto;
         }
 
         .dash-card-drives,
         .dash-card-phone-storage {
-            flex: 1;
+            flex: none;
+            height: auto;
         }
 
         .bento-tiles-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
-            height: 100%;
+            height: auto;
         }
 
         .bento-tile {
             border-radius: 20px;
-            padding: 14px 16px;
+            padding: 16px 18px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            min-height: 130px;
+            justify-content: flex-start;
+            gap: 10px;
+            min-height: auto;
+            height: auto;
             cursor: pointer;
             transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
@@ -4745,8 +4748,8 @@
         }
 
         .dash-card-queue {
-            flex: 1;
-            justify-content: space-between;
+            flex: none;
+            height: auto;
         }
 
         .queue-checklist {
@@ -6134,7 +6137,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="dash-shared-list" id="dash-shared-list" style="flex: 1; overflow-y: auto; max-height: 380px;">
+                        <div class="dash-shared-list" id="dash-shared-list" style="overflow-y: auto; max-height: 340px; min-height: 140px;">
                             <div style="text-align: center; padding: 40px 16px; color: var(--text-light); font-size: 0.85rem;">
                                 <div style="font-size: 2rem; margin-bottom: 8px; opacity: 0.6;">📦</div>
                                 <strong>No files shared yet</strong>
