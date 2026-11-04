@@ -13,65 +13,75 @@
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
         :root[data-theme="light"] {
-            --bg: #f5f6fa;
-            --sidebar-bg: rgba(255, 255, 255, 0.45);
-            --card-bg: rgba(255, 255, 255, 0.75);
-            --text: #2f3542;
-            --text-light: #747d8c;
-            --border: rgba(255, 255, 255, 0.5);
-            --accent: #2563eb;
-            --accent-hover: #1d4ed8;
-            --accent-bg: rgba(37, 99, 235, 0.1);
+            --bg: #e6f6ee;
+            --bg-gradient: radial-gradient(circle at 18% 18%, #fbfdf9 0%, #edf8f2 42%, #d7f1e3 100%);
+            --sidebar-bg: rgba(255, 255, 255, 0.78);
+            --card-bg: rgba(255, 255, 255, 0.84);
+            --text: #0d2821;
+            --text-light: #3d6356;
+            --border: rgba(16, 185, 129, 0.18);
+            --border-hover: rgba(16, 185, 129, 0.42);
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --accent-bg: rgba(16, 185, 129, 0.14);
+            --accent-rgb: 16, 185, 129;
 
-            --mint: rgba(14, 165, 233, 0.08);
-            --mint-border: rgba(14, 165, 233, 0.3);
-            --peach: rgba(59, 130, 246, 0.08);
-            --peach-border: rgba(59, 130, 246, 0.3);
-            --sky: rgba(56, 189, 248, 0.1);
-            --sky-border: rgba(56, 189, 248, 0.3);
-            --lavender: rgba(37, 99, 235, 0.1);
-            --lavender-border: rgba(37, 99, 235, 0.3);
-            --danger: rgba(239, 68, 68, 0.1);
+            --mint: rgba(16, 185, 129, 0.14);
+            --mint-border: rgba(16, 185, 129, 0.38);
+            --peach: rgba(249, 115, 22, 0.14);
+            --peach-border: rgba(249, 115, 22, 0.38);
+            --sky: rgba(14, 165, 233, 0.14);
+            --sky-border: rgba(14, 165, 233, 0.38);
+            --lavender: rgba(168, 85, 247, 0.14);
+            --lavender-border: rgba(168, 85, 247, 0.38);
+            --amber: rgba(245, 158, 11, 0.14);
+            --amber-border: rgba(245, 158, 11, 0.38);
+            --danger: rgba(239, 68, 68, 0.14);
             --danger-text: #ef4444;
-            --save-green: #2563eb;
-            --save-green-hover: #1d4ed8;
-            --glass-shadow: 0 8px 32px 0 rgba(37, 99, 235, 0.12);
-            --inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
-            --blob-1: rgba(37, 99, 235, 0.04);
-            --blob-2: rgba(255, 255, 255, 0.6);
-            --blob-3: rgba(14, 165, 233, 0.03);
-            --blob-4: rgba(255, 255, 255, 0.8);
+            --save-green: #10b981;
+            --save-green-hover: #059669;
+            --glass-shadow: 0 12px 36px 0 rgba(16, 185, 129, 0.12);
+            --inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+            --blob-1: rgba(52, 211, 153, 0.28);
+            --blob-2: rgba(251, 146, 60, 0.2);
+            --blob-3: rgba(56, 189, 248, 0.22);
+            --blob-4: rgba(167, 243, 208, 0.35);
         }
 
         :root[data-theme="dark"] {
-            --bg: #090a0f;
-            --sidebar-bg: rgba(15, 18, 28, 0.6);
-            --card-bg: rgba(20, 24, 38, 0.65);
-            --text: #f1f2f6;
-            --text-light: #a4b0be;
-            --border: rgba(255, 255, 255, 0.05);
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
-            --accent-bg: rgba(59, 130, 246, 0.15);
+            --bg: #061913;
+            --bg-gradient: radial-gradient(circle at 20% 20%, #0d2a21 0%, #081d16 50%, #04120e 100%);
+            --sidebar-bg: rgba(10, 31, 24, 0.78);
+            --card-bg: rgba(14, 39, 31, 0.8);
+            --text: #f0fdf4;
+            --text-light: #86efac;
+            --border: rgba(52, 211, 153, 0.18);
+            --border-hover: rgba(52, 211, 153, 0.38);
+            --accent: #10b981;
+            --accent-hover: #34d399;
+            --accent-bg: rgba(16, 185, 129, 0.2);
+            --accent-rgb: 16, 185, 129;
 
-            --mint: rgba(14, 165, 233, 0.06);
-            --mint-border: rgba(14, 165, 233, 0.2);
-            --peach: rgba(59, 130, 246, 0.06);
-            --peach-border: rgba(59, 130, 246, 0.2);
-            --sky: rgba(56, 189, 248, 0.06);
-            --sky-border: rgba(56, 189, 248, 0.2);
-            --lavender: rgba(37, 99, 235, 0.06);
-            --lavender-border: rgba(37, 99, 235, 0.2);
-            --danger: rgba(239, 68, 68, 0.08);
-            --danger-text: #ef4444;
-            --save-green: #3b82f6;
-            --save-green-hover: #2563eb;
-            --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35);
-            --inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-            --blob-1: rgba(37, 99, 235, 0.03);
-            --blob-2: rgba(0, 0, 0, 0.35);
-            --blob-3: rgba(14, 165, 233, 0.02);
-            --blob-4: rgba(0, 0, 0, 0.25);
+            --mint: rgba(52, 211, 153, 0.16);
+            --mint-border: rgba(52, 211, 153, 0.32);
+            --peach: rgba(251, 146, 60, 0.16);
+            --peach-border: rgba(251, 146, 60, 0.32);
+            --sky: rgba(56, 189, 248, 0.16);
+            --sky-border: rgba(56, 189, 248, 0.32);
+            --lavender: rgba(168, 85, 247, 0.16);
+            --lavender-border: rgba(168, 85, 247, 0.32);
+            --amber: rgba(245, 158, 11, 0.16);
+            --amber-border: rgba(245, 158, 11, 0.32);
+            --danger: rgba(239, 68, 68, 0.16);
+            --danger-text: #f87171;
+            --save-green: #10b981;
+            --save-green-hover: #34d399;
+            --glass-shadow: 0 14px 44px 0 rgba(0, 0, 0, 0.48);
+            --inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            --blob-1: rgba(16, 185, 129, 0.22);
+            --blob-2: rgba(249, 115, 22, 0.14);
+            --blob-3: rgba(6, 182, 212, 0.16);
+            --blob-4: rgba(16, 185, 129, 0.12);
         }
 
         * {
@@ -123,7 +133,7 @@
             z-index: 0;
             overflow: hidden;
             pointer-events: none;
-            background: var(--bg);
+            background: var(--bg-gradient, var(--bg));
         }
 
 
@@ -226,48 +236,72 @@
             font-size: 2.2rem;
             font-weight: 900;
             letter-spacing: -1px;
-            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             padding: 4px 24px 4px 4px;
             line-height: 1.2;
             display: inline-block;
+            filter: drop-shadow(0 2px 10px rgba(16, 185, 129, 0.25));
         }
 
         /* Nav List */
         .nav-list {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             list-style: none;
         }
 
         .nav-item {
-            padding: 16px 24px;
-            border-radius: 22px;
+            padding: 14px 20px;
+            border-radius: 20px;
             cursor: pointer;
             font-weight: 700;
-            font-size: 1.05rem;
+            font-size: 0.98rem;
             color: var(--text-light);
             display: flex;
             align-items: center;
-            gap: 16px;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            gap: 14px;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             border: 1px solid transparent;
         }
 
         .nav-item:hover {
             color: var(--text);
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateX(6px);
+            background: rgba(16, 185, 129, 0.08);
+            border-color: rgba(16, 185, 129, 0.16);
+            transform: translateX(5px);
         }
 
         .nav-item.active {
-            background: var(--card-bg);
-            color: var(--accent);
-            box-shadow: var(--glass-shadow), var(--inner-shadow);
-            border-color: var(--border);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(6, 182, 212, 0.1));
+            color: #10b981;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15), var(--inner-shadow);
+            border-color: rgba(16, 185, 129, 0.36);
         }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            transition: transform 0.25s ease, stroke 0.25s ease;
+        }
+
+        .nav-item:hover svg,
+        .nav-item.active svg {
+            transform: scale(1.12);
+        }
+
+        /* Distinct Color Accents for Each Nav Item */
+        #nav-dashboard-item.active svg { stroke: #10b981; filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5)); }
+        #nav-pc-item:hover svg, #nav-pc-item.active svg { stroke: #f59e0b; filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5)); }
+        #nav-hub-item:hover svg, #nav-hub-item.active svg { stroke: #f97316; filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.5)); }
+        #nav-clipboard-item:hover svg, #nav-clipboard-item.active svg { stroke: #06b6d4; filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.5)); }
+        #nav-phone-item:hover svg, #nav-phone-item.active svg { stroke: #10b981; filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5)); }
+        #nav-devices-item:hover svg, #nav-devices-item.active svg { stroke: #3b82f6; filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.5)); }
+        #nav-web-sharehub-item:hover svg, #nav-web-sharehub-item.active svg { stroke: #a855f7; filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.5)); }
+        #nav-settings-item:hover svg, #nav-settings-item.active svg { stroke: #14b8a6; filter: drop-shadow(0 0 6px rgba(20, 184, 166, 0.5)); }
 
         /* Main Content panels */
         .main-content {
@@ -717,19 +751,31 @@
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: var(--glass-shadow);
-            background: var(--bg);
+            background: var(--bg-gradient, var(--bg));
         }
 
         .btn-accent {
-            background: var(--accent);
+            background: linear-gradient(135deg, #10b981, #059669);
             color: white;
             border: none;
-            box-shadow: 0 6px 20px rgba(0, 210, 211, 0.25);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.32);
         }
 
         .btn-accent:hover {
-            background: var(--accent-hover);
-            box-shadow: 0 8px 25px rgba(0, 210, 211, 0.4);
+            background: linear-gradient(135deg, #34d399, #10b981);
+            box-shadow: 0 8px 26px rgba(16, 185, 129, 0.45);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            color: white;
+            border: none;
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #34d399, #0891b2);
+            box-shadow: 0 8px 26px rgba(16, 185, 129, 0.45);
         }
 
         #qr-container {
@@ -3062,14 +3108,14 @@
             width: 38px;
             height: 38px;
             border-radius: 12px;
-            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            background: linear-gradient(135deg, #10b981, #06b6d4);
             color: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 900;
             font-size: 1.15rem;
-            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
             cursor: pointer;
             transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
             flex-shrink: 0;
@@ -3208,7 +3254,7 @@
             width: 28px;
             height: 28px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            background: linear-gradient(135deg, #10b981, #06b6d4);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -3392,26 +3438,44 @@
         }
 
         .dash-hero-drop {
-            border: 2px dashed var(--accent);
-            background: rgba(var(--accent-rgb), 0.05);
+            border: 2px dashed rgba(16, 185, 129, 0.45);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.09), rgba(6, 182, 212, 0.05));
             display: flex;
             flex-direction: column;
             align-items: stretch;
             justify-content: flex-start;
             text-align: center;
             height: auto;
+            border-radius: 24px;
+            box-shadow: 0 10px 32px rgba(16, 185, 129, 0.08);
             transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dash-hero-drop::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         .dash-hero-drop:not(.bento-card-expanded):hover {
-            background: rgba(var(--accent-rgb), 0.08);
-            border-color: var(--accent);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(6, 182, 212, 0.09));
+            border-color: #10b981;
+            box-shadow: 0 14px 44px rgba(16, 185, 129, 0.22);
+            transform: translateY(-2px);
         }
 
         .dash-hero-drop.drag-over {
-            border-color: #3b82f6 !important;
-            background: rgba(59, 130, 246, 0.18) !important;
+            border-color: #10b981 !important;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.28), rgba(6, 182, 212, 0.2)) !important;
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.4) !important;
             transform: scale(1.02) !important;
         }
 
@@ -3428,7 +3492,7 @@
         }
 
         .drop-hero-content:hover {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         /* Expandable Bento Cards (Screen Cover & Smooth Minimise) */
@@ -3577,15 +3641,22 @@
         }
 
         .drop-hero-icon-wrap {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: rgba(var(--accent-rgb), 0.12);
-            color: var(--accent);
+            width: 66px;
+            height: 66px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            color: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 14px;
+            box-shadow: 0 10px 28px rgba(16, 185, 129, 0.35);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .dash-hero-drop:hover .drop-hero-icon-wrap {
+            transform: scale(1.1) rotate(-5deg);
+            box-shadow: 0 14px 36px rgba(16, 185, 129, 0.5);
         }
 
         .drop-hero-svg {
@@ -3803,9 +3874,9 @@
             transition: all 0.2s ease;
         }
         .ev-btn:hover {
-            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            background: linear-gradient(135deg, #10b981, #06b6d4);
             color: #ffffff;
-            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
             transform: translateY(-1px);
         }
         .ev-close-btn {
@@ -3923,9 +3994,9 @@
             bottom: 0;
             left: 0;
             width: 0%;
-            background: linear-gradient(90deg, #2563eb, #0ea5e9, #38bdf8);
+            background: linear-gradient(90deg, #10b981, #06b6d4, #38bdf8);
             border-radius: 3px;
-            box-shadow: 0 0 10px rgba(14, 165, 233, 0.7);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
         }
         .ev-scrubber-thumb {
             position: absolute;
@@ -4192,17 +4263,18 @@
             border: 1px solid var(--border);
             border-radius: 24px;
             padding: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), var(--inner-shadow);
+            box-shadow: var(--glass-shadow), var(--inner-shadow);
             display: flex;
             flex-direction: column;
-            transition: box-shadow 0.25s ease, transform 0.25s ease;
+            transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
             position: relative;
             overflow: hidden;
             height: auto;
         }
 
         .bento-card:hover {
-            box-shadow: 0 14px 38px rgba(0, 0, 0, 0.07), var(--inner-shadow);
+            border-color: var(--border-hover);
+            box-shadow: 0 16px 44px rgba(16, 185, 129, 0.12), var(--inner-shadow);
         }
 
         .bento-card-header {
@@ -4216,7 +4288,7 @@
         .bento-card-title {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             font-size: 1.05rem;
             font-weight: 800;
             color: var(--text);
@@ -4224,8 +4296,16 @@
         }
 
         .card-header-icon {
-            font-size: 1.1rem;
+            font-size: 1.12rem;
             line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(6, 182, 212, 0.12));
+            border: 1px solid rgba(16, 185, 129, 0.25);
         }
 
         .bento-card-caption {
@@ -4489,23 +4569,37 @@
         }
 
         .tile-sky {
-            background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(14, 165, 233, 0.06));
-            border: 1px solid rgba(56, 189, 248, 0.28);
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.22), rgba(16, 185, 129, 0.14));
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            box-shadow: 0 8px 24px rgba(6, 182, 212, 0.14);
+        }
+        .tile-sky:hover {
+            border-color: #06b6d4;
+            box-shadow: 0 12px 32px rgba(6, 182, 212, 0.28);
+            transform: translateY(-2px);
         }
 
         .tile-peach {
-            background: linear-gradient(135deg, rgba(251, 146, 60, 0.16), rgba(249, 115, 22, 0.06));
-            border: 1px solid rgba(251, 146, 60, 0.28);
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.22), rgba(244, 63, 94, 0.14));
+            border: 1px solid rgba(249, 115, 22, 0.4);
+            box-shadow: 0 8px 24px rgba(249, 115, 22, 0.14);
+        }
+        .tile-peach:hover {
+            border-color: #f97316;
+            box-shadow: 0 12px 32px rgba(249, 115, 22, 0.28);
+            transform: translateY(-2px);
         }
 
         .tile-mint {
-            background: linear-gradient(135deg, rgba(46, 213, 115, 0.16), rgba(38, 175, 95, 0.06));
-            border: 1px solid rgba(46, 213, 115, 0.28);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(52, 211, 153, 0.14));
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.14);
         }
 
         .tile-lavender {
-            background: linear-gradient(135deg, rgba(168, 85, 247, 0.16), rgba(147, 51, 234, 0.06));
-            border: 1px solid rgba(168, 85, 247, 0.28);
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.22), rgba(192, 132, 252, 0.14));
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            box-shadow: 0 8px 24px rgba(168, 85, 247, 0.14);
         }
 
         .tile-header {
@@ -4515,28 +4609,38 @@
         }
 
         .tile-title {
-            font-size: 0.85rem;
+            font-size: 0.88rem;
             font-weight: 800;
             color: var(--text);
+            letter-spacing: -0.2px;
         }
 
         .tile-icon-badge {
-            font-size: 1rem;
+            width: 28px;
+            height: 28px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(8px);
         }
 
         .tile-graphic-wave {
             height: 8px;
-            background: rgba(56, 189, 248, 0.2);
+            background: rgba(16, 185, 129, 0.2);
             border-radius: 9999px;
             overflow: hidden;
-            margin: 10px 0;
+            margin: 4px 0 2px 0;
         }
 
         .tile-wave-fill {
             height: 100%;
-            background: linear-gradient(90deg, #38bdf8, #0284c7);
+            background: linear-gradient(90deg, #10b981, #06b6d4);
             border-radius: 9999px;
             transition: width 0.4s ease;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
         }
 
         .tile-arc-gauge {
@@ -5268,7 +5372,7 @@
                 font-size: 1.55rem;
                 font-weight: 900;
                 letter-spacing: -0.8px;
-                background: linear-gradient(135deg, #2563eb, #0ea5e9);
+                background: linear-gradient(135deg, #10b981, #06b6d4);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 line-height: 1;
@@ -5322,7 +5426,7 @@
             }
 
             .mobile-tab-btn.active {
-                background: linear-gradient(135deg, #2563eb, #0ea5e9);
+                background: linear-gradient(135deg, #10b981, #06b6d4);
                 color: #fff;
                 box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
             }
@@ -5439,22 +5543,24 @@
     pointer-events: none;
     overflow: hidden;
     z-index: 1;
-    opacity: 0.65;
+    opacity: 0.88;
     transition: opacity 0.6s ease;
 }
 
 :root[data-theme="dark"] .serene-landscape-art {
-    opacity: 0.42;
-    --serene-sky-top: #081514;
-    --serene-sky-mid: #102422;
-    --serene-sky-bot: #193530;
+    opacity: 0.78;
+    --serene-sky-top: #061b15;
+    --serene-sky-mid: #0b382c;
+    --serene-sky-bot: #0f4f3e;
+    --serene-bird-fill: #34d399;
 }
 
 :root[data-theme="light"] .serene-landscape-art {
-    opacity: 0.72;
-    --serene-sky-top: #d2e4de;
-    --serene-sky-mid: #b8cfc7;
-    --serene-sky-bot: #9ebdb3;
+    opacity: 0.94;
+    --serene-sky-top: #fef9c3;
+    --serene-sky-mid: #d1fae5;
+    --serene-sky-bot: #a7f3d0;
+    --serene-bird-fill: #064e3b;
 }
 
 .serene-svg {
@@ -5611,62 +5717,65 @@
             <svg class="serene-svg" viewBox="0 0 1440 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                     <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="var(--serene-sky-top, #0a1917)" />
-                        <stop offset="60%" stop-color="var(--serene-sky-mid, #142a27)" />
-                        <stop offset="100%" stop-color="var(--serene-sky-bot, #1b3834)" />
+                        <stop offset="0%" stop-color="var(--serene-sky-top, #fef9c3)" />
+                        <stop offset="50%" stop-color="var(--serene-sky-mid, #d1fae5)" />
+                        <stop offset="100%" stop-color="var(--serene-sky-bot, #a7f3d0)" />
                     </linearGradient>
                     <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#fffdf0" />
-                        <stop offset="100%" stop-color="#faedcd" />
+                        <stop offset="0%" stop-color="#fffbeb" />
+                        <stop offset="55%" stop-color="#fde047" />
+                        <stop offset="100%" stop-color="#f59e0b" />
                     </linearGradient>
                     <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stop-color="#faedcd" stop-opacity="0.45" />
-                        <stop offset="50%" stop-color="#e9edc9" stop-opacity="0.18" />
-                        <stop offset="100%" stop-color="#e9edc9" stop-opacity="0" />
+                        <stop offset="0%" stop-color="#fde047" stop-opacity="0.6" />
+                        <stop offset="50%" stop-color="#f59e0b" stop-opacity="0.25" />
+                        <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
                     </radialGradient>
                     <linearGradient id="mtnGradFar" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#b5aa82" stop-opacity="0.85" />
-                        <stop offset="100%" stop-color="#60776b" stop-opacity="0.9" />
+                        <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.9" />
+                        <stop offset="40%" stop-color="#d97706" stop-opacity="0.92" />
+                        <stop offset="100%" stop-color="#059669" stop-opacity="0.95" />
                     </linearGradient>
                     <linearGradient id="mtnGradMid" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#416158" />
-                        <stop offset="100%" stop-color="#2a453e" />
+                        <stop offset="0%" stop-color="#16a34a" />
+                        <stop offset="50%" stop-color="#15803d" />
+                        <stop offset="100%" stop-color="#065f46" />
                     </linearGradient>
                     <linearGradient id="lakeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#41665e" stop-opacity="0.75" />
-                        <stop offset="50%" stop-color="#2c4c45" stop-opacity="0.85" />
-                        <stop offset="100%" stop-color="#19332e" stop-opacity="0.95" />
+                        <stop offset="0%" stop-color="#0d9488" stop-opacity="0.88" />
+                        <stop offset="50%" stop-color="#0f766e" stop-opacity="0.92" />
+                        <stop offset="100%" stop-color="#064e3b" stop-opacity="0.98" />
                     </linearGradient>
                 </defs>
 
                 <!-- 1. Sky & Sun/Moon Halo -->
-                <rect width="1440" height="800" fill="url(#skyGrad)" opacity="0.6" />
-                <circle class="serene-sun-glow" cx="720" cy="190" r="140" fill="url(#sunGlow)" />
-                <circle class="serene-sun" cx="720" cy="190" r="48" fill="url(#sunGrad)" />
+                <rect width="1440" height="800" fill="url(#skyGrad)" opacity="0.85" />
+                <circle class="serene-sun-glow" cx="720" cy="190" r="160" fill="url(#sunGlow)" />
+                <circle class="serene-sun" cx="720" cy="190" r="50" fill="url(#sunGrad)" />
 
                 <!-- 2. Gentle Drifting Birds in Flight -->
                 <g class="serene-birds">
-                    <path class="bird bird1" d="M 460 140 Q 470 132 480 140 Q 490 132 500 140 Q 490 136 480 142 Q 470 136 460 140 Z" fill="#2d4943" />
-                    <path class="bird bird2" d="M 495 120 Q 503 113 512 120 Q 520 113 528 120 Q 520 116 512 121 Q 503 116 495 120 Z" fill="#2d4943" />
-                    <path class="bird bird3" d="M 530 155 Q 537 148 545 155 Q 553 148 560 155 Q 553 151 545 156 Q 537 151 530 155 Z" fill="#2d4943" />
-                    <path class="bird bird4" d="M 565 130 Q 572 124 580 130 Q 587 124 595 130 Q 587 127 580 131 Q 572 127 565 130 Z" fill="#2d4943" />
+                    <path class="bird bird1" d="M 460 140 Q 470 132 480 140 Q 490 132 500 140 Q 490 136 480 142 Q 470 136 460 140 Z" fill="var(--serene-bird-fill, #064e3b)" />
+                    <path class="bird bird2" d="M 495 120 Q 503 113 512 120 Q 520 113 528 120 Q 520 116 512 121 Q 503 116 495 120 Z" fill="var(--serene-bird-fill, #064e3b)" />
+                    <path class="bird bird3" d="M 530 155 Q 537 148 545 155 Q 553 148 560 155 Q 553 151 545 156 Q 537 151 530 155 Z" fill="var(--serene-bird-fill, #064e3b)" />
+                    <path class="bird bird4" d="M 565 130 Q 572 124 580 130 Q 587 124 595 130 Q 587 127 580 131 Q 572 127 565 130 Z" fill="var(--serene-bird-fill, #064e3b)" />
                 </g>
 
                 <!-- 3. Soft Ambient Floating Clouds -->
                 <g class="serene-clouds">
-                    <ellipse cx="260" cy="130" rx="220" ry="45" fill="#f4f8f5" opacity="0.14" />
-                    <ellipse cx="1180" cy="160" rx="280" ry="55" fill="#f4f8f5" opacity="0.12" />
-                    <ellipse cx="820" cy="240" rx="340" ry="50" fill="#f4f8f5" opacity="0.16" />
+                    <ellipse cx="260" cy="130" rx="220" ry="45" fill="#f0fdf4" opacity="0.32" />
+                    <ellipse cx="1180" cy="160" rx="280" ry="55" fill="#f0fdf4" opacity="0.28" />
+                    <ellipse cx="820" cy="240" rx="340" ry="50" fill="#f0fdf4" opacity="0.3" />
                 </g>
 
                 <!-- 4. Distant Warm Ochre & Sage Mountain Ridge -->
-                <path d="M 0 460 L 0 350 Q 240 280 480 340 T 960 290 Q 1200 240 1440 330 L 1440 540 L 0 540 Z" fill="url(#mtnGradFar)" opacity="0.8" />
+                <path d="M 0 460 L 0 350 Q 240 280 480 340 T 960 290 Q 1200 240 1440 330 L 1440 540 L 0 540 Z" fill="url(#mtnGradFar)" opacity="0.9" />
 
                 <!-- 5. Midground Layered Forest Hills -->
                 <path d="M 0 490 Q 320 400 680 470 T 1440 430 L 1440 580 L 0 580 Z" fill="url(#mtnGradMid)" />
 
                 <!-- 6. Geometric Pine Tree Silhouette Rows -->
-                <g class="pine-trees-mid" fill="#213a34">
+                <g class="pine-trees-mid" fill="#047857">
                     <polygon points="120,490 140,430 160,490" />
                     <polygon points="145,495 165,420 185,495" />
                     <polygon points="170,498 190,435 210,498" />
@@ -5684,7 +5793,7 @@
                 <rect x="0" y="520" width="1440" height="280" fill="url(#lakeGrad)" />
 
                 <!-- 8. Gentle Lake Ripple Shimmer Lines -->
-                <g class="lake-ripples" stroke="#a7c4bc" stroke-width="1.8" opacity="0.32" stroke-linecap="round">
+                <g class="lake-ripples" stroke="#6ee7b7" stroke-width="2.2" opacity="0.48" stroke-linecap="round">
                     <line class="ripple-wave r1" x1="380" y1="545" x2="680" y2="545" />
                     <line class="ripple-wave r2" x1="720" y1="565" x2="1080" y2="565" />
                     <line class="ripple-wave r3" x1="220" y1="595" x2="520" y2="595" />
@@ -5693,7 +5802,7 @@
                 </g>
 
                 <!-- 9. Foreground Crisp Tall Geometric Pines -->
-                <g class="pine-trees-foreground" fill="#132420">
+                <g class="pine-trees-foreground" fill="#064e3b">
                     <polygon points="-10,800 50,380 110,800" />
                     <polygon points="40,800 95,430 150,800" />
                     <polygon points="120,800 170,470 220,800" />
@@ -6177,7 +6286,7 @@
                         </div>
 
                         <!-- Square QR Code Tile: Instant Phone Pairing -->
-                        <div class="bento-card dash-card-qr-tile" id="dash-card-qr-tile" style="padding: 16px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px solid rgba(59, 130, 246, 0.28); background: var(--card-bg); box-shadow: var(--glass-shadow); border-radius: 20px;">
+                        <div class="bento-card dash-card-qr-tile" id="dash-card-qr-tile" style="padding: 16px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px solid rgba(16, 185, 129, 0.35); background: var(--card-bg); box-shadow: var(--glass-shadow); border-radius: 20px;">
                             <div class="bento-card-header" style="width: 100%; margin-bottom: 8px;">
                                 <div class="bento-card-title">
                                     <span class="card-header-icon">📷</span>
@@ -6187,26 +6296,26 @@
                             </div>
 
                             <!-- Mode Toggle: Local Wi-Fi vs Web / Remote -->
-                            <div style="display: flex; width: 100%; background: rgba(255,255,255,0.06); padding: 3px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border);">
-                                <button id="dash-qr-tab-lan" onclick="setDashQrMode('lan')" style="flex: 1; padding: 5px 0; border: none; border-radius: 9px; font-size: 0.75rem; font-weight: 700; background: var(--accent); color: #fff; cursor: pointer; transition: all 0.2s;">
+                            <div style="display: flex; width: 100%; background: rgba(16, 185, 129, 0.08); padding: 3px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border);">
+                                <button id="dash-qr-tab-lan" onclick="setDashQrMode('lan')" style="flex: 1; padding: 6px 0; border: none; border-radius: 9px; font-size: 0.75rem; font-weight: 800; background: linear-gradient(135deg, #10b981, #059669); color: #fff; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
                                     🏠 Wi-Fi
                                 </button>
-                                <button id="dash-qr-tab-web" onclick="setDashQrMode('web')" style="flex: 1; padding: 5px 0; border: none; border-radius: 9px; font-size: 0.75rem; font-weight: 700; background: transparent; color: var(--text-light); cursor: pointer; transition: all 0.2s;">
+                                <button id="dash-qr-tab-web" onclick="setDashQrMode('web')" style="flex: 1; padding: 6px 0; border: none; border-radius: 9px; font-size: 0.75rem; font-weight: 800; background: transparent; color: var(--text-light); cursor: pointer; transition: all 0.2s;">
                                     🌐 Web PIN
                                 </button>
                             </div>
 
                             <!-- LAN QR Container -->
                             <div id="dash-qr-lan-box" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
-                                <div class="dash-qr-square-box" style="width: 156px; height: 156px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.14); margin: 4px 0 8px 0; cursor: pointer;" onclick="showQRModal()" title="Click to view enlarged QR code">
+                                <div class="dash-qr-square-box" style="width: 156px; height: 156px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.2); margin: 4px 0 8px 0; cursor: pointer; border: 1px solid rgba(16, 185, 129, 0.2);" onclick="showQRModal()" title="Click to view enlarged QR code">
                                     <div id="dash-qrcode" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
                                 </div>
                                 <div id="dash-qr-url" style="font-size: 0.78rem; font-weight: 800; color: var(--text); word-break: break-all; line-height: 1.2;">
                                     Ready
                                 </div>
-                                <div style="margin-top: 6px; padding: 3px 10px; border-radius: 9px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.28); display: inline-flex; align-items: center; gap: 6px;">
+                                <div style="margin-top: 6px; padding: 3px 10px; border-radius: 9px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); display: inline-flex; align-items: center; gap: 6px;">
                                     <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-light);">🌐 Web PIN:</span>
-                                    <span id="dash-lan-web-pin" style="font-size: 0.95rem; font-weight: 900; letter-spacing: 2px; color: #38bdf8;">------</span>
+                                    <span id="dash-lan-web-pin" style="font-size: 0.95rem; font-weight: 900; letter-spacing: 2px; color: #10b981;">------</span>
                                 </div>
                                 <div style="font-size: 0.72rem; color: var(--text-light); margin-top: 4px;">
                                     Scan QR with Fylo app or enter Web PIN
@@ -6218,7 +6327,7 @@
                                 <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px;">
                                     Your 6-Digit Web Room PIN
                                 </div>
-                                <div id="dash-web-pin-val" style="font-size: 2.2rem; font-weight: 900; letter-spacing: 6px; color: #38bdf8; margin: 2px 0;">
+                                <div id="dash-web-pin-val" style="font-size: 2.2rem; font-weight: 900; letter-spacing: 6px; color: #10b981; margin: 2px 0; text-shadow: 0 0 16px rgba(16, 185, 129, 0.35);">
                                     ------
                                 </div>
                                 <div class="dash-qr-square-box" style="width: 156px; height: 156px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.14); margin: 4px 0 6px 0;">
@@ -8396,16 +8505,16 @@
             const webBox = document.getElementById('dash-qr-web-box');
 
             if (mode === 'web') {
-                if (lanTab) { lanTab.style.background = 'transparent'; lanTab.style.color = 'var(--text-light)'; }
-                if (webTab) { webTab.style.background = 'var(--accent)'; webTab.style.color = '#fff'; }
+                if (lanTab) { lanTab.style.background = 'transparent'; lanTab.style.color = 'var(--text-light)'; lanTab.style.boxShadow = 'none'; }
+                if (webTab) { webTab.style.background = 'linear-gradient(135deg, #10b981, #059669)'; webTab.style.color = '#fff'; webTab.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'; }
                 if (lanBox) lanBox.style.display = 'none';
                 if (webBox) webBox.style.display = 'flex';
                 if (!pcWebPin || !pcWebPeer) {
                     window.initPcWebShareHub();
                 }
             } else {
-                if (lanTab) { lanTab.style.background = 'var(--accent)'; lanTab.style.color = '#fff'; }
-                if (webTab) { webTab.style.background = 'transparent'; webTab.style.color = 'var(--text-light)'; }
+                if (lanTab) { lanTab.style.background = 'linear-gradient(135deg, #10b981, #059669)'; lanTab.style.color = '#fff'; lanTab.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'; }
+                if (webTab) { webTab.style.background = 'transparent'; webTab.style.color = 'var(--text-light)'; webTab.style.boxShadow = 'none'; }
                 if (lanBox) lanBox.style.display = 'flex';
                 if (webBox) webBox.style.display = 'none';
             }
