@@ -6267,110 +6267,85 @@
                     </div>
 
                     <!-- 4. NETWORK & CONNECTED DEVICES -->
-                    <div class="dash-col-right" style="display: flex; flex-direction: column; gap: 16px;">
-                        <!-- Connected Devices Card -->
-                        <div class="bento-card" style="padding: 18px 20px;">
-                            <div class="bento-card-header">
+                    <!-- 4. UNIFIED PHONE LINK & CONNECT CARD -->
+                    <div class="dash-col-right" style="display: flex; flex-direction: column;">
+                        <div class="bento-card dash-card-qr-tile" id="dash-card-qr-tile" style="padding: 18px 20px; display: flex; flex-direction: column; border: 1px solid rgba(16, 185, 129, 0.35); background: var(--card-bg); box-shadow: var(--glass-shadow); border-radius: 22px;">
+                            
+                            <!-- Card Header: Title + Live Status Badge -->
+                            <div class="bento-card-header" style="width: 100%; margin-bottom: 12px;">
                                 <div class="bento-card-title">
                                     <span class="card-header-icon">📱</span>
-                                    <span>Connected Devices</span>
+                                    <span>Link Phone</span>
                                 </div>
-                                <span class="dash-stat-badge live" id="dash-connected-badge" style="font-size: 0.72rem;">0 Active</span>
-                            </div>
-                            <div id="dash-devices-list" style="margin-top: 8px; font-size: 0.82rem; color: var(--text-light);">
-                                No devices connected yet. Scan QR code from phone to link.
-                            </div>
-                            <button class="btn" style="width: 100%; margin-top: 12px; padding: 8px 14px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);" onclick="showQRModal()">
-                                <span>📱 Show Connection QR Code</span>
-                            </button>
-                        </div>
-
-                        <!-- Square QR Code Tile: Instant Phone Pairing -->
-                        <div class="bento-card dash-card-qr-tile" id="dash-card-qr-tile" style="padding: 16px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px solid rgba(16, 185, 129, 0.35); background: var(--card-bg); box-shadow: var(--glass-shadow); border-radius: 20px;">
-                            <div class="bento-card-header" style="width: 100%; margin-bottom: 8px;">
-                                <div class="bento-card-title">
-                                    <span class="card-header-icon">📷</span>
-                                    <span>Pair Phone</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span id="dash-connected-badge" class="dash-stat-badge live" style="font-size: 0.72rem; padding: 2px 8px;">0 Active</span>
+                                    <span id="dash-qr-stat-badge" class="dash-stat-badge live" style="font-size: 0.7rem; padding: 2px 7px; display: none;">Ready</span>
                                 </div>
-                                <span id="dash-qr-stat-badge" class="dash-stat-badge live" style="font-size: 0.7rem; padding: 2px 7px;">Ready</span>
                             </div>
 
-                            <!-- Mode Toggle: Local Wi-Fi vs Web / Remote -->
+                            <!-- Live Active Devices Zone (Shown when devices connected) -->
+                            <div id="dash-devices-list" style="margin-bottom: 10px; font-size: 0.82rem; color: var(--text-light);">
+                                <span style="opacity: 0.75; font-size: 0.76rem;">Scan QR code or enter Web PIN to connect phone</span>
+                            </div>
+
+                            <!-- Mode Toggle: Local Wi-Fi vs Web PIN -->
                             <div style="display: flex; width: 100%; background: rgba(16, 185, 129, 0.08); padding: 3px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border);">
-                                <button id="dash-qr-tab-lan" onclick="setDashQrMode('lan')" style="flex: 1; padding: 6px 0; border: none; border-radius: 9px; font-size: 0.75rem; font-weight: 800; background: linear-gradient(135deg, #10b981, #059669); color: #fff; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                                <button id="dash-qr-tab-lan" onclick="setDashQrMode('lan')" style="flex: 1; padding: 6px 0; border: none; border-radius: 9px; font-size: 0.76rem; font-weight: 800; background: linear-gradient(135deg, #10b981, #059669); color: #fff; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
                                     🏠 Wi-Fi
                                 </button>
-                                <button id="dash-qr-tab-web" onclick="setDashQrMode('web')" style="flex: 1; padding: 6px 0; border: none; border-radius: 9px; font-size: 0.75rem; font-weight: 800; background: transparent; color: var(--text-light); cursor: pointer; transition: all 0.2s;">
+                                <button id="dash-qr-tab-web" onclick="setDashQrMode('web')" style="flex: 1; padding: 6px 0; border: none; border-radius: 9px; font-size: 0.76rem; font-weight: 800; background: transparent; color: var(--text-light); cursor: pointer; transition: all 0.2s;">
                                     🌐 Web PIN
                                 </button>
                             </div>
 
                             <!-- LAN QR Container -->
                             <div id="dash-qr-lan-box" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
-                                <div class="dash-qr-square-box" style="width: 156px; height: 156px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.2); margin: 4px 0 8px 0; cursor: pointer; border: 1px solid rgba(16, 185, 129, 0.2);" onclick="showQRModal()" title="Click to view enlarged QR code">
-                                    <div id="dash-qrcode" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
+                                <div class="dash-qr-square-box" style="width: 136px; height: 136px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.2); margin: 2px 0 6px 0; cursor: pointer; border: 1px solid rgba(16, 185, 129, 0.25);" onclick="showQRModal()" title="Click to view enlarged QR code">
+                                    <div id="dash-qrcode" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center;"></div>
                                 </div>
-                                <div id="dash-qr-url" style="font-size: 0.78rem; font-weight: 800; color: var(--text); word-break: break-all; line-height: 1.2;">
+                                <div id="dash-qr-url" style="font-size: 0.74rem; font-weight: 800; color: var(--text); word-break: break-all; line-height: 1.2; max-width: 220px; text-align: center; margin-bottom: 4px;">
                                     Ready
                                 </div>
-                                <div style="margin-top: 6px; padding: 3px 10px; border-radius: 9px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); display: inline-flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-light);">🌐 Web PIN:</span>
-                                    <span id="dash-lan-web-pin" style="font-size: 0.95rem; font-weight: 900; letter-spacing: 2px; color: #10b981;">------</span>
-                                </div>
-                                <div style="font-size: 0.72rem; color: var(--text-light); margin-top: 4px;">
-                                    Scan QR with Fylo app or enter Web PIN
+                                <div style="padding: 2px 8px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); display: inline-flex; align-items: center; gap: 5px; margin-bottom: 6px;">
+                                    <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-light);">Web PIN:</span>
+                                    <span id="dash-lan-web-pin" style="font-size: 0.9rem; font-weight: 900; letter-spacing: 2px; color: #10b981;">------</span>
                                 </div>
                             </div>
 
                             <!-- Web QR & PIN Container -->
                             <div id="dash-qr-web-box" style="display: none; flex-direction: column; align-items: center; width: 100%;">
-                                <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px;">
-                                    Your 6-Digit Web Room PIN
+                                <div style="font-size: 0.7rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px;">
+                                    6-Digit Web Room PIN
                                 </div>
-                                <div id="dash-web-pin-val" style="font-size: 2.2rem; font-weight: 900; letter-spacing: 6px; color: #10b981; margin: 2px 0; text-shadow: 0 0 16px rgba(16, 185, 129, 0.35);">
+                                <div id="dash-web-pin-val" style="font-size: 1.8rem; font-weight: 900; letter-spacing: 5px; color: #10b981; margin: 2px 0; text-shadow: 0 0 16px rgba(16, 185, 129, 0.35);">
                                     ------
                                 </div>
-                                <div class="dash-qr-square-box" style="width: 156px; height: 156px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.14); margin: 4px 0 6px 0;">
-                                    <div id="dash-web-qrcode" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
+                                <div class="dash-qr-square-box" style="width: 136px; height: 136px; background: #ffffff; padding: 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.14); margin: 2px 0 6px 0;">
+                                    <div id="dash-web-qrcode" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center;"></div>
                                 </div>
-                                <div style="font-size: 0.72rem; color: var(--text-light); margin-top: 2px;">
-                                    Enter PIN in Fylo mobile app or scan QR
-                                </div>
-                                <div style="display: flex; gap: 6px; margin-top: 8px; width: 100%;">
-                                    <button onclick="pcWebCopyPin()" class="btn" style="flex: 1; padding: 5px 8px; border-radius: 8px; font-size: 0.74rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);">
+                                <div style="display: flex; gap: 6px; margin: 6px 0; width: 100%;">
+                                    <button onclick="pcWebCopyPin()" class="btn btn-sm" style="flex: 1; padding: 5px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text); justify-content: center;">
                                         📋 Copy PIN
                                     </button>
-                                    <button onclick="pcWebGenerateNewRoom()" class="btn" style="flex: 1; padding: 5px 8px; border-radius: 8px; font-size: 0.74rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text);">
+                                    <button onclick="pcWebGenerateNewRoom()" class="btn btn-sm" style="flex: 1; padding: 5px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.06); color: var(--text); justify-content: center;">
                                         🔄 New PIN
                                     </button>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Web ShareHub Quick Access Card -->
-                        <div class="bento-card" style="cursor: pointer; padding: 18px; display: flex; align-items: center; gap: 14px;" onclick="switchView('view-web-sharehub')">
-                            <div style="width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #06b6d4); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0;">🌐</div>
-                            <div>
-                                <div style="font-weight: 800; font-size: 0.92rem; color: var(--text);">Web ShareHub</div>
-                                <div style="font-size: 0.76rem; color: var(--text-light); margin-top: 2px;">Share files across networks via encrypted P2P</div>
+                            <!-- Footer Compact Quick Actions: Web Share & Hotspot -->
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); width: 100%;">
+                                <button class="btn btn-sm" style="flex: 1; padding: 6px 10px; border-radius: 10px; font-size: 0.74rem; font-weight: 700; justify-content: center; background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); color: #0284c7;" onclick="switchView('view-web-sharehub')" title="Open Web ShareHub">
+                                    <span>🌐 Web Share</span>
+                                </button>
+                                <button class="btn btn-sm" id="dash-open-hotspot-btn" style="flex: 1; padding: 6px 10px; border-radius: 10px; font-size: 0.74rem; font-weight: 700; justify-content: center; background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3); color: #ea580c;" onclick="triggerWindowsHotspotSettings()" title="Open Windows Mobile Hotspot settings">
+                                    <span>🔥 Hotspot</span>
+                                </button>
+                                <button class="btn btn-sm" style="padding: 6px 8px; border-radius: 10px; font-size: 0.74rem; font-weight: 700; justify-content: center; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981;" onclick="showQRModal()" title="Enlarge QR Code">
+                                    <span>⛶</span>
+                                </button>
                             </div>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; height:16px; margin-left: auto; color: var(--text-light);"><polyline points="9 18 15 12 9 6"/></svg>
-                        </div>
 
-                        <!-- Local Hotspot Quick Access -->
-                        <div class="bento-card" style="padding: 18px 20px;">
-                            <div class="bento-card-header">
-                                <div class="bento-card-title">
-                                    <span class="card-header-icon">🔥</span>
-                                    <span>Mobile Hotspot</span>
-                                </div>
-                            </div>
-                            <p style="font-size: 0.78rem; color: var(--text-light); line-height: 1.5; margin-bottom: 12px;">
-                                For maximum LAN file transfer speed without a router, enable Windows Mobile Hotspot.
-                            </p>
-                            <button class="net-hotspot-btn" id="dash-open-hotspot-btn" style="width: 100%;" onclick="triggerWindowsHotspotSettings()">
-                                <span>⚙️ Open Windows Hotspot Settings</span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -9169,13 +9144,17 @@
                 const totalDevices = remoteList.length;
                 const badgeEl = $('#dash-connected-badge');
                 const devListEl = $('#dash-devices-list');
-                if (badgeEl) badgeEl.textContent = `${totalDevices} Active`;
+                if (badgeEl) {
+                    badgeEl.textContent = totalDevices === 0 ? 'Ready' : `${totalDevices} Linked`;
+                }
                 if (devListEl) {
                     if (totalDevices === 0) {
-                        devListEl.innerHTML = '<span style="opacity: 0.7;">No devices connected yet. Scan QR code from phone to link.</span>';
+                        devListEl.innerHTML = '';
+                        devListEl.style.display = 'none';
                     } else {
+                        devListEl.style.display = 'block';
                         devListEl.innerHTML = `<div style="display: flex; flex-direction: column; gap: 8px;">${remoteList.map(d => `
-                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; gap: 8px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 12px; gap: 8px;">
                                 <div style="display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden;">
                                     <span class="pill-dot live-pulse" style="flex-shrink: 0;"></span>
                                     <div style="display: flex; flex-direction: column; min-width: 0;">
