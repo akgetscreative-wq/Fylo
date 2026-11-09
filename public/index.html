@@ -145,15 +145,26 @@
         }
 
         /* Seamless UI Surface Transitions on Day / Night Mode Toggle */
-        sidebar, .card, .bento-card, .btn, .nav-item, .view-panel,
-        .ambient-wrapper, .top-nav-bar, .top-profile-pill, .top-nav-pills,
-        .phone-card-item, .timeline-filter-tabs, .date-chip, .quick-chip,
-        .dash-hero-drop, .drop-hero-content, input, textarea, select {
-            transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-                        background 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        body.theme-transitioning,
+        body.theme-transitioning sidebar,
+        body.theme-transitioning .card,
+        body.theme-transitioning .bento-card,
+        body.theme-transitioning .btn,
+        body.theme-transitioning .nav-item,
+        body.theme-transitioning .view-panel,
+        body.theme-transitioning .ambient-wrapper,
+        body.theme-transitioning .top-nav-bar,
+        body.theme-transitioning .top-profile-pill,
+        body.theme-transitioning .top-nav-pills,
+        body.theme-transitioning .phone-card-item,
+        body.theme-transitioning input,
+        body.theme-transitioning textarea,
+        body.theme-transitioning select {
+            transition: background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                        background 0.45s cubic-bezier(0.4, 0, 0.2, 1),
                         border-color 0.4s ease,
                         color 0.35s ease,
-                        box-shadow 0.45s ease;
+                        box-shadow 0.45s ease !important;
         }
 
         /* Ambient Celestial Ripple Glow during Night/Day Transition */
@@ -8156,6 +8167,8 @@
         const sunIconPath = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
 
         function triggerThemeTransitionRipple(isDark) {
+            document.body.classList.add('theme-transitioning');
+            setTimeout(() => { document.body.classList.remove('theme-transitioning'); }, 600);
             let glow = document.getElementById('fylo-theme-transition-glow');
             if (!glow) {
                 glow = document.createElement('div');
@@ -8468,6 +8481,14 @@
             const onlineDevices = devs.filter(d => d.online);
             const nativeOnline = onlineDevices.filter(d => !d.isWebClient);
             const connectedDev = (nativeOnline.length > 0 ? nativeOnline[0] : (onlineDevices.length > 0 ? onlineDevices[0] : null));
+
+            const devKey = connectedDev 
+                ? `${connectedDev.id}_${connectedDev.online}_${connectedDev.name}_${connectedDev.battery}_${connectedDev.storage ? (connectedDev.storage.free || connectedDev.storage.freeGB) : ''}`
+                : 'disconnected';
+            if (window._lastDashPhoneCardKey === devKey) {
+                return;
+            }
+            window._lastDashPhoneCardKey = devKey;
 
             const modelLabel = $('#dash-phone-model-label');
             const tilesGrid = $('#dash-phone-tiles');
@@ -9218,35 +9239,35 @@
                 // 1. Phone Storage & Drives Card on Homepage (Never PC drives)
                 renderDashboardPhoneCard();
 
-                // 2. Fetch Network Info & URL (used by QR code generation)
-                const netRes = await apiFetch('/api/network-url');
-                if (netRes.ok) {
-                    await netRes.json();
+                // 2. User & Host Greeting (cached once)
+                if (!window._dashHostNamePopulated) {
+                    const meRes = await apiFetch('/api/me');
+                    if (meRes.ok) {
+                        const meData = await meRes.json();
+                        const greetingUser = $('#dash-greeting-user');
+                        const profileName = $('#top-profile-name-text');
+                        const hostName = meData.name || (meData.isHost ? 'Fylo Host PC' : 'Windows User');
+                        if (greetingUser) greetingUser.textContent = hostName;
+                        if (profileName) profileName.textContent = hostName;
+                        window._dashHostNamePopulated = true;
+                    }
                 }
 
-                // 3. User & Host Greeting
-                const meRes = await apiFetch('/api/me');
-                if (meRes.ok) {
-                    const meData = await meRes.json();
-                    const greetingUser = $('#dash-greeting-user');
-                    const profileName = $('#top-profile-name-text');
-                    const hostName = meData.name || (meData.isHost ? 'Fylo Host PC' : 'Windows User');
-                    if (greetingUser) greetingUser.textContent = hostName;
-                    if (profileName) profileName.textContent = hostName;
-                }
-
-                // 4. Populate Real Active Shared Files
+                // 3. Populate Real Active Shared Files (cached state)
                 const filesRes = await apiFetch('/api/files');
                 if (filesRes.ok) {
                     const filesData = await filesRes.json();
                     const sharedFiles = Array.isArray(filesData) ? filesData : (filesData.files || []);
-                    const listEl = $('#dash-shared-list');
-                    const countEl = $('#dash-shared-count');
-                    const saveAllBtn = $('#dash-save-all-btn');
-                    if (countEl) countEl.textContent = `${sharedFiles.length} file${sharedFiles.length === 1 ? '' : 's'} active`;
-                    if (saveAllBtn) saveAllBtn.style.display = sharedFiles.length > 0 ? 'inline-block' : 'none';
+                    const sharedFilesKey = JSON.stringify(sharedFiles.map(f => f.id || f.name));
+                    if (window._lastDashSharedFilesKey !== sharedFilesKey) {
+                        window._lastDashSharedFilesKey = sharedFilesKey;
+                        const listEl = $('#dash-shared-list');
+                        const countEl = $('#dash-shared-count');
+                        const saveAllBtn = $('#dash-save-all-btn');
+                        if (countEl) countEl.textContent = `${sharedFiles.length} file${sharedFiles.length === 1 ? '' : 's'} active`;
+                        if (saveAllBtn) saveAllBtn.style.display = sharedFiles.length > 0 ? 'inline-block' : 'none';
 
-                    if (listEl) {
+                        if (listEl) {
                         if (sharedFiles.length === 0) {
                             listEl.innerHTML = `
                                 <div style="text-align: center; padding: 36px 16px; color: var(--text-light); font-size: 0.85rem;">
@@ -9306,6 +9327,7 @@
 
                                 listEl.appendChild(row);
                             });
+                        }
                         }
                     }
                 }
@@ -11118,6 +11140,12 @@ function iconLabel(ext, type) {
                     devCountEl.textContent = dedupedDevices.filter(d => !d.isHost && d.online).length;
                 }
 
+                const devSnapshot = JSON.stringify(dedupedDevices.map(d => ({ id: d.id, online: d.online, ip: d.ip, name: d.name, battery: d.battery })));
+                if (window._lastDevicesListSnapshot === devSnapshot) {
+                    return;
+                }
+                window._lastDevicesListSnapshot = devSnapshot;
+
                 const list = $('#device-list');
                 if (list) {
                     list.innerHTML = '';
@@ -11653,6 +11681,18 @@ function iconLabel(ext, type) {
                 const primaryDev = nativeOnlineDevices[0] || onlineDevices[0];
                 if (topPhoneVal) topPhoneVal.textContent = `${primaryDev.name || 'Phone'} (Connected)`;
                 if (topPhoneDot) topPhoneDot.classList.add('live-pulse');
+
+                const mobileSnapshot = JSON.stringify(onlineDevices.map(d => ({
+                    id: d.id, name: d.name, online: d.online, battery: d.battery, isWebClient: d.isWebClient,
+                    storage: d.storage ? (d.storage.free || d.storage.freeGB) : null
+                })));
+                if (window._lastMobileDevicesSnapshot === mobileSnapshot && isBrowsingPhone === window._lastIsBrowsingPhone && currentPhoneId === window._lastCurrentPhoneId) {
+                    if (typeof renderDashboardPhoneCard === 'function') renderDashboardPhoneCard();
+                    return;
+                }
+                window._lastMobileDevicesSnapshot = mobileSnapshot;
+                window._lastIsBrowsingPhone = isBrowsingPhone;
+                window._lastCurrentPhoneId = currentPhoneId;
 
                 // Render the cards in #phone-cards-grid
                 renderPhoneCardsGrid(onlineDevices);
@@ -14133,14 +14173,14 @@ function iconLabel(ext, type) {
                 fn();
             };
 
-            setInterval(skipIfIdle(sendHeartbeat), 3000);
-            setInterval(skipIfIdle(loadFiles), 4000);
-            setInterval(skipIfIdle(loadDevices), 2000);
-            setInterval(skipIfIdle(loadMobileDevices), 2000);
-            setInterval(skipIfIdle(loadSavedDevicesList), 3000);
-            setInterval(skipIfIdle(loadDashboardData), 3000);
+            setInterval(skipIfIdle(sendHeartbeat), 4000);
+            setInterval(skipIfIdle(loadFiles), 5000);
+            setInterval(skipIfIdle(loadDevices), 4000);
+            setInterval(skipIfIdle(loadMobileDevices), 3500);
+            setInterval(skipIfIdle(loadSavedDevicesList), 6000);
+            setInterval(skipIfIdle(loadDashboardData), 5000);
             setInterval(skipIfIdle(loadClipboard), 4000);
-            setInterval(skipIfIdle(checkStreamRequests), 1500);
+            setInterval(skipIfIdle(checkStreamRequests), 2500);
         }
 
         // Steady seamless background (mouse parallax removed to eliminate edge gaps and flicker)
@@ -14163,8 +14203,12 @@ function iconLabel(ext, type) {
             }
             if (activeRecentsDeviceId !== devId) {
                 activeRecentsDeviceId = devId;
-                // Newly connected device: fetch once!
-                fetchAndRenderPhoneRecents(true);
+                // Newly connected device: grace period of 2.5s for Wi-Fi socket & handshake to stabilize
+                setTimeout(() => {
+                    if (activeRecentsDeviceId === devId) {
+                        fetchAndRenderPhoneRecents(true);
+                    }
+                }, 2500);
             }
         }
 
@@ -14216,7 +14260,7 @@ function iconLabel(ext, type) {
 
             try {
                 const devId = onlineDev.id || (typeof currentPhoneId !== 'undefined' ? currentPhoneId : '');
-                const res = await apiFetch(`/api/mobile/fs/recent?deviceId=${encodeURIComponent(devId)}&limit=12`);
+                const res = await apiFetch(`/api/mobile/fs/recent?deviceId=${encodeURIComponent(devId)}&limit=8`);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
 
@@ -14261,7 +14305,7 @@ function iconLabel(ext, type) {
                 if (container) {
                     container.style.display = 'grid';
                     container.innerHTML = items.map(item => {
-                        const thumbUrl = `/api/mobile/fs/download?deviceId=${encodeURIComponent(devId)}&path=${encodeURIComponent(item.path)}`;
+                        const thumbUrl = `/api/mobile/fs/thumbnail?deviceId=${encodeURIComponent(devId)}&path=${encodeURIComponent(item.path)}`;
                         const isVid = item.isVideo || item.ext === 'mp4' || item.ext === 'mkv' || item.ext === 'webm';
                         const timeAgo = formatTimeAgo(item.modified || item.mtime);
                         const safeJson = encodeURIComponent(JSON.stringify(item));
@@ -14310,7 +14354,7 @@ function iconLabel(ext, type) {
                     return;
                 }
                 grid.innerHTML = items.map(item => {
-                    const thumbUrl = `/api/mobile/fs/download?deviceId=${encodeURIComponent(devId)}&path=${encodeURIComponent(item.path)}`;
+                    const thumbUrl = `/api/mobile/fs/thumbnail?deviceId=${encodeURIComponent(devId)}&path=${encodeURIComponent(item.path)}`;
                     const isVid = item.isVideo || item.ext === 'mp4' || item.ext === 'mkv' || item.ext === 'webm';
                     const timeAgo = formatTimeAgo(item.modified || item.mtime);
                     const safeJson = encodeURIComponent(JSON.stringify(item));

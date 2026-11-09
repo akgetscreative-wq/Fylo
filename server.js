@@ -1514,9 +1514,10 @@ app.post('/api/mobile/connect', (req, res) => {
 // Get connected mobile devices
 app.get('/api/mobile/devices', (req, res) => {
     const now = Date.now();
-    // Active keepalive probe to phone if screen is locked and heartbeat hasn't arrived in > 6s
+    // Active keepalive probe to phone if screen is locked and heartbeat hasn't arrived in > 15s (throttled to at most once per 20s)
     Object.values(mobileDevices).forEach(d => {
-        if ((now - d.lastActive) > 6000 && (now - d.lastActive) <= 60000 && d.ip && d.port) {
+        if ((now - d.lastActive) > 15000 && (now - d.lastActive) <= 60000 && d.ip && d.port && (!d.lastProbe || (now - d.lastProbe) > 20000)) {
+            d.lastProbe = now;
             const probeUrl = `http://${d.ip}:${d.port}/api/info?auth=${secretToken}`;
             const probeReq = http.get(probeUrl, (pRes) => {
                 if (pRes.statusCode === 200) {
