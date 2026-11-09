@@ -29,6 +29,8 @@ if (electronApp && typeof electronApp.requestSingleInstanceLock === 'function') 
 
 const app = express();
 const PORT = 3000;
+const pkgJson = require('./package.json');
+const APP_VERSION = pkgJson.version || '4.1.0';
 let secretToken;
 const tokenPath = path.join(os.homedir(), '.fylo-token');
 try {
@@ -698,7 +700,7 @@ app.get('/api/connection-info', (req, res) => {
         auth: secretToken,
         networkName: getNetworkName(activeIp),
         isHotspot,
-        version: '4.0.0'
+        version: APP_VERSION
     });
 });
 
@@ -1727,6 +1729,9 @@ app.post('/api/mobile/disconnect', (req, res) => {
 
 // Direct APK Download Endpoint
 const apkCandidates = [
+    path.join(__dirname, 'dist', `fylo-${APP_VERSION}.apk`),
+    path.join(__dirname, 'dist', `fylo-v${APP_VERSION}.apk`),
+    path.join(__dirname, 'dist', 'fylo-android.apk'),
     path.join(__dirname, 'dist', 'fylo-4.0.0.apk'),
     path.join(__dirname, 'dist', 'fylo-v4.0.0.apk', 'app-release.apk'),
     path.join(__dirname, 'dist', 'fylo-v4.0.0.apk'),
@@ -1748,7 +1753,7 @@ app.get(['/fylo.apk', '/api/apk/download'], (req, res) => {
     const apkPath = getExistingApkPath();
     if (apkPath) {
         res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-        res.setHeader('Content-Disposition', 'attachment; filename="fylo-v4.0.0.apk"');
+        res.setHeader('Content-Disposition', `attachment; filename="fylo-v${APP_VERSION}.apk"`);
         return res.sendFile(apkPath);
     }
     res.status(404).send('Fylo APK file not found on PC host.');
@@ -3108,7 +3113,7 @@ function startBeaconTimer() {
                 ip: getActiveIp(),
                 port: PORT,
                 token: secretToken,
-                version: '4.0.0'
+                version: APP_VERSION
             });
             const buf = Buffer.from(beacon, 'utf8');
             udpServer.send(buf, 0, buf.length, DISCOVERY_PORT, '255.255.255.255', () => {});
@@ -3148,7 +3153,7 @@ function startUdpDiscovery() {
                         ip: getActiveIp(),
                         port: PORT,
                         token: secretToken,
-                        version: '4.0.0'
+                        version: APP_VERSION
                     });
                     const buf = Buffer.from(beacon, 'utf8');
                     udpServer.send(buf, 0, buf.length, rinfo.port, rinfo.address, () => {});

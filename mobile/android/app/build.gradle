@@ -15,8 +15,8 @@ android {
         applicationId "com.fylo.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 400
-        versionName "4.0.0"
+        versionCode 410
+        versionName "4.1.0"
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
