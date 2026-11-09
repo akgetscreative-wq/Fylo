@@ -2996,15 +2996,58 @@ function createWindow() {
         }
     });
 
-    // Hide to tray on window close unless explicitly quitting
+    // Prompt user on window close instead of silently hiding to tray
     mainWindow.on('close', (event) => {
         if (!isQuitting) {
             event.preventDefault();
-            mainWindow.hide();
-            if (systemSettings.dormantMode && !hasActiveConnections()) {
-                enterDormantMode();
+
+            const choice = dialog.showMessageBoxSync(mainWindow, {
+                type: 'question',
+                buttons: ['Exit Fylo', 'Minimize to Tray', 'Cancel'],
+                defaultId: 0,
+                cancelId: 2,
+                title: 'Fylo',
+                message: 'Do you want to exit Fylo or minimize to the system tray?',
+                detail: 'Minimizing to tray keeps Fylo active in the background for instant transfers and phone sync.',
+                noLink: true
+            });
+
+            if (choice === 0) {
+                // Exit Fylo completely
+                isQuitting = true;
+                teardownConnections();
+                electronApp.quit();
+            } else if (choice === 1) {
+                // Minimize to Tray
+                mainWindow.hide();
+                if (systemSettings.dormantMode && !hasActiveConnections()) {
+                    enterDormantMode();
+                }
+                if (electronApp && Notification && typeof Notification.isSupported === 'function' && Notification.isSupported()) {
+                    try {
+                        new Notification({
+                            title: 'Fylo Minimized to Tray',
+                            body: 'Fylo is running in the background. Click the tray icon anytime to restore.',
+                            silent: true
+                        }).show();
+                    } catch (e) {}
+                }
             }
+            // choice === 2: Cancel (event.preventDefault was already called, window stays open)
             return false;
+        }
+    });
+
+    // Custom window close IPC bridge (routes through native window close dialog)
+    ipcMain.on('window-close', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.close();
+        }
+    });
+
+    ipcMain.on('app-close', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.close();
         }
     });
 

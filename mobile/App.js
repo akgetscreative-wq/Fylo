@@ -1161,6 +1161,9 @@ export default function App() {
   const [diagMessage, setDiagMessage] = useState('');
 
   // Live Refs for BackHandler to avoid stale state closures
+  const userDisconnectedRef = useRef(false);
+  const pairedPcRef = useRef(pairedPc);
+  pairedPcRef.current = pairedPc;
   const currentTabRef = useRef(currentTab);
   currentTabRef.current = currentTab;
   const lightboxItemRef = useRef(lightboxItem);
@@ -2135,33 +2138,47 @@ export default function App() {
   };
 
   const handleUnpair = async () => {
-    if (!pairedPc) return;
-    if (connectionMode === 'web') {
-      handleDisconnectWebPeer();
+    userDisconnectedRef.current = true;
+    if (!pairedPc) {
+      setPairModalTab('auto');
+      setShowPairModal(true);
       return;
     }
+    if (connectionMode === 'web') {
+      await handleDisconnectWebPeer();
+      return;
+    }
+    const targetPc = pairedPc;
     try {
-      await apiFetch(`http://${pairedPc}/api/mobile/disconnect`, {
+      await apiFetch(`http://${targetPc}/api/mobile/disconnect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Auth-Token': pcAuthToken || '' },
         body: JSON.stringify({ deviceId: deviceIdRef.current }),
-      }, 3000);
+      }, 2000);
     } catch (e) {}
-    addLog(`Unpaired from ${pairedPc}`);
+    addLog(`Unpaired from ${targetPc}`);
     if (FyloModule && FyloModule.clearSavedPairedDevice) {
       FyloModule.clearSavedPairedDevice().catch(() => {});
     }
+    if (FyloModule && FyloModule.setAuthToken) {
+      FyloModule.setAuthToken('').catch(() => {});
+    }
     setPairedPc(null);
+    setPcHostName('');
+    setPcAuthToken('');
     setConnectionMode('lan');
     setPingLatency(null);
     setIsPcReachable(false);
-    showToast('Disconnected');
+    showToast('Disconnected from PC');
+    setPairModalTab('auto');
+    setShowPairModal(true);
   };
 
   // =========================================================
   // REQUIREMENT 6: REMOVE ANNOYING POPUPS (Non-blocking Toasts)
   // =========================================================
   const handleConnectToPc = async (pcIp, token, webPin) => {
+    userDisconnectedRef.current = false;
     if (!pcIp) {
       showToast('⚠️ Please enter PC address');
       return;
@@ -2262,6 +2279,7 @@ export default function App() {
   };
 
   const handleParseAndConnectQr = (rawText) => {
+    userDisconnectedRef.current = false;
     try {
       if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
         showToast('⚠️ Please enter or paste QR code or PIN');
@@ -2345,6 +2363,7 @@ export default function App() {
   };
 
   const handleStartQrScan = async () => {
+    userDisconnectedRef.current = false;
     try {
       if (!FyloModule || typeof FyloModule.scanQrCode !== 'function') {
         showToast('📷 QR scanner unavailable on device');
@@ -2788,11 +2807,12 @@ export default function App() {
       });
 
       // Seamless Auto-Pairing with Saved PC on discovery / wake knock response
-      if (!pairedPc) {
+      // Only auto-pair if not currently paired, AND user did not explicitly disconnect!
+      if (!pairedPcRef.current && !userDisconnectedRef.current) {
         try {
           if (FyloModule && FyloModule.getSavedPairedDevice) {
             const saved = await FyloModule.getSavedPairedDevice();
-            if (saved && saved.paired_pc && saved.paired_pc.trim() !== '') {
+            if (!userDisconnectedRef.current && saved && saved.paired_pc && saved.paired_pc.trim() !== '') {
               const savedHost = saved.paired_pc.trim();
               if (savedHost === key || savedHost.startsWith(device.ip)) {
                 addLog(`Instant Auto-Connect with saved PC: ${key}`);
@@ -2960,6 +2980,7 @@ export default function App() {
 
   // WebRTC Native Peer Connection Handlers
   const handleConnectWebPeer = useCallback(async (targetPin) => {
+    userDisconnectedRef.current = false;
     const pin = (targetPin || webInputPin || '').trim();
     if (!pin || !/^\d{6}$/.test(pin)) {
       showToast('⚠️ Please enter a valid 6-digit PIN from PC');
@@ -2981,17 +3002,28 @@ export default function App() {
   }, [webInputPin]);
 
   const handleDisconnectWebPeer = useCallback(async () => {
+    userDisconnectedRef.current = true;
     try {
       if (FyloModule && FyloModule.disconnectWebSession) {
         await FyloModule.disconnectWebSession();
       }
     } catch (e) {}
+    if (FyloModule && FyloModule.clearSavedPairedDevice) {
+      FyloModule.clearSavedPairedDevice().catch(() => {});
+    }
+    if (FyloModule && FyloModule.setAuthToken) {
+      FyloModule.setAuthToken('').catch(() => {});
+    }
     setConnectionMode('lan');
     setPairedPc(null);
     setPcHostName('');
+    setPcAuthToken('');
+    setPingLatency(null);
     setIsPcReachable(false);
     showToast('Web P2P session disconnected');
     addLog('Web P2P session disconnected');
+    setPairModalTab('auto');
+    setShowPairModal(true);
   }, []);
 
   const handleOpenWebShare = handleConnectWebPeer;
@@ -3005,15 +3037,8 @@ export default function App() {
     }).catch(() => {});
   }, []);
 
-  // Automatic connection for saved devices on local discovery without popups
-  useEffect(() => {
-    if (pairedPc || discoveredDevices.length === 0) return;
-    const dev = discoveredDevices[0];
-    if (dev && dev.ip) {
-      const target = `${dev.ip}:${dev.port || 3000}`;
-      handleConnectToPc(target, dev.token);
-    }
-  }, [discoveredDevices, pairedPc]);
+  // Note: Automatic connection without user consent is removed to prevent reconnect loops on disconnect.
+  // Auto-pairing with a verified saved PC is handled strictly in onDeviceDiscovered when not explicitly disconnected.
 
   // Directory Breadcrumb navigation helper
   const renderBreadcrumbs = (currentPath, onSelectPath, isPc = false) => {
@@ -4068,23 +4093,28 @@ export default function App() {
                   </View>
                 </View>
 
-                {/* Auto-Discovered PC on local Wi-Fi if available */}
+                {/* Auto-Discovered PC(s) on local Wi-Fi if available */}
                 {discoveredDevices.length > 0 && (
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.heroDiscoveredBanner, !isDarkMode && styles.heroDiscoveredBannerLight, { marginBottom: 12 }]}
-                    onPress={() => handleConnectToPc(`${discoveredDevices[0].ip}:${discoveredDevices[0].port || 3000}`, discoveredDevices[0].token)}>
-                    <View style={styles.heroDiscoveredDot} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.heroDiscoveredTitle, !isDarkMode && styles.heroDiscoveredTitleLight]} numberOfLines={1}>
-                        ✨ Found {discoveredDevices[0].name || 'PC'} on Wi-Fi
-                      </Text>
-                      <Text style={[styles.heroDiscoveredSub, !isDarkMode && styles.heroDiscoveredSubLight]}>
-                        Tap to link instantly ⚡
-                      </Text>
-                    </View>
-                    <Text style={styles.heroDiscoveredBtnText}>Connect →</Text>
-                  </TouchableOpacity>
+                  <View style={{ marginBottom: 12, gap: 8 }}>
+                    {discoveredDevices.map((dev, idx) => (
+                      <TouchableOpacity
+                        key={`hero-disc-${dev.ip}-${idx}`}
+                        activeOpacity={0.8}
+                        style={[styles.heroDiscoveredBanner, !isDarkMode && styles.heroDiscoveredBannerLight]}
+                        onPress={() => handleConnectToPc(`${dev.ip}:${dev.port || 3000}`, dev.token)}>
+                        <View style={styles.heroDiscoveredDot} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.heroDiscoveredTitle, !isDarkMode && styles.heroDiscoveredTitleLight]} numberOfLines={1}>
+                            ✨ Found {dev.name || 'PC'} on Wi-Fi
+                          </Text>
+                          <Text style={[styles.heroDiscoveredSub, !isDarkMode && styles.heroDiscoveredSubLight]}>
+                            {dev.ip}:{dev.port || 3000} • Tap to link ⚡
+                          </Text>
+                        </View>
+                        <Text style={styles.heroDiscoveredBtnText}>Connect →</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 )}
 
                 {/* Wi-Fi scan in progress indicator (before fallback banner appears) */}
@@ -7130,7 +7160,10 @@ export default function App() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <View style={{ gap: 8, marginTop: 6, marginBottom: 14 }}>
+                  <ScrollView
+                    style={{ maxHeight: 280 }}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, marginTop: 6, marginBottom: 14 }}>
                     {discoveredDevices.map((dev, i) => (
                       <View key={'disc-' + i} style={[styles.autoDiscoverPcCard, !isDarkMode && styles.autoDiscoverPcCardLight]}>
                         <View style={styles.autoDiscoverIconWrap}>
@@ -7153,7 +7186,7 @@ export default function App() {
                         </TouchableOpacity>
                       </View>
                     ))}
-                  </View>
+                  </ScrollView>
                 )}
 
                 <View style={styles.modalBtnRow}>

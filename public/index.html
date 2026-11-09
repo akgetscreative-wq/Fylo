@@ -711,6 +711,80 @@
             padding: 40px 0;
         }
 
+        .hub-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 36px 20px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed var(--border);
+            gap: 8px;
+            margin: 8px 0;
+        }
+
+        :root[data-theme="light"] .hub-empty-state {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .hub-empty-icon {
+            font-size: 2.4rem;
+            margin-bottom: 4px;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+        }
+
+        .hub-empty-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .hub-empty-desc {
+            font-size: 0.82rem;
+            color: var(--text-light);
+            max-width: 320px;
+            line-height: 1.4;
+        }
+
+        .mobile-upload-touch-btn {
+            display: none;
+        }
+
+        .web-share-grid {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 18px;
+        }
+
+        .web-share-container {
+            padding: 20px 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .web-transfer-card {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: var(--sky);
+            border: 1px solid var(--sky-border);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="light"] .web-transfer-card {
+            background: rgba(255, 255, 255, 0.7);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+
         /* Device Pairing List */
         .device-item {
             padding: 20px;
@@ -5481,33 +5555,47 @@
             }
 
             .mobile-nav-tabs {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 6px;
+                display: flex;
+                overflow-x: auto;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+                -webkit-overflow-scrolling: touch;
+                gap: 4px;
                 background: rgba(0, 0, 0, 0.24);
                 padding: 4px;
                 border-radius: 14px;
                 border: 1px solid var(--border);
             }
 
+            .mobile-nav-tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+            :root[data-theme="light"] .mobile-nav-tabs {
+                background: rgba(0, 0, 0, 0.05);
+            }
+
             .mobile-tab-btn {
+                flex: 1 1 0;
+                min-width: max-content;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
                 gap: 4px;
-                padding: 8px 4px;
+                padding: 8px 8px;
                 border-radius: 10px;
                 border: none;
                 background: transparent;
                 color: var(--text-light);
                 font-family: inherit;
-                font-size: clamp(0.68rem, 2.4vw, 0.8rem);
+                font-size: clamp(0.68rem, 2.1vw, 0.78rem);
                 font-weight: 700;
                 cursor: pointer;
                 transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
                 white-space: nowrap;
                 text-align: center;
                 user-select: none;
+                -webkit-tap-highlight-color: transparent;
             }
 
             .mobile-tab-btn:hover {
@@ -5517,7 +5605,7 @@
             .mobile-tab-btn.active {
                 background: linear-gradient(135deg, #10b981, #06b6d4);
                 color: #fff;
-                box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+                box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
             }
 
             /* Persistent APK Banner */
@@ -5616,6 +5704,164 @@
             }
             .view-panel-hub {
                 grid-template-columns: 1fr !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 16px !important;
+                width: 100% !important;
+            }
+
+            .hub-left {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 16px !important;
+                width: 100% !important;
+            }
+
+            #hub-gallery-card {
+                order: 1 !important;
+            }
+
+            #hub-dropzone-card {
+                order: 2 !important;
+            }
+
+            #hub-clipboard-card {
+                display: none !important;
+            }
+
+            .feature-focus-header {
+                display: none !important;
+            }
+
+            #dropzone {
+                padding: 22px 16px !important;
+                border-radius: 20px !important;
+                gap: 10px !important;
+            }
+
+            .cloud-icon {
+                width: 38px !important;
+                height: 38px !important;
+            }
+
+            .dropzone-title {
+                font-size: 0.96rem !important;
+            }
+
+            .dropzone-sub {
+                font-size: 0.78rem !important;
+            }
+
+            #browse-folder-btn, .mobile-folder-hide {
+                display: none !important;
+            }
+
+            .mobile-upload-touch-btn {
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                padding: 10px 18px !important;
+                font-size: 0.88rem !important;
+                font-weight: 800 !important;
+                border-radius: 12px !important;
+                background: linear-gradient(135deg, #10b981, #06b6d4) !important;
+                color: #fff !important;
+                border: none !important;
+                box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+                cursor: pointer;
+                width: 100% !important;
+                max-width: 280px;
+                margin-top: 4px;
+                touch-action: manipulation;
+            }
+
+            /* Responsive Gallery File Rows on Mobile */
+            .file-row {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: 10px !important;
+                padding: 12px 14px !important;
+                border-radius: 18px !important;
+            }
+
+            .file-info-zone {
+                display: flex !important;
+                align-items: center !important;
+                gap: 12px !important;
+                min-width: 0 !important;
+                flex: 1 1 180px !important;
+            }
+
+            .file-icon {
+                width: 42px !important;
+                height: 42px !important;
+                border-radius: 14px !important;
+                flex-shrink: 0 !important;
+            }
+
+            .file-details {
+                min-width: 0 !important;
+                flex: 1 !important;
+                overflow: hidden !important;
+            }
+
+            .file-name {
+                font-size: 0.88rem !important;
+                font-weight: 700 !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            .file-meta {
+                font-size: 0.74rem !important;
+                color: var(--text-light) !important;
+                margin-top: 2px !important;
+            }
+
+            .file-actions {
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+                flex-shrink: 0 !important;
+            }
+
+            .file-actions button[data-action="download"] {
+                padding: 8px 16px !important;
+                font-size: 0.84rem !important;
+                font-weight: 800 !important;
+                border-radius: 12px !important;
+                min-height: 40px !important;
+                min-width: 86px !important;
+                background: linear-gradient(135deg, #10b981, #059669) !important;
+                color: #fff !important;
+                box-shadow: 0 3px 12px rgba(16, 185, 129, 0.35) !important;
+                white-space: nowrap !important;
+                touch-action: manipulation;
+            }
+
+            .file-actions button[data-action="delete"] {
+                padding: 8px 10px !important;
+                font-size: 0.95rem !important;
+                border-radius: 12px !important;
+                min-height: 40px !important;
+                min-width: 38px !important;
+                touch-action: manipulation;
+            }
+
+            /* Responsive Web ShareHub */
+            .web-share-grid {
+                grid-template-columns: 1fr !important;
+                gap: 14px !important;
+            }
+
+            .web-share-container {
+                padding: 6px 0 !important;
+                gap: 12px !important;
             }
         }
 
@@ -6265,17 +6511,20 @@
 
                 <!-- Clean segmented switch / tabs -->
                 <nav class="mobile-nav-tabs" id="mobile-nav-tabs">
-                    <button class="mobile-tab-btn active" data-target="view-pc-explorer">
-                        <span>📂 Browse PC</span>
+                    <button class="mobile-tab-btn active" data-target="view-hub">
+                        <span>⚡ ShareHub</span>
                     </button>
-                    <button class="mobile-tab-btn" data-target="view-hub">
-                        <span>📤 Upload to PC</span>
+                    <button class="mobile-tab-btn" data-target="view-pc-explorer">
+                        <span>📂 PC Drives</span>
+                    </button>
+                    <button class="mobile-tab-btn" data-target="view-web-sharehub">
+                        <span>🌐 Web Share</span>
                     </button>
                     <button class="mobile-tab-btn" data-target="view-clipboard">
                         <span>📋 Clipboard</span>
                     </button>
                     <button class="mobile-tab-btn" data-target="view-apk">
-                        <span>📥 Get APK</span>
+                        <span>📱 App APK</span>
                     </button>
                 </nav>
             </header>
@@ -6578,27 +6827,29 @@
                     <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-light);">⚡ Local Share Hub & Transfer</span>
                 </div>
                 <div class="hub-left">
-                    <div class="card">
-                        <div id="dropzone">
+                    <div class="card" id="hub-dropzone-card">
+                        <div id="dropzone" class="hub-dropzone">
                             <svg class="cloud-icon" viewBox="0 0 24 24">
                                 <path d="M12 5v14M5 12h14" />
                             </svg>
-                            <p style="font-weight: 800; font-size: 1.1rem; color: var(--text);">Queue files or folders for sharing
-                            </p>
-                            <p style="font-size: 0.85rem; color: var(--text-light); font-weight: 700;">click to <span
+                            <p class="dropzone-title" style="font-weight: 800; font-size: 1.08rem; color: var(--text);">Queue files or folders for sharing</p>
+                            <p class="dropzone-sub" style="font-size: 0.85rem; color: var(--text-light); font-weight: 700;">click to <span
                                     id="browse-btn"
-                                    style="text-decoration: underline; color: var(--accent); font-weight: 800;">browse files</span> or <span
+                                    style="text-decoration: underline; color: var(--accent); font-weight: 800; cursor: pointer;">browse files</span><span class="mobile-folder-hide"> or <span
                                     id="browse-folder-btn"
-                                    style="text-decoration: underline; color: var(--accent); font-weight: 800;">share a folder</span>
+                                    style="text-decoration: underline; color: var(--accent); font-weight: 800; cursor: pointer;">share a folder</span></span>
                             </p>
+                            <button type="button" class="btn btn-accent mobile-upload-touch-btn" onclick="document.getElementById('file-input').click();">
+                                📤 Select & Upload Files to PC
+                            </button>
                             <input type="file" id="file-input" multiple>
                             <input type="file" id="folder-input" webkitdirectory multiple style="display:none;">
                         </div>
                     </div>
 
-                    <div class="card">
+                    <div class="card" id="hub-gallery-card">
                         <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                            <span>📦 Available Files (<span id="file-count">0</span>)</span>
+                            <span id="hub-files-title">📦 Shared by PC (<span id="file-count">0</span>)</span>
                             <div style="display:flex; align-items:center; gap:8px;">
                                 <div class="custom-sort-dropdown" id="hub-sort-dropdown">
                                     <button type="button" class="sort-dropdown-btn" id="hub-sort-btn" aria-haspopup="true" aria-expanded="false" title="Change sort order">
@@ -6642,12 +6893,12 @@
                                     All</button>
                             </div>
                         </div>
-                        <p class="panel-desc">Direct memory-bridged links awaiting activation download</p>
+                        <p class="panel-desc" id="hub-gallery-desc">Files shared from the PC ready for instant download</p>
                         <div class="file-list-container" id="gallery"></div>
                     </div>
                 </div>
 
-                <div class="card">
+                <div class="card" id="hub-clipboard-card">
                     <div class="panel-header">📋 Shared Clipboard</div>
                     <p class="panel-desc" id="clipboard-meta">Text sharing sync block</p>
                     <textarea id="clipboard-text" placeholder="Type or paste links here..."></textarea>
@@ -6657,6 +6908,7 @@
                         <button class="btn btn-accent" id="clipboard-copy">📋 Copy to Device</button>
                     </div>
                 </div>
+            </div>
             </div>
 
             <div id="view-devices" class="view-panel hidden">
@@ -7383,7 +7635,7 @@
 
             <!-- Web ShareHub Dedicated View Panel (Native Embedded Interface) -->
             <div id="view-web-sharehub" class="view-panel hidden">
-                <div style="padding: 20px 24px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+                <div class="web-share-container">
                     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                         <div style="display: flex; align-items: center; gap: 14px;">
                             <div style="width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #06b6d4); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);">🌐</div>
@@ -7409,13 +7661,13 @@
                     </div>
 
                     <!-- Web Share Grid -->
-                    <div style="display: grid; grid-template-columns: 360px 1fr; gap: 18px;">
+                    <div class="web-share-grid">
                         <!-- Left Column: Room PIN & Pairing QR Code -->
                         <div class="card" style="padding: 20px; border-radius: 20px; display: flex; flex-direction: column; gap: 14px; text-align: center;">
                             <div style="font-size: 0.78rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.8px;">
                                 Your PC Room PIN
                             </div>
-                            <div id="pc-web-pin-display" style="font-size: 2.4rem; font-weight: 900; letter-spacing: 8px; color: #38bdf8; font-variant-numeric: tabular-nums;">
+                            <div id="pc-web-pin-display" style="font-size: clamp(1.8rem, 6vw, 2.4rem); font-weight: 900; letter-spacing: clamp(4px, 1.5vw, 8px); color: #38bdf8; font-variant-numeric: tabular-nums;">
                                 ------
                             </div>
 
@@ -8375,6 +8627,10 @@
                 loadPCQuickAccess();
             }
 
+            if (targetId === 'view-hub') {
+                loadFiles();
+            }
+
             if (targetId === 'view-dashboard') {
                 loadDashboardData();
             }
@@ -9162,7 +9418,7 @@
 
             const card = document.createElement('div');
             card.id = `pc-web-tcard-${fileId}`;
-            card.style.cssText = "padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px;";
+            card.className = "web-transfer-card";
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="font-weight: 700; font-size: 0.85rem; color: var(--text);">${direction === 'outgoing' ? '📤' : '📥'} ${name}</div>
@@ -9852,6 +10108,15 @@
                     mobilePcName.textContent = me.name || (isHost ? 'Fylo Host PC' : 'Fylo PC');
                 }
 
+                const hubFilesTitle = $('#hub-files-title');
+                if (hubFilesTitle) {
+                    const countEl = document.getElementById('file-count');
+                    const c = countEl ? countEl.textContent : '0';
+                    hubFilesTitle.innerHTML = isHost
+                        ? `📦 Shared Files (<span id="file-count">${c}</span>)`
+                        : `📦 Shared by PC (<span id="file-count">${c}</span>)`;
+                }
+
                 const netSelectContainer = $('#network-select-container');
                 if (netSelectContainer) {
                     if (!isHost) {
@@ -10053,7 +10318,15 @@ function iconLabel(ext, type) {
 
                 gallery.innerHTML = '';
                 if (files.length === 0) {
-                    gallery.innerHTML = '<p class="empty-note">No shared files discovered yet.</p>';
+                    const emptyMsg = isHost
+                        ? 'No files queued for sharing yet. Drop files above to share with connected devices.'
+                        : 'No files shared yet by PC. Files dropped on the PC will appear here instantly.';
+                    gallery.innerHTML = `
+                        <div class="hub-empty-state">
+                            <div class="hub-empty-icon">📂</div>
+                            <div class="hub-empty-title">${isHost ? 'No Shared Files' : 'No files shared yet by PC'}</div>
+                            <div class="hub-empty-desc">${emptyMsg}</div>
+                        </div>`;
                     return;
                 }
 
@@ -10068,7 +10341,7 @@ function iconLabel(ext, type) {
                     const isFolder = f.type === 'folder';
                     const folderBadge = isFolder ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:700;color:var(--accent);background:var(--accent-bg);padding:2px 8px;border-radius:8px;margin-left:8px;">📁 ${f.fileCount || 0} files</span>` : '';
                     const iconBg = isFolder ? 'linear-gradient(135deg, #2563eb, #0ea5e9)' : colorFor(f.name);
-                    const downloadLabel = isFolder ? '⬇ .zip' : '⬇ save';
+                    const downloadLabel = isFolder ? '⬇️ .zip' : '⬇️ Save';
                     const displayName = isFolder ? f.name : f.name;
 
                     const fileIconMarkup = isFolder
@@ -14142,7 +14415,8 @@ function iconLabel(ext, type) {
                 if (isMobile || !isHost) {
                     $('#startup-landing')?.classList.add('hidden-landing');
                     if (isMobile) {
-                        switchView('view-pc-explorer');
+                        const targetView = (window.location.hash && viewMeta[window.location.hash.replace('#', '')]) ? window.location.hash.replace('#', '') : 'view-hub';
+                        switchView(targetView);
                     }
                 }
                 await sendHeartbeat();
@@ -14161,7 +14435,8 @@ function iconLabel(ext, type) {
                 await initSystemStartupSettings();
                 initSidebarState();
                 if (isMobile) {
-                    switchView('view-pc-explorer');
+                    const targetView = (window.location.hash && viewMeta[window.location.hash.replace('#', '')]) ? window.location.hash.replace('#', '') : 'view-hub';
+                    switchView(targetView);
                 }
             } catch (e) {
                 if (e.message === 'kicked') return;
