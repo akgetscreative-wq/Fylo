@@ -71,6 +71,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
@@ -139,6 +142,22 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         this.reactContext = reactContext;
         this.reactContext.addActivityEventListener(this);
         sInstance = this;
+    }
+
+    /**
+     * Safely emits events to React Native JS from native Java threads/services.
+     */
+    public static void emitToJs(String eventName, Object data) {
+        try {
+            FyloServerModule instance = sInstance;
+            if (instance != null && instance.reactContext != null && instance.reactContext.hasActiveReactInstance()) {
+                instance.reactContext
+                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                    .emit(eventName, data);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "emitToJs error for event " + eventName + ": " + t.getMessage());
+        }
     }
 
     @NonNull
@@ -456,6 +475,85 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         } catch (Throwable e) {
             Log.e(TAG, "getServerInfo error: " + e.getMessage(), e);
             safePromise.reject("INFO_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
+        }
+    }
+
+    @ReactMethod
+    public void openHotspotSettings() {
+        try {
+            Context ctx = getCurrentActivity() != null ? getCurrentActivity() : reactContext;
+
+            // Try TetherSettings directly
+            try {
+                Intent intent = new Intent();
+                intent.setClassName("com.android.settings", "com.android.settings.TetherSettings");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(intent);
+                return;
+            } catch (Throwable ignored) {}
+
+            // Try standard Tether settings action
+            try {
+                Intent intent = new Intent("android.intent.action.TETHER_SETTINGS");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(intent);
+                return;
+            } catch (Throwable ignored) {}
+
+            // Try wireless settings
+            try {
+                Intent intent = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(intent);
+                return;
+            } catch (Throwable ignored) {}
+
+            // Fallback to general settings
+            Intent intent = new Intent(Settings.ACTION_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(intent);
+        } catch (Throwable e) {
+            Log.e(TAG, "openHotspotSettings error: " + e.getMessage(), e);
+        }
+    }
+
+    @ReactMethod
+    public void getNetworkDetails(Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        try {
+            String ip = getDeviceIpAddress();
+            boolean isHotspot = false;
+
+            if (ip != null && (ip.startsWith("192.168.43.") || ip.startsWith("192.168.49.") || ip.startsWith("192.168.50."))) {
+                isHotspot = true;
+            } else {
+                try {
+                    List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+                    for (NetworkInterface intf : interfaces) {
+                        if (intf == null || !intf.isUp() || intf.isLoopback()) continue;
+                        String name = intf.getName().toLowerCase();
+                        if (name.contains("ap") || name.contains("swlan") || name.contains("softap") || name.contains("tether")) {
+                            List<InetAddress> addrs = Collections.list(intf.getInetAddresses());
+                            for (InetAddress addr : addrs) {
+                                if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+                                    isHotspot = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (isHotspot) break;
+                    }
+                } catch (Throwable ignored) {}
+            }
+
+            WritableMap map = Arguments.createMap();
+            map.putString("ip", ip != null ? ip : "127.0.0.1");
+            map.putInt("port", 8080);
+            map.putBoolean("isHotspot", isHotspot);
+            safePromise.resolve(map);
+        } catch (Throwable e) {
+            Log.e(TAG, "getNetworkDetails error: " + e.getMessage(), e);
+            safePromise.reject("NET_ERROR", e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
@@ -1360,10 +1458,81 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                                 map.putInt("port", obj.optInt("port", 3000));
                                 map.putString("token", obj.optString("token", ""));
                                 map.putString("version", obj.optString("version", "4.0.0"));
+                                map.putString("kind", "pc");
 
-                                if (reactContext != null) {
-                                    reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                                        .emit("onDeviceDiscovered", map);
+                                emitToJs("onDeviceDiscovered", map);
+                            } else if (data.contains("FYLO_PHONE_BEACON")) {
+                                org.json.JSONObject obj = new org.json.JSONObject(data);
+                                String beaconIp = obj.optString("ip", packet.getAddress().getHostAddress());
+                                if (beaconIp == null || beaconIp.isEmpty() || beaconIp.equals("127.0.0.1")) {
+                                    beaconIp = packet.getAddress().getHostAddress();
+                                }
+                                String myIp = getDeviceIpAddress();
+                                if (!beaconIp.equals(myIp) && !beaconIp.equals("127.0.0.1")) {
+                                    WritableMap map = Arguments.createMap();
+                                    map.putString("name", obj.optString("name", "Android Phone"));
+                                    map.putString("ip", beaconIp);
+                                    map.putInt("port", obj.optInt("port", 8080));
+                                    map.putString("token", obj.optString("token", ""));
+                                    map.putString("kind", "phone");
+
+                                    emitToJs("onDeviceDiscovered", map);
+                                }
+                            } else if (data.contains("FYLO_DISCOVERY_PING")) {
+                                org.json.JSONObject obj = new org.json.JSONObject(data);
+                                Context ctx = reactContext != null ? reactContext : getReactApplicationContext();
+                                SharedPreferences prefs = ctx.getSharedPreferences("fylo_prefs", Context.MODE_PRIVATE);
+                                String myDeviceId = prefs.getString("device_id", "");
+                                String pingDeviceId = obj.optString("deviceId", "");
+                                String myIp = getDeviceIpAddress();
+                                String senderIp = packet.getAddress() != null ? packet.getAddress().getHostAddress() : "";
+
+                                boolean isSelf = (!myDeviceId.isEmpty() && myDeviceId.equals(pingDeviceId))
+                                        || (senderIp != null && senderIp.equals(myIp));
+
+                                if (!isSelf) {
+                                    String brand = Build.MANUFACTURER != null ? Build.MANUFACTURER : "";
+                                    String model = Build.MODEL != null ? Build.MODEL : "Android";
+                                    String myName = (!brand.isEmpty() && !model.toLowerCase().contains(brand.toLowerCase()))
+                                        ? (brand.substring(0, 1).toUpperCase() + brand.substring(1) + " " + model)
+                                        : model;
+
+                                    FyloHttpServer server = FyloForegroundService.getHttpServer();
+                                    String authToken = (server != null && server.getAuthToken() != null)
+                                        ? server.getAuthToken()
+                                        : prefs.getString("pc_token", "");
+
+                                    org.json.JSONObject beaconObj = new org.json.JSONObject();
+                                    beaconObj.put("type", "FYLO_PHONE_BEACON");
+                                    beaconObj.put("name", myName);
+                                    beaconObj.put("ip", myIp);
+                                    beaconObj.put("port", 8080);
+                                    beaconObj.put("token", authToken != null ? authToken : "");
+                                    beaconObj.put("kind", "phone");
+
+                                    byte[] beaconBytes = beaconObj.toString().getBytes(StandardCharsets.UTF_8);
+
+                                    try {
+                                        DatagramPacket replyPacket = new DatagramPacket(
+                                            beaconBytes,
+                                            beaconBytes.length,
+                                            packet.getAddress(),
+                                            UDP_DISCOVERY_PORT
+                                        );
+                                        mDiscoverySocket.send(replyPacket);
+                                    } catch (Throwable ignored) {}
+
+                                    if (packet.getPort() != UDP_DISCOVERY_PORT && packet.getPort() > 0) {
+                                        try {
+                                            DatagramPacket replyPortPacket = new DatagramPacket(
+                                                beaconBytes,
+                                                beaconBytes.length,
+                                                packet.getAddress(),
+                                                packet.getPort()
+                                            );
+                                            mDiscoverySocket.send(replyPortPacket);
+                                        } catch (Throwable ignored) {}
+                                    }
                                 }
                             }
                         } catch (java.net.SocketTimeoutException ste) {
@@ -1407,14 +1576,29 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
 
                 byte[] pingBytes = pingObj.toString().getBytes(StandardCharsets.UTF_8);
 
-                // Broadcast discovery knock to local subnet
-                DatagramPacket pingPacket = new DatagramPacket(
-                    pingBytes,
-                    pingBytes.length,
-                    InetAddress.getByName("255.255.255.255"),
-                    UDP_DISCOVERY_PORT
-                );
+                // Broadcast discovery knock to local subnet
+                DatagramPacket pingPacket = new DatagramPacket(
+                    pingBytes,
+                    pingBytes.length,
+                    InetAddress.getByName("255.255.255.255"),
+                    UDP_DISCOVERY_PORT
+                );
                 mDiscoverySocket.send(pingPacket);
+
+                String myIp = getDeviceIpAddress();
+                if (myIp != null && myIp.contains(".")) {
+                    try {
+                        int lastDot = myIp.lastIndexOf('.');
+                        String subnetBroadcast = myIp.substring(0, lastDot) + ".255";
+                        DatagramPacket subnetPacket = new DatagramPacket(
+                            pingBytes,
+                            pingBytes.length,
+                            InetAddress.getByName(subnetBroadcast),
+                            UDP_DISCOVERY_PORT
+                        );
+                        mDiscoverySocket.send(subnetPacket);
+                    } catch (Throwable ignored) {}
+                }
 
                 // Also knock directly to saved PC host IP (bypasses any router AP isolation delays)
                 if (savedPc != null && !savedPc.isEmpty()) {
@@ -1596,6 +1780,106 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
                 Log.e(TAG, "downloadFileFromUrl error: " + t.getMessage(), t);
                 safePromise.reject("DL_ERROR", t.getMessage() != null ? t.getMessage() : t.toString());
             } finally {
+                if (wakeLock != null && wakeLock.isHeld()) {
+                    try { wakeLock.release(); } catch (Throwable ignored) {}
+                }
+                if (wifiLock != null && wifiLock.isHeld()) {
+                    try { wifiLock.release(); } catch (Throwable ignored) {}
+                }
+            }
+        }).start();
+    }
+
+    @ReactMethod
+    public void uploadFileToUrl(String targetUrl, String filePath, String fileName, Promise promise) {
+        SafePromise safePromise = new SafePromise(promise);
+        new Thread(() -> {
+            PowerManager.WakeLock wakeLock = null;
+            WifiManager.WifiLock wifiLock = null;
+            HttpURLConnection conn = null;
+            try {
+                PowerManager pm = (PowerManager) reactContext.getSystemService(Context.POWER_SERVICE);
+                if (pm != null) {
+                    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Fylo:UploadWakeLock");
+                    wakeLock.acquire(15 * 60 * 1000L); // 15 min safety timeout
+                }
+                WifiManager wm = (WifiManager) reactContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                if (wm != null) {
+                    wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Fylo:UploadWifiLock");
+                    wifiLock.acquire();
+                }
+
+                if (targetUrl == null || targetUrl.trim().isEmpty()) {
+                    safePromise.reject("INVALID_URL", "Target URL is empty");
+                    return;
+                }
+                if (filePath == null || filePath.trim().isEmpty()) {
+                    safePromise.reject("INVALID_PATH", "File path is empty");
+                    return;
+                }
+
+                File file = new File(filePath.trim());
+                if (!file.exists() || !file.canRead()) {
+                    safePromise.reject("FILE_NOT_FOUND", "File not found or cannot be read: " + filePath);
+                    return;
+                }
+
+                String cleanName = (fileName != null && !fileName.trim().isEmpty()) ? fileName.trim() : file.getName();
+                cleanName = cleanName.replaceAll("[\\/:*?\"<>|]", "_");
+                long total = file.length();
+
+                URL url = new URL(targetUrl.trim());
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(60000);
+                conn.setFixedLengthStreamingMode(total);
+                conn.setRequestProperty("Content-Type", "application/octet-stream");
+                conn.setRequestProperty("Content-Length", String.valueOf(total));
+                conn.setRequestProperty("User-Agent", "FyloMobile/4.0");
+
+                try (FileInputStream fis = new FileInputStream(file);
+                     OutputStream out = conn.getOutputStream()) {
+                    byte[] buf = new byte[65536];
+                    int len;
+                    long transferred = 0;
+                    long lastEmitTime = 0;
+
+                    while ((len = fis.read(buf)) > 0) {
+                        out.write(buf, 0, len);
+                        transferred += len;
+
+                        long now = System.currentTimeMillis();
+                        if (now - lastEmitTime > 300 || transferred == total) {
+                            lastEmitTime = now;
+                            WritableMap progressMap = Arguments.createMap();
+                            progressMap.putString("fileName", cleanName);
+                            progressMap.putDouble("transferred", (double) transferred);
+                            progressMap.putDouble("total", (double) total);
+                            int pct = total > 0 ? (int) ((transferred * 100) / total) : 0;
+                            progressMap.putInt("percent", Math.min(100, Math.max(0, pct)));
+                            progressMap.putString("direction", "upload");
+                            emitToJs("onTransferProgress", progressMap);
+                        }
+                    }
+                    out.flush();
+                }
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode >= 200 && responseCode < 300) {
+                    safePromise.resolve(true);
+                } else {
+                    safePromise.reject("HTTP_ERR", "Upload failed with HTTP response code " + responseCode);
+                }
+
+            } catch (Throwable t) {
+                Log.e(TAG, "uploadFileToUrl error: " + t.getMessage(), t);
+                safePromise.reject("UPLOAD_ERROR", t.getMessage() != null ? t.getMessage() : t.toString());
+            } finally {
+                if (conn != null) {
+                    try { conn.disconnect(); } catch (Throwable ignored) {}
+                }
                 if (wakeLock != null && wakeLock.isHeld()) {
                     try { wakeLock.release(); } catch (Throwable ignored) {}
                 }
@@ -1827,21 +2111,30 @@ public class FyloServerModule extends ReactContextBaseJavaModule implements Acti
         }).start();
     }
 
-    private String getDeviceIpAddress() {
+    public static String getDeviceIpAddress() {
         try {
             List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+            String fallbackIp = null;
             for (NetworkInterface intf : interfaces) {
                 if (intf == null || !intf.isUp() || intf.isLoopback()) continue;
+                String name = intf.getName().toLowerCase();
+                boolean isWirelessOrAp = name.startsWith("wlan") || name.contains("ap") || name.contains("softap") || name.contains("swlan") || name.contains("tether");
                 List<InetAddress> addrs = Collections.list(intf.getInetAddresses());
                 for (InetAddress addr : addrs) {
                     if (addr != null && !addr.isLoopbackAddress() && addr instanceof Inet4Address) {
                         String ip = addr.getHostAddress();
                         if (ip != null && !ip.startsWith("127.")) {
-                            return ip;
+                            if (isWirelessOrAp) {
+                                return ip;
+                            }
+                            if (fallbackIp == null) {
+                                fallbackIp = ip;
+                            }
                         }
                     }
                 }
             }
+            if (fallbackIp != null) return fallbackIp;
         } catch (Throwable ignored) {}
         return "127.0.0.1";
     }

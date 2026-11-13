@@ -953,10 +953,13 @@ export default function App() {
   const [pairedPc, setPairedPc] = useState(null); // '192.168.1.10:3000'
   const [pcHostName, setPcHostName] = useState('');
   const [pcAuthToken, setPcAuthToken] = useState('');
+  const [pairedDeviceType, setPairedDeviceType] = useState('pc'); // 'pc' | 'phone'
+  const [hostNetworkQr, setHostNetworkQr] = useState(null);
+  const [isHotspotActive, setIsHotspotActive] = useState(false);
   const [pingLatency, setPingLatency] = useState(null); // Real measured latency in ms
   const [isPcReachable, setIsPcReachable] = useState(false); // True only when heartbeat succeeds
   const [showPairModal, setShowPairModal] = useState(false);
-  const [pairModalTab, setPairModalTab] = useState('auto'); // 'auto' | 'qr' | 'manual' | 'web'
+  const [pairModalTab, setPairModalTab] = useState('auto'); // 'auto' | 'qr' | 'host' | 'manual' | 'web'
   const [discoveredDevices, setDiscoveredDevices] = useState([]);
   const [connectionMode, setConnectionMode] = useState('lan'); // 'lan' | 'web'
   const [webRoomPin, setWebRoomPin] = useState('');
@@ -1808,23 +1811,30 @@ export default function App() {
     const sendHeartbeat = async () => {
       const startTime = Date.now();
       try {
-        const res = await apiFetch(`http://${pairedPc}/api/mobile/heartbeat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Auth-Token': pcAuthToken || '',
-          },
-          body: JSON.stringify({
-            deviceId: deviceIdRef.current,
-            battery: batteryLevel,
-            storage: {
-              total: storageInfo?.totalGB || 'Unknown',
-              free: storageInfo?.freeGB || 'Unknown',
+        let res;
+        if (pairedDeviceType === 'phone') {
+          res = await apiFetch(`http://${pairedPc}/api/info?auth=${encodeURIComponent(pcAuthToken || '')}`, {
+            method: 'GET',
+          }, 4000);
+        } else {
+          res = await apiFetch(`http://${pairedPc}/api/mobile/heartbeat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Token': pcAuthToken || '',
             },
-            readOnly: readOnlyMode,
-            allowFullPhoneAccess: allowFullPhoneAccess !== false,
-          }),
-        }, 4000); // 4s timeout
+            body: JSON.stringify({
+              deviceId: deviceIdRef.current,
+              battery: batteryLevel,
+              storage: {
+                total: storageInfo?.totalGB || 'Unknown',
+                free: storageInfo?.freeGB || 'Unknown',
+              },
+              readOnly: readOnlyMode,
+              allowFullPhoneAccess: allowFullPhoneAccess !== false,
+            }),
+          }, 4000); // 4s timeout
+        }
 
         const roundTripMs = Date.now() - startTime;
 
@@ -2137,6 +2147,82 @@ export default function App() {
     showToast(val ? '🛡️ Safe Mode Enabled' : '⚡ Write-Allowed Mode');
   };
 
+  const generateHostNetworkQr = useCallback(async () => {
+    try {
+      let currentIp = deviceIp;
+      let hotspot = false;
+      if (FyloModule && FyloModule.getNetworkDetails) {
+        try {
+          const details = await FyloModule.getNetworkDetails();
+          if (details) {
+            if (details.ip && details.ip !== '127.0.0.1' && details.ip !== 'Detecting...') {
+              currentIp = details.ip;
+              setDeviceIp(details.ip);
+            }
+            if (details.isHotspot !== undefined) {
+              hotspot = !!details.isHotspot;
+            }
+          }
+        } catch (e) {
+          console.warn('getNetworkDetails error:', e);
+        }
+      }
+      if ((!currentIp || currentIp === 'Detecting...' || currentIp === '127.0.0.1') && FyloModule && FyloModule.getServerInfo) {
+        try {
+          const sInfo = await FyloModule.getServerInfo();
+          if (sInfo && sInfo.ip && sInfo.ip !== '127.0.0.1') {
+            currentIp = sInfo.ip;
+            setDeviceIp(sInfo.ip);
+          }
+        } catch (e) {}
+      }
+      if (!hotspot && currentIp && currentIp.startsWith('192.168.43.')) {
+        hotspot = true;
+      }
+      setIsHotspotActive(hotspot);
+
+      // Ensures FyloHttpServer is running
+      if (FyloModule && FyloModule.startServer) {
+        try {
+          await FyloModule.startServer(serverPort || 8080, false, pcAuthToken || '');
+          setServerRunning(true);
+        } catch (e) {
+          console.warn('startServer in generateHostNetworkQr error:', e);
+        }
+      }
+
+      const effectiveIp = (currentIp && currentIp !== 'Detecting...' && currentIp !== '127.0.0.1') ? currentIp : (deviceIp || '127.0.0.1');
+      const qrPayload = `fylo://pair?host=${effectiveIp}&port=${serverPort || 8080}&auth=${encodeURIComponent(pcAuthToken || '')}&name=${encodeURIComponent(phoneModelName || 'Android Phone')}&type=phone`;
+
+      if (FyloModule && FyloModule.generateQrCode) {
+        try {
+          const qrBase64 = await FyloModule.generateQrCode(qrPayload, 280);
+          if (qrBase64) {
+            setHostNetworkQr(qrBase64);
+          }
+        } catch (e) {
+          console.warn('generateQrCode error:', e);
+        }
+      }
+    } catch (err) {
+      console.warn('generateHostNetworkQr error:', err);
+    }
+  }, [deviceIp, serverPort, pcAuthToken, phoneModelName]);
+
+  const handleOpenHotspotSettings = () => {
+    if (FyloModule && FyloModule.openHotspotSettings) {
+      FyloModule.openHotspotSettings().catch(() => {});
+    } else {
+      Linking.openSettings().catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    if (pairModalTab === 'host') {
+      generateHostNetworkQr();
+    }
+  }, [pairModalTab, deviceIp, generateHostNetworkQr]);
+
   const handleUnpair = async () => {
     userDisconnectedRef.current = true;
     if (!pairedPc) {
@@ -2163,13 +2249,15 @@ export default function App() {
     if (FyloModule && FyloModule.setAuthToken) {
       FyloModule.setAuthToken('').catch(() => {});
     }
+    const wasPhone = pairedDeviceType === 'phone';
     setPairedPc(null);
     setPcHostName('');
     setPcAuthToken('');
+    setPairedDeviceType('pc');
     setConnectionMode('lan');
     setPingLatency(null);
     setIsPcReachable(false);
-    showToast('Disconnected from PC');
+    showToast(wasPhone ? 'Disconnected from Phone' : 'Disconnected from PC');
     setPairModalTab('auto');
     setShowPairModal(true);
   };
@@ -2177,7 +2265,7 @@ export default function App() {
   // =========================================================
   // REQUIREMENT 6: REMOVE ANNOYING POPUPS (Non-blocking Toasts)
   // =========================================================
-  const handleConnectToPc = async (pcIp, token, webPin) => {
+  const handleConnectToPc = async (pcIp, token, webPin, isPhone = false, peerName = '') => {
     userDisconnectedRef.current = false;
     if (!pcIp) {
       showToast('⚠️ Please enter PC address');
@@ -2186,11 +2274,11 @@ export default function App() {
 
     let cleanIp = pcIp.trim().replace(/^https?:\/\//, '').replace(/^fylo:\/\//, '').replace(/\/.*$/, '');
     let host = cleanIp.split(':')[0];
-    let port = cleanIp.includes(':') ? cleanIp.split(':')[1] : '3000';
-    if (!port || port === '4444') port = '3000';
+    let port = cleanIp.includes(':') ? cleanIp.split(':')[1] : (isPhone ? '8080' : '3000');
+    if (!port || port === '4444') port = isPhone ? '8080' : '3000';
 
     try {
-      addLog(`Pairing with PC at ${host}:${port}...`);
+      addLog(`Pairing with ${isPhone ? 'Phone' : 'PC'} at ${host}:${port}...`);
       const startTime = Date.now();
 
       if (!serverRunning && FyloModule && FyloModule.startServer) {
@@ -2205,6 +2293,30 @@ export default function App() {
       const brand = Platform.constants?.Brand ? Platform.constants.Brand.charAt(0).toUpperCase() + Platform.constants.Brand.slice(1) : '';
       const model = Platform.constants?.Model || 'Android Phone';
       const cleanName = brand && !model.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${model}` : model;
+
+      // If connecting to a phone peer or port 8080, query /api/info first
+      if (isPhone || port === '8080') {
+        try {
+          const infoRes = await apiFetch(`http://${host}:${port}/api/info?auth=${encodeURIComponent(token ? token.trim() : (pcAuthToken || ''))}`, {
+            method: 'GET',
+          }, 3000);
+          if (infoRes.ok) {
+            const infoData = await safeJson(infoRes);
+            const roundTrip = Date.now() - startTime;
+            setPairedPc(`${host}:${port}`);
+            setPairedDeviceType('phone');
+            setConnectionMode('lan');
+            setPcHostName(infoData?.deviceName || infoData?.model || peerName || 'Android Phone');
+            setPingLatency(roundTrip);
+            setIsPcReachable(true);
+            if (token) setPcAuthToken(token.trim());
+            setShowPairModal(false);
+            addLog(`Direct Phone connection established with ${infoData?.deviceName || 'Phone'} (${host}:${port})`);
+            showToast(`⚡ Phone Linked: ${infoData?.deviceName || peerName || 'Phone'}!`);
+            return;
+          }
+        } catch (phoneErr) {}
+      }
 
       const payload = {
         deviceId: deviceIdRef.current,
@@ -2235,6 +2347,7 @@ export default function App() {
       const data = await safeJson(res);
       if (res.ok && data && data.success) {
         setPairedPc(`${host}:${port}`);
+        setPairedDeviceType('pc');
         setConnectionMode('lan');
         setPcHostName(data.hostName || 'Windows Host');
         setPingLatency(roundTrip);
@@ -2266,9 +2379,51 @@ export default function App() {
           syncStorageAccessPreference(isAllowed, `${host}:${port}`);
         }
       } else {
+        // Fallback check: could this target be a phone running FyloHttpServer?
+        try {
+          const infoRes = await apiFetch(`http://${host}:${port}/api/info?auth=${encodeURIComponent(token ? token.trim() : (pcAuthToken || ''))}`, {
+            method: 'GET',
+          }, 2500);
+          if (infoRes.ok) {
+            const infoData = await safeJson(infoRes);
+            setPairedPc(`${host}:${port}`);
+            setPairedDeviceType('phone');
+            setConnectionMode('lan');
+            setPcHostName(infoData?.deviceName || infoData?.model || peerName || 'Android Phone');
+            setPingLatency(roundTrip);
+            setIsPcReachable(true);
+            if (token) setPcAuthToken(token.trim());
+            setShowPairModal(false);
+            addLog(`Direct Phone connection established with ${infoData?.deviceName || 'Phone'} (${host}:${port})`);
+            showToast(`⚡ Phone Linked: ${infoData?.deviceName || peerName || 'Phone'}!`);
+            return;
+          }
+        } catch (e2) {}
+
         showToast(`⚠️ Pairing Failed: ${data?.error || 'PC rejected pairing request.'}`);
       }
     } catch (e) {
+      // Fallback check for Phone peer if connection error
+      try {
+        const infoRes = await apiFetch(`http://${host}:${port}/api/info?auth=${encodeURIComponent(token ? token.trim() : (pcAuthToken || ''))}`, {
+          method: 'GET',
+        }, 2500);
+        if (infoRes.ok) {
+          const infoData = await safeJson(infoRes);
+          setPairedPc(`${host}:${port}`);
+          setPairedDeviceType('phone');
+          setConnectionMode('lan');
+          setPcHostName(infoData?.deviceName || infoData?.model || peerName || 'Android Phone');
+          setPingLatency(8);
+          setIsPcReachable(true);
+          if (token) setPcAuthToken(token.trim());
+          setShowPairModal(false);
+          addLog(`Direct Phone connection established with ${infoData?.deviceName || 'Phone'} (${host}:${port})`);
+          showToast(`⚡ Phone Linked: ${infoData?.deviceName || peerName || 'Phone'}!`);
+          return;
+        }
+      } catch (e3) {}
+
       if (webPin && /^\d{6}$/.test(webPin)) {
         showToast(`🌐 Local Wi-Fi unreachable. Seamlessly connecting via Web P2P (PIN: ${webPin})...`);
         handleConnectWebPeer(webPin);
@@ -2299,7 +2454,7 @@ export default function App() {
         if (match && match[1]) {
           const extractedPin = match[1];
           // If explicitly in web mode or standalone sharehub page or no local port, directly connect via Web P2P
-          if (clean.includes('mode=web') || clean.includes('web-sharehub') || (!clean.includes('http://') && !clean.includes('https://') && !clean.includes(':3000'))) {
+          if (clean.includes('mode=web') || clean.includes('web-sharehub') || (!clean.includes('http://') && !clean.includes('https://') && !clean.includes(':3000') && !clean.includes(':8080'))) {
             handleConnectWebPeer(extractedPin);
             return;
           }
@@ -2310,6 +2465,8 @@ export default function App() {
       let port = '3000';
       let token = '';
       let embeddedWebPin = '';
+      let isPhoneDevice = false;
+      let peerDeviceName = '';
 
       try {
         const urlStr = (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('fylo://'))
@@ -2318,31 +2475,45 @@ export default function App() {
 
         if (typeof URL !== 'undefined') {
           const parsed = new URL(urlStr);
-          host = parsed.hostname;
-          port = parsed.port || '3000';
+          const hostParam = parsed.searchParams.get('host');
+          host = hostParam || (parsed.hostname !== 'pair' ? parsed.hostname : '');
+          const isPhoneParam = parsed.searchParams.get('type') === 'phone';
+          if (isPhoneParam) isPhoneDevice = true;
+          const portParam = parsed.searchParams.get('port');
+          port = portParam || (parsed.port ? parsed.port : (isPhoneDevice ? '8080' : '3000'));
           token = parsed.searchParams.get('auth') || parsed.searchParams.get('token') || '';
           embeddedWebPin = parsed.searchParams.get('webpin') || parsed.searchParams.get('pin') || parsed.searchParams.get('room') || '';
+          peerDeviceName = parsed.searchParams.get('name') || '';
         } else {
           throw new Error('URL not globally defined');
         }
       } catch (e) {
         const withoutProto = clean.replace(/^https?:\/\//i, '').replace(/^fylo:\/\//i, '');
         const [addrPart, queryPart] = withoutProto.split('?');
-        if (addrPart && addrPart.includes(':')) {
-          const parts = addrPart.split(':');
-          host = parts[0];
-          port = parts[1].replace(/[^0-9]/g, '') || '3000';
-        } else if (addrPart) {
-          host = addrPart.replace(/\/.*$/, '');
-          port = '3000';
-        }
         if (queryPart) {
           try {
+            const hMatch = queryPart.match(/(?:host)=([^&]+)/i);
+            if (hMatch && hMatch[1]) host = decodeURIComponent(hMatch[1]);
+            const pMatch = queryPart.match(/(?:port)=([^&]+)/i);
+            if (pMatch && pMatch[1]) port = decodeURIComponent(pMatch[1]);
             const match = queryPart.match(/(?:auth|token)=([^&]+)/i);
             if (match && match[1]) token = decodeURIComponent(match[1]);
-            const pMatch = queryPart.match(/(?:webpin|pin|room)=(\d{6})/i);
-            if (pMatch && pMatch[1]) embeddedWebPin = pMatch[1];
+            const pinMatch = queryPart.match(/(?:webpin|pin|room)=(\d{6})/i);
+            if (pinMatch && pinMatch[1]) embeddedWebPin = pinMatch[1];
+            if (/type=phone/i.test(queryPart)) isPhoneDevice = true;
+            const nMatch = queryPart.match(/(?:name)=([^&]+)/i);
+            if (nMatch && nMatch[1]) peerDeviceName = decodeURIComponent(nMatch[1]);
           } catch (ignored) {}
+        }
+        if (!host) {
+          if (addrPart && addrPart !== 'pair' && addrPart.includes(':')) {
+            const parts = addrPart.split(':');
+            host = parts[0];
+            port = parts[1].replace(/[^0-9]/g, '') || (isPhoneDevice ? '8080' : '3000');
+          } else if (addrPart && addrPart !== 'pair') {
+            host = addrPart.replace(/\/.*$/, '');
+            port = isPhoneDevice ? '8080' : '3000';
+          }
         }
       }
 
@@ -2355,7 +2526,12 @@ export default function App() {
         return;
       }
 
-      handleConnectToPc(`${host}:${port}`, token, embeddedWebPin);
+      if (isPhoneDevice) {
+        setPairedDeviceType('phone');
+        if (peerDeviceName) setPcHostName(peerDeviceName);
+      }
+
+      handleConnectToPc(`${host}:${port}`, token, embeddedWebPin, isPhoneDevice, peerDeviceName);
     } catch (err) {
       console.warn('handleParseAndConnectQr error:', err);
       showToast('⚠️ Could not process QR code');
@@ -2560,7 +2736,62 @@ export default function App() {
       let successCount = 0;
       const sentFiles = [];
 
-      if (connectionMode === 'web') {
+      if (pairedDeviceType === 'phone') {
+        for (const file of files) {
+          try {
+            const fileName = file.name || file.path.split(/[/\\]/).pop() || 'file';
+            let uploaded = false;
+            if (FyloModule && FyloModule.uploadFileToUrl) {
+              try {
+                const uploadUrl = `http://${pairedPc}/api/fs/upload?name=${encodeURIComponent(fileName)}&auth=${pcAuthToken || ''}`;
+                const res = await FyloModule.uploadFileToUrl(uploadUrl, file.path, fileName);
+                if (res && (res.success || res.status === 200 || res.ok)) {
+                  uploaded = true;
+                }
+              } catch (uErr) {
+                console.warn('FyloModule.uploadFileToUrl error:', uErr);
+              }
+            }
+            if (!uploaded) {
+              try {
+                const res = await apiFetch(`http://${pairedPc}/api/mobile/fs/download-direct`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth-Token': pcAuthToken || '',
+                  },
+                  body: JSON.stringify({
+                    deviceId: deviceIdRef.current,
+                    path: file.path,
+                    fileName: fileName,
+                  }),
+                }, 15000);
+                const data = await safeJson(res);
+                if (data && data.success) {
+                  uploaded = true;
+                }
+              } catch (fallbackErr) {}
+            }
+            if (uploaded) {
+              successCount++;
+              sentFiles.push({
+                name: fileName,
+                path: file.path,
+                size: file.size,
+                mimeType: file.mimeType,
+                source: 'phone',
+                direction: 'sent',
+                time: Date.now(),
+              });
+            }
+          } catch (err) {
+            console.warn('Phone send error:', err);
+          }
+        }
+        if (sentFiles.length > 0) {
+          setShareHubFiles((prev) => [...sentFiles, ...prev]);
+        }
+      } else if (connectionMode === 'web') {
         // Direct WebRTC P2P Transfer to PC
         for (const file of files) {
           try {
@@ -2645,9 +2876,9 @@ export default function App() {
 
       setIsSending(false);
       if (successCount > 0) {
-        showToast(`✅ Sent ${successCount} file(s) to PC! 🎉`);
+        showToast(`✅ Sent ${successCount} file(s) to ${pairedDeviceType === 'phone' ? (pcHostName || 'Phone') : 'PC'}! 🎉`);
       } else {
-        showToast('⚠️ Send failed. Check PC connection.');
+        showToast(`⚠️ Send failed. Check ${pairedDeviceType === 'phone' ? 'Phone' : 'PC'} connection.`);
       }
     } catch (err) {
       console.warn('openNativeFilePicker error:', err);
@@ -2659,7 +2890,7 @@ export default function App() {
   const handleSendFilesToPc = async (pathsToSend) => {
     if (!pairedPc) {
       setShowPairModal(true);
-      showToast('⚡ Pair with PC to send files!');
+      showToast(pairedDeviceType === 'phone' ? '⚡ Link phone to send files!' : '⚡ Pair with PC to send files!');
       return;
     }
     const pathArray = Array.from(pathsToSend);
@@ -2669,11 +2900,66 @@ export default function App() {
     }
 
     setIsSending(true);
-    showToast(`🚀 Sending ${pathArray.length} file(s) to PC Downloads...`);
+    const destName = pairedDeviceType === 'phone' ? (pcHostName || 'Phone') : 'PC Downloads';
+    showToast(`🚀 Sending ${pathArray.length} file(s) to ${destName}...`);
     let successCount = 0;
     const sentFiles = [];
 
-    if (connectionMode === 'web') {
+    if (pairedDeviceType === 'phone') {
+      for (const fPath of pathArray) {
+        try {
+          const fileName = fPath.split(/[/\\]/).pop() || 'file';
+          let uploaded = false;
+          if (FyloModule && FyloModule.uploadFileToUrl) {
+            try {
+              const uploadUrl = `http://${pairedPc}/api/fs/upload?name=${encodeURIComponent(fileName)}&auth=${pcAuthToken || ''}`;
+              const res = await FyloModule.uploadFileToUrl(uploadUrl, fPath, fileName);
+              if (res && (res.success || res.status === 200 || res.ok)) {
+                uploaded = true;
+              }
+            } catch (uErr) {
+              console.warn('FyloModule.uploadFileToUrl error:', uErr);
+            }
+          }
+          if (!uploaded) {
+            try {
+              const res = await apiFetch(`http://${pairedPc}/api/mobile/fs/download-direct`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Auth-Token': pcAuthToken || '',
+                },
+                body: JSON.stringify({
+                  deviceId: deviceIdRef.current,
+                  path: fPath,
+                  fileName: fileName,
+                }),
+              }, 15000);
+              const data = await safeJson(res);
+              if (data && data.success) {
+                uploaded = true;
+              }
+            } catch (fallbackErr) {
+              console.warn('Fallback download-direct error:', fallbackErr);
+            }
+          }
+          if (uploaded) {
+            successCount++;
+            sentFiles.push({
+              name: fileName,
+              path: fPath,
+              direction: 'sent',
+              time: Date.now(),
+            });
+          }
+        } catch (e) {
+          console.warn('Phone send error:', e);
+        }
+      }
+      if (sentFiles.length > 0) {
+        setShareHubFiles((prev) => [...sentFiles, ...prev]);
+      }
+    } else if (connectionMode === 'web') {
       for (const fPath of pathArray) {
         try {
           if (FyloModule && FyloModule.sendWebFile) {
@@ -2747,10 +3033,10 @@ export default function App() {
 
     setIsSending(false);
     if (successCount > 0) {
-      showToast(`✅ Sent ${successCount} file(s) to PC! 🎉`);
+      showToast(`✅ Sent ${successCount} file(s) to ${pairedDeviceType === 'phone' ? (pcHostName || 'Phone') : 'PC'}! 🎉`);
       setPhoneSelectedPaths(new Set());
     } else {
-      showToast('⚠️ Send failed. Check PC connection.');
+      showToast(`⚠️ Send failed. Check ${pairedDeviceType === 'phone' ? 'Phone' : 'PC'} connection.`);
     }
   };
 
@@ -2831,6 +3117,30 @@ export default function App() {
           setTimeout(() => setTransferProgress(null), 2500);
         }
       }
+    });
+
+    const subPhoneConnected = DeviceEventEmitter.addListener('onPhoneDeviceConnected', (peer) => {
+      if (peer && peer.ip) {
+        setPairedPc(`${peer.ip}:${peer.port || 8080}`);
+        setPcHostName(peer.deviceName || peer.model || 'Android Phone');
+        setPairedDeviceType('phone');
+        setConnectionMode('lan');
+        setIsPcReachable(true);
+        setShowPairModal(false);
+        showToast(`⚡ Phone Linked: ${peer.deviceName || peer.model || 'Android Phone'}!`);
+        addLog(`Direct Phone connection established with ${peer.deviceName || 'Phone'} (${peer.ip})`);
+      }
+    });
+
+    const subPhoneDisconnected = DeviceEventEmitter.addListener('onPhoneDeviceDisconnected', () => {
+      setConnectionMode('lan');
+      setPairedPc(null);
+      setPcHostName('');
+      setPairedDeviceType('pc');
+      setIsPcReachable(false);
+      userDisconnectedRef.current = true;
+      showToast('Phone disconnected');
+      addLog('Phone disconnected');
     });
 
     const subWebConnected = DeviceEventEmitter.addListener('onWebPeerConnected', (data) => {
@@ -2926,6 +3236,8 @@ export default function App() {
     return () => {
       subDiscovery.remove();
       subProgress.remove();
+      subPhoneConnected.remove();
+      subPhoneDisconnected.remove();
       subWebConnected.remove();
       subWebDisconnected.remove();
       subWebFileReceived.remove();
@@ -4019,34 +4331,72 @@ export default function App() {
                 <View style={styles.heroTopRow}>
                   <View style={{ flex: 1, paddingRight: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <Text style={[styles.heroConnectedLabel, !isDarkMode && styles.heroConnectedLabelLight]}>
-                        {connectionMode === 'web' ? 'CONNECTED VIA WEB' : (isPcReachable ? 'CONNECTED TO PC' : 'PC OFFLINE')}
+                      <Text style={[
+                        styles.heroConnectedLabel,
+                        !isDarkMode && styles.heroConnectedLabelLight,
+                        pairedDeviceType === 'phone' && { color: '#10b981' },
+                      ]}>
+                        {pairedDeviceType === 'phone'
+                          ? 'PHONE DIRECT LINK'
+                          : connectionMode === 'web'
+                          ? 'CONNECTED VIA WEB'
+                          : (isPcReachable ? 'CONNECTED TO PC' : 'PC OFFLINE')}
                       </Text>
-                      {connectionMode === 'web' && (
+                      {pairedDeviceType === 'phone' ? (
+                        <View style={{ backgroundColor: '#10b981', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>PHONE LINK</Text>
+                        </View>
+                      ) : connectionMode === 'web' && (
                         <View style={{ backgroundColor: '#0284c7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
                           <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>P2P WEB</Text>
                         </View>
                       )}
                     </View>
                     <Text style={[styles.heroHostTitle, !isDarkMode && styles.heroHostTitleLight]} numberOfLines={1}>
-                      {connectionMode === 'web' ? '🌐 Web Peer Room' : ('‹ ' + (pcHostName || 'WINDOWS-PC'))}
+                      {pairedDeviceType === 'phone'
+                        ? `📱 ${pcHostName || 'Android Phone'} (Phone Linked)`
+                        : connectionMode === 'web'
+                        ? '🌐 Web Peer Room'
+                        : ('‹ ' + (pcHostName || 'WINDOWS-PC'))}
                     </Text>
                     <Text style={[styles.heroIpSub, !isDarkMode && styles.heroIpSubLight]}>
-                      {connectionMode === 'web' ? `Room PIN: ${webRoomPin || 'Active'} • Encrypted P2P` : pairedPc}
+                      {pairedDeviceType === 'phone'
+                        ? `${pairedPc} • Direct Network`
+                        : connectionMode === 'web'
+                        ? `Room PIN: ${webRoomPin || 'Active'} • Encrypted P2P`
+                        : pairedPc}
                     </Text>
                   </View>
 
                   <View style={[styles.heroLatencyPill, !isDarkMode && styles.heroLatencyPillLight]}>
-                    <View style={[styles.beaconDot, { backgroundColor: connectionMode === 'web' ? '#06b6d4' : '#22c55e', width: 6, height: 6, borderRadius: 3, marginRight: 5 }]} />
+                    <View style={[styles.beaconDot, { backgroundColor: pairedDeviceType === 'phone' ? '#10b981' : (connectionMode === 'web' ? '#06b6d4' : '#22c55e'), width: 6, height: 6, borderRadius: 3, marginRight: 5 }]} />
                     <Text style={[styles.heroLatencyText, !isDarkMode && styles.heroLatencyTextLight]}>
-                      {connectionMode === 'web' ? 'Web P2P' : (isPcReachable ? (pingLatency !== null ? `${pingLatency} ms` : '95 ms') : 'Offline')}
+                      {pingLatency !== null ? `${pingLatency} ms` : (pairedDeviceType === 'phone' ? '8 ms' : (connectionMode === 'web' ? 'Web P2P' : (isPcReachable ? '95 ms' : 'Offline')))}
                     </Text>
                   </View>
                 </View>
 
                 {/* Pill Action Buttons matching sketch */}
                 <View style={[styles.heroBtnRow, { marginTop: 14 }]}>
-                  {connectionMode === 'web' ? (
+                  {pairedDeviceType === 'phone' ? (
+                    <>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
+                        onPress={() => setCurrentTab('phone-explorer')}>
+                        <View style={{ marginRight: 6 }}>
+                          <Win11FolderIcon size={18} />
+                        </View>
+                        <Text style={styles.heroPrimaryBtnText}>Browse Phone Storage 📁</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.heroPrimaryBtn, { backgroundColor: '#10b981', borderColor: '#059669' }]}
+                        onPress={handlePickAndSendToPc}>
+                        <Text style={[styles.heroPrimaryBtnText, { color: '#ffffff' }]}>Send Files 📤</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : connectionMode === 'web' ? (
                     <TouchableOpacity
                       activeOpacity={0.8}
                       style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
@@ -4249,17 +4599,27 @@ export default function App() {
                   </Animated.View>
                 )}
 
-                <View style={styles.heroBtnRow}>
+                <View style={[styles.heroBtnRow, { flexWrap: 'wrap' }]}>
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight]}
-                    onPress={handleStartQrScan}>
-                    <Text style={styles.heroPrimaryBtnText}>Scan PC QR 📷</Text>
+                    style={[styles.heroPrimaryBtn, { backgroundColor: '#10b981', borderColor: '#059669', flex: 1.2 }]}
+                    onPress={() => {
+                      setPairModalTab('host');
+                      setShowPairModal(true);
+                    }}>
+                    <Text style={[styles.heroPrimaryBtnText, { color: '#ffffff' }]}>📡 Create Network</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    style={[styles.heroSecondaryBtn, { backgroundColor: '#0284c7', borderColor: '#38bdf8' }]}
+                    style={[styles.heroPrimaryBtn, !isDarkMode && styles.heroPrimaryBtnLight, { flex: 1.1 }]}
+                    onPress={handleStartQrScan}>
+                    <Text style={styles.heroPrimaryBtnText}>Scan QR 📷</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.heroSecondaryBtn, { backgroundColor: '#0284c7', borderColor: '#38bdf8', flex: 0.9 }]}
                     onPress={() => {
                       setPairModalTab('web');
                       setShowPairModal(true);
@@ -4271,7 +4631,7 @@ export default function App() {
 
                   <TouchableOpacity
                     activeOpacity={0.75}
-                    style={[styles.heroSecondaryBtn, !isDarkMode && styles.heroSecondaryBtnLight]}
+                    style={[styles.heroSecondaryBtn, !isDarkMode && styles.heroSecondaryBtnLight, { flex: 0.8 }]}
                     onPress={() => {
                       setPairModalTab('manual');
                       setShowPairModal(true);
@@ -6665,6 +7025,28 @@ export default function App() {
 
               <TouchableOpacity
                 activeOpacity={0.75}
+                style={[
+                  styles.drawerNavItem,
+                  !isDarkMode && styles.drawerNavItemLight,
+                ]}
+                onPress={() => {
+                  closeSidebar();
+                  setPairModalTab('host');
+                  setShowPairModal(true);
+                }}>
+                <Text style={styles.drawerNavIcon}>📡</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.drawerNavLabel, !isDarkMode && styles.drawerNavLabelLight, { color: '#10b981', fontWeight: '800' }]}>
+                    📡 Phone-to-Phone Network
+                  </Text>
+                  <Text style={[styles.drawerNavSub, !isDarkMode && styles.drawerNavSubLight]}>
+                    Direct Hotspot / Wi-Fi sharing
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
                 style={styles.drawerNavItem}
                 onPress={() => {
                   closeSidebar();
@@ -7051,11 +7433,12 @@ export default function App() {
             </View>
 
             {/* Modal Tabs */}
-            <View style={styles.modalSubTabsRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }} style={{ marginBottom: 12 }}>
               <TouchableOpacity
                 activeOpacity={0.75}
                 style={[
                   styles.modalSubTab,
+                  { paddingHorizontal: 12, flex: 0 },
                   !isDarkMode && styles.modalSubTabLight,
                   pairModalTab === 'auto' && styles.modalSubTabActive,
                 ]}
@@ -7073,6 +7456,7 @@ export default function App() {
                 activeOpacity={0.75}
                 style={[
                   styles.modalSubTab,
+                  { paddingHorizontal: 12, flex: 0 },
                   !isDarkMode && styles.modalSubTabLight,
                   pairModalTab === 'qr' && styles.modalSubTabActive,
                 ]}
@@ -7090,6 +7474,29 @@ export default function App() {
                 activeOpacity={0.75}
                 style={[
                   styles.modalSubTab,
+                  { paddingHorizontal: 12, flex: 0 },
+                  !isDarkMode && styles.modalSubTabLight,
+                  pairModalTab === 'host' && {
+                    backgroundColor: '#10b981',
+                    borderColor: '#059669',
+                  },
+                ]}
+                onPress={() => setPairModalTab('host')}>
+                <Text style={[
+                  styles.modalSubTabText,
+                  !isDarkMode && styles.modalSubTabTextLight,
+                  pairModalTab === 'host' && styles.modalSubTabTextActive,
+                  pairModalTab === 'host' && { color: '#ffffff' },
+                ]}>
+                  📡 Create Network
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[
+                  styles.modalSubTab,
+                  { paddingHorizontal: 12, flex: 0 },
                   !isDarkMode && styles.modalSubTabLight,
                   pairModalTab === 'manual' && styles.modalSubTabActive,
                 ]}
@@ -7107,6 +7514,7 @@ export default function App() {
                 activeOpacity={0.75}
                 style={[
                   styles.modalSubTab,
+                  { paddingHorizontal: 12, flex: 0 },
                   !isDarkMode && styles.modalSubTabLight,
                   pairModalTab === 'web' && styles.modalSubTabActive,
                 ]}
@@ -7119,7 +7527,7 @@ export default function App() {
                   🌐 Web PIN
                 </Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
 
             {pairModalTab === 'auto' ? (
               <View>
@@ -7270,6 +7678,139 @@ export default function App() {
                   </TouchableOpacity>
                 </View>
               </View>
+            ) : pairModalTab === 'host' ? (
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+                {/* Network Status Card */}
+                <View style={[
+                  styles.hostNetworkStatusCard,
+                  !isDarkMode && styles.hostNetworkStatusCardLight,
+                ]}>
+                  <View style={styles.hostNetworkPulseDot} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[
+                      styles.hostNetworkStatusTitle,
+                      !isDarkMode && styles.hostNetworkStatusTitleLight,
+                    ]}>
+                      {(isHotspotActive || (deviceIp && deviceIp.startsWith('192.168.43.')))
+                        ? `🔥 Mobile Hotspot Active (${deviceIp}:8080)`
+                        : `🏠 Local Wi-Fi (${deviceIp}:8080)`}
+                    </Text>
+                    <Text style={[
+                      styles.hostNetworkStatusSub,
+                      !isDarkMode && styles.hostNetworkStatusSubLight,
+                    ]}>
+                      Phone Server is active and ready for direct peer connections
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Hotspot Settings Button + Tip */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.hostHotspotBtn}
+                  onPress={handleOpenHotspotSettings}>
+                  <Text style={styles.hostHotspotBtnText}>🔥 Open Hotspot Settings</Text>
+                </TouchableOpacity>
+                <Text style={[
+                  styles.hostHotspotTip,
+                  !isDarkMode && styles.hostHotspotTipLight,
+                ]}>
+                  Turn on Mobile Hotspot on this phone for maximum transfer speed anywhere. No mobile data or SIM card needed!
+                </Text>
+
+                {/* QR Code Container */}
+                <View style={styles.hostQrCard}>
+                  {hostNetworkQr ? (
+                    <Image
+                      source={{
+                        uri: hostNetworkQr.startsWith('data:')
+                          ? hostNetworkQr
+                          : `data:image/png;base64,${hostNetworkQr}`,
+                      }}
+                      style={{ width: 220, height: 220 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={{ width: 220, height: 220, alignItems: 'center', justifyContent: 'center' }}>
+                      <ActivityIndicator size="large" color="#10b981" />
+                      <Text style={{ marginTop: 8, color: '#64748b', fontSize: 12 }}>Generating QR Code...</Text>
+                    </View>
+                  )}
+                  <Text style={styles.hostQrCaption}>
+                    Scan this QR code from Phone 2 with the Fylo App to link instantly!
+                  </Text>
+                </View>
+
+                {/* Step-by-Step Instructions */}
+                <View style={[
+                  styles.hostInstructionsCard,
+                  !isDarkMode && styles.hostInstructionsCardLight,
+                ]}>
+                  <Text style={[
+                    styles.hostInstructionsTitle,
+                    !isDarkMode && styles.hostInstructionsTitleLight,
+                  ]}>
+                    ⚡ How to Connect:
+                  </Text>
+                  <Text style={[styles.hostInstructionStep, !isDarkMode && styles.hostInstructionStepLight]}>
+                    1. Connect Phone 2 to this phone's Hotspot (or same Wi-Fi).
+                  </Text>
+                  <Text style={[styles.hostInstructionStep, !isDarkMode && styles.hostInstructionStepLight]}>
+                    2. Open Fylo on Phone 2 and tap "Scan QR" (or scan with phone camera to use in browser).
+                  </Text>
+                  <Text style={[styles.hostInstructionStep, !isDarkMode && styles.hostInstructionStepLight]}>
+                    3. Both phones connect directly without a laptop or internet!
+                  </Text>
+                </View>
+
+                {/* Direct URL */}
+                <View style={[
+                  styles.hostDirectUrlCard,
+                  !isDarkMode && styles.hostDirectUrlCardLight,
+                ]}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={[styles.hostDirectUrlLabel, !isDarkMode && styles.hostDirectUrlLabelLight]}>
+                      Direct Web Link:
+                    </Text>
+                    <Text style={[styles.hostDirectUrlText, !isDarkMode && styles.hostDirectUrlTextLight]} numberOfLines={1}>
+                      http://{deviceIp}:8080/
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.hostCopyBtn}
+                    onPress={async () => {
+                      const link = `http://${deviceIp}:8080/`;
+                      try {
+                        if (FyloModule && FyloModule.setClipboardText) {
+                          await FyloModule.setClipboardText(link);
+                        }
+                        showToast('📋 Copied direct link to clipboard!');
+                      } catch (e) {
+                        showToast('Could not copy link');
+                      }
+                    }}>
+                    <Text style={styles.hostCopyBtnText}>📋 Copy Direct Link</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={[styles.modalBtnRow, { marginTop: 14 }]}>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={[styles.modalCancelBtn, !isDarkMode && styles.modalCancelBtnLight, { flex: 1 }]}
+                    onPress={() => setShowPairModal(false)}>
+                    <Text style={[styles.modalCancelBtnText, !isDarkMode && styles.modalCancelBtnTextLight]}>
+                      Close
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={[styles.modalPrimaryBtn, { backgroundColor: '#10b981', flex: 1 }]}
+                    onPress={generateHostNetworkQr}>
+                    <Text style={styles.modalPrimaryBtnText}>🔄 Refresh Network</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             ) : pairModalTab === 'manual' ? (
               <View>
                 <Text style={[styles.modalSubtitle, !isDarkMode && styles.modalSubtitleLight]}>
@@ -12397,5 +12938,159 @@ const styles = StyleSheet.create({
   },
   beaconHostTitleLight: {
     color: '#0f172a',
+  },
+  hostNetworkStatusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    marginBottom: 10,
+  },
+  hostNetworkStatusCardLight: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  hostNetworkPulseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#10b981',
+    marginRight: 10,
+  },
+  hostNetworkStatusTitle: {
+    color: '#10b981',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  hostNetworkStatusTitleLight: {
+    color: '#047857',
+  },
+  hostNetworkStatusSub: {
+    color: '#94a3b8',
+    fontSize: 11,
+  },
+  hostNetworkStatusSubLight: {
+    color: '#64748b',
+  },
+  hostHotspotBtn: {
+    backgroundColor: '#f59e0b',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  hostHotspotBtnText: {
+    color: '#ffffff',
+    fontSize: 13.5,
+    fontWeight: '800',
+  },
+  hostHotspotTip: {
+    color: '#fbbf24',
+    fontSize: 11,
+    lineHeight: 16,
+    fontStyle: 'italic',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  hostHotspotTipLight: {
+    color: '#b45309',
+  },
+  hostQrCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  hostQrCaption: {
+    color: '#334155',
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  hostInstructionsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 12,
+  },
+  hostInstructionsCardLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  hostInstructionsTitle: {
+    color: '#e2e8f0',
+    fontSize: 12.5,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  hostInstructionsTitleLight: {
+    color: '#1e293b',
+  },
+  hostInstructionStep: {
+    color: '#94a3b8',
+    fontSize: 11.5,
+    lineHeight: 17,
+    marginBottom: 4,
+  },
+  hostInstructionStepLight: {
+    color: '#475569',
+  },
+  hostDirectUrlCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  hostDirectUrlCardLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  hostDirectUrlLabel: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  hostDirectUrlLabelLight: {
+    color: '#64748b',
+  },
+  hostDirectUrlText: {
+    color: '#38bdf8',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  hostDirectUrlTextLight: {
+    color: '#0284c7',
+  },
+  hostCopyBtn: {
+    backgroundColor: '#0284c7',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  hostCopyBtnText: {
+    color: '#ffffff',
+    fontSize: 11.5,
+    fontWeight: '800',
   },
 });

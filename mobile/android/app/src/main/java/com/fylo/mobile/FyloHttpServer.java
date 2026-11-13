@@ -16,6 +16,9 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
 
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.WritableMap;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -242,8 +245,14 @@ public class FyloHttpServer {
 
             boolean isLoopback = socket != null && socket.getInetAddress() != null && socket.getInetAddress().isLoopbackAddress();
 
+            boolean isHandshakeOrPublic = "/".equals(path)
+                    || "/web".equals(path)
+                    || "/api/mobile/connect".equals(path)
+                    || "/api/mobile/heartbeat".equals(path)
+                    || "/api/mobile/disconnect".equals(path);
+
             // Authorization check
-            if (!isLoopback && !isAuthorized(queryParams, headers)) {
+            if (!isLoopback && !isHandshakeOrPublic && !isAuthorized(queryParams, headers)) {
                 sendJsonResponse(out, 401, "{\"error\":\"Unauthorized: Invalid or missing auth token\"}");
                 return;
             }
@@ -274,18 +283,28 @@ public class FyloHttpServer {
             // Routing
             if ("/api/info".equals(path)) {
                 handleInfo(out);
+            } else if ("/api/mobile/connect".equals(path) && "POST".equals(method)) {
+                handleMobileConnect(socket, out, bodyBytes);
+            } else if ("/api/mobile/heartbeat".equals(path) && "POST".equals(method)) {
+                handleMobileHeartbeat(out);
+            } else if ("/api/mobile/disconnect".equals(path) && "POST".equals(method)) {
+                handleMobileDisconnect(socket, out, bodyBytes);
+            } else if ("/api/pc/explorer/quick-access".equals(path)) {
+                handlePhoneQuickAccess(out);
+            } else if ("/api/pc/explorer/list".equals(path) || "/api/fs/list".equals(path)) {
+                handleList(out, queryParams);
+            } else if ("/api/pc/explorer/download".equals(path) || "/api/fs/file".equals(path)) {
+                handleFile(out, queryParams, headers);
             } else if ("/api/fs/recent".equals(path)) {
                 handleRecent(out, queryParams);
-            } else if ("/api/fs/list".equals(path)) {
-                handleList(out, queryParams);
-            } else if ("/api/fs/file".equals(path)) {
-                handleFile(out, queryParams, headers);
             } else if ("/api/fs/thumbnail".equals(path)) {
                 handleThumbnail(out, queryParams, isLoopback);
             } else if ("/api/set-readonly".equals(path) && "POST".equals(method)) {
                 handleSetReadOnly(out, bodyBytes);
             } else if ("/api/fs/trash".equals(path) && "POST".equals(method)) {
                 handleTrash(out, bodyBytes);
+            } else if ("/".equals(path) || "/web".equals(path)) {
+                handleWebSharePage(out, isLoopback);
             } else {
                 sendJsonResponse(out, 404, "{\"error\":\"Endpoint not found\"}");
             }
@@ -346,6 +365,338 @@ public class FyloHttpServer {
         String xAuth = headers.get("x-auth-token");
         return xAuth != null && token.equals(xAuth);
     }
+
+    private String getHostDeviceName() {
+        String brand = Build.MANUFACTURER != null ? Build.MANUFACTURER : "";
+        String model = Build.MODEL != null ? Build.MODEL : "Android";
+        return (!brand.isEmpty() && !model.toLowerCase().contains(brand.toLowerCase()))
+            ? (brand.substring(0, 1).toUpperCase() + brand.substring(1) + " " + model)
+            : model;
+    }
+
+    private void handleMobileConnect(Socket socket, OutputStream out, byte[] body) throws Exception {
+        JSONObject json = new JSONObject();
+        if (body != null && body.length > 0) {
+            try {
+                json = new JSONObject(new String(body, StandardCharsets.UTF_8));
+            } catch (Throwable ignored) {}
+        }
+
+        String clientIp = json.optString("ip", "");
+        if ((clientIp.isEmpty() || clientIp.equals("127.0.0.1")) && socket != null && socket.getInetAddress() != null) {
+            clientIp = socket.getInetAddress().getHostAddress();
+        }
+
+        WritableMap map = Arguments.createMap();
+        map.putString("deviceId", json.optString("deviceId", ""));
+        map.putString("deviceName", json.optString("deviceName", json.optString("model", "Remote Phone")));
+        map.putString("model", json.optString("model", ""));
+        map.putString("ip", clientIp != null ? clientIp : "");
+        map.putInt("port", json.optInt("port", 8080));
+        map.putString("authToken", json.optString("authToken", ""));
+        map.putString("type", json.optString("type", "phone"));
+        map.putString("kind", "phone");
+
+        FyloServerModule.emitToJs("onPhoneDeviceConnected", map);
+
+        JSONObject resp = new JSONObject();
+        resp.put("success", true);
+        resp.put("hostName", getHostDeviceName());
+        resp.put("authToken", this.authToken != null ? this.authToken : "");
+        resp.put("kind", "phone");
+        sendJsonResponse(out, 200, resp.toString());
+    }
+
+    private void handleMobileHeartbeat(OutputStream out) throws Exception {
+        JSONObject resp = new JSONObject();
+        resp.put("success", true);
+        resp.put("hostName", getHostDeviceName());
+        sendJsonResponse(out, 200, resp.toString());
+    }
+
+    private void handleMobileDisconnect(Socket socket, OutputStream out, byte[] body) throws Exception {
+        JSONObject json = new JSONObject();
+        if (body != null && body.length > 0) {
+            try {
+                json = new JSONObject(new String(body, StandardCharsets.UTF_8));
+            } catch (Throwable ignored) {}
+        }
+
+        String clientIp = json.optString("ip", "");
+        if ((clientIp.isEmpty() || clientIp.equals("127.0.0.1")) && socket != null && socket.getInetAddress() != null) {
+            clientIp = socket.getInetAddress().getHostAddress();
+        }
+
+        WritableMap map = Arguments.createMap();
+        map.putString("deviceId", json.optString("deviceId", ""));
+        map.putString("ip", clientIp != null ? clientIp : "");
+        map.putString("kind", "phone");
+
+        FyloServerModule.emitToJs("onPhoneDeviceDisconnected", map);
+
+        JSONObject resp = new JSONObject();
+        resp.put("success", true);
+        sendJsonResponse(out, 200, resp.toString());
+    }
+
+    private void handlePhoneQuickAccess(OutputStream out) throws Exception {
+        JSONObject resp = new JSONObject();
+        JSONArray drives = new JSONArray();
+
+        File ext = Environment.getExternalStorageDirectory();
+        String rootPath = ext != null ? ext.getAbsolutePath() : "/storage/emulated/0";
+
+        long totalBytes = 0;
+        long freeBytes = 0;
+        try {
+            StatFs stat = new StatFs(rootPath);
+            long blockSize = stat.getBlockSizeLong();
+            totalBytes = stat.getBlockCountLong() * blockSize;
+            freeBytes = stat.getAvailableBlocksLong() * blockSize;
+        } catch (Throwable ignored) {}
+        long usedBytes = Math.max(0, totalBytes - freeBytes);
+
+        JSONObject drive = new JSONObject();
+        drive.put("name", "Internal Storage");
+        drive.put("label", "Internal Storage");
+        drive.put("mount", "/");
+        drive.put("path", rootPath);
+        drive.put("free", freeBytes);
+        drive.put("used", usedBytes);
+        drive.put("total", totalBytes);
+        drives.put(drive);
+
+        // Removable SD card if available
+        try {
+            File[] extDirs = context.getExternalFilesDirs(null);
+            if (extDirs != null && extDirs.length > 1) {
+                for (int i = 1; i < extDirs.length; i++) {
+                    File d = extDirs[i];
+                    if (d != null) {
+                        String path = d.getAbsolutePath();
+                        int androidIdx = path.indexOf("/Android");
+                        if (androidIdx > 0) {
+                            path = path.substring(0, androidIdx);
+                        }
+                        File sdRoot = new File(path);
+                        if (sdRoot.exists() && sdRoot.canRead()) {
+                            long sdTotal = 0, sdFree = 0;
+                            try {
+                                StatFs sdStat = new StatFs(sdRoot.getAbsolutePath());
+                                long bs = sdStat.getBlockSizeLong();
+                                sdTotal = sdStat.getBlockCountLong() * bs;
+                                sdFree = sdStat.getAvailableBlocksLong() * bs;
+                            } catch (Throwable ignored) {}
+                            JSONObject sdDrive = new JSONObject();
+                            sdDrive.put("name", "SD Card");
+                            sdDrive.put("label", "SD Card");
+                            sdDrive.put("mount", "/sdcard");
+                            sdDrive.put("path", sdRoot.getAbsolutePath());
+                            sdDrive.put("free", sdFree);
+                            sdDrive.put("used", Math.max(0, sdTotal - sdFree));
+                            sdDrive.put("total", sdTotal);
+                            drives.put(sdDrive);
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        JSONArray shortcuts = new JSONArray();
+        String[][] scDefs = new String[][] {
+            {"Camera (DCIM)", rootPath + "/DCIM", "camera"},
+            {"Downloads", rootPath + "/Download", "download"},
+            {"Pictures", rootPath + "/Pictures", "image"},
+            {"Movies", rootPath + "/Movies", "video"},
+            {"Documents", rootPath + "/Documents", "file"}
+        };
+
+        for (String[] def : scDefs) {
+            File scFile = new File(def[1]);
+            if (!scFile.exists()) {
+                if (def[1].endsWith("/Download") && new File(rootPath + "/Downloads").exists()) {
+                    scFile = new File(rootPath + "/Downloads");
+                } else if (def[1].endsWith("/Documents") && new File(rootPath + "/Document").exists()) {
+                    scFile = new File(rootPath + "/Document");
+                } else if (def[1].endsWith("/Movies") && new File(rootPath + "/Video").exists()) {
+                    scFile = new File(rootPath + "/Video");
+                }
+            }
+            JSONObject sc = new JSONObject();
+            sc.put("name", def[0]);
+            sc.put("path", scFile.getAbsolutePath());
+            sc.put("icon", def[2]);
+            shortcuts.put(sc);
+        }
+
+        resp.put("drives", drives);
+        resp.put("shortcuts", shortcuts);
+        sendJsonResponse(out, 200, resp.toString());
+    }
+
+    private void handleWebSharePage(OutputStream out, boolean isLoopback) throws Exception {
+        String deviceName = getHostDeviceName();
+        String token = this.authToken != null ? this.authToken : "";
+        String html = "<!DOCTYPE html>\n" +
+            "<html lang=\"en\">\n" +
+            "<head>\n" +
+            "  <meta charset=\"UTF-8\">\n" +
+            "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no\">\n" +
+            "  <title>Fylo Share - " + escapeHtml(deviceName) + "</title>\n" +
+            "  <style>\n" +
+            "    :root {\n" +
+            "      --bg: #0c0f17;\n" +
+            "      --card-bg: rgba(22, 27, 40, 0.85);\n" +
+            "      --border: rgba(255, 255, 255, 0.1);\n" +
+            "      --primary: #6366f1;\n" +
+            "      --primary-hover: #4f46e5;\n" +
+            "      --primary-glow: rgba(99, 102, 241, 0.35);\n" +
+            "      --success: #10b981;\n" +
+            "      --text: #f3f4f6;\n" +
+            "      --text-muted: #9ca3af;\n" +
+            "    }\n" +
+            "    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }\n" +
+            "    body {\n" +
+            "      background: var(--bg);\n" +
+            "      background-image: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 60%);\n" +
+            "      color: var(--text);\n" +
+            "      min-height: 100vh;\n" +
+            "      display: flex;\n" +
+            "      flex-direction: column;\n" +
+            "      align-items: center;\n" +
+            "      padding: 24px 16px;\n" +
+            "    }\n" +
+            "    .container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 20px; }\n" +
+            "    .header { text-align: center; padding: 10px 0; }\n" +
+            "    .logo-badge {\n" +
+            "      display: inline-flex; align-items: center; gap: 8px;\n" +
+            "      background: rgba(99, 102, 241, 0.15); border: 1px solid var(--primary-glow);\n" +
+            "      padding: 6px 14px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: #818cf8; margin-bottom: 12px;\n" +
+            "    }\n" +
+            "    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }\n" +
+            "    h1 { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 6px; }\n" +
+            "    .subtitle { font-size: 14px; color: var(--text-muted); }\n" +
+            "    .card {\n" +
+            "      background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px;\n" +
+            "      padding: 24px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);\n" +
+            "      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);\n" +
+            "    }\n" +
+            "    .dropzone {\n" +
+            "      border: 2px dashed rgba(99, 102, 241, 0.4); border-radius: 12px; padding: 36px 20px;\n" +
+            "      text-align: center; cursor: pointer; transition: all 0.2s ease; background: rgba(99, 102, 241, 0.04);\n" +
+            "    }\n" +
+            "    .dropzone.dragover { border-color: var(--primary); background: rgba(99, 102, 241, 0.15); transform: scale(1.01); }\n" +
+            "    .dropzone-icon { width: 48px; height: 48px; margin: 0 auto 12px; stroke: #818cf8; display: block; }\n" +
+            "    .dropzone-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }\n" +
+            "    .dropzone-hint { font-size: 13px; color: var(--text-muted); }\n" +
+            "    #fileInput { display: none; }\n" +
+            "    .btn {\n" +
+            "      display: inline-block; margin-top: 16px; background: var(--primary); color: #fff;\n" +
+            "      font-weight: 600; font-size: 14px; padding: 10px 22px; border-radius: 10px; border: none; cursor: pointer;\n" +
+            "      box-shadow: 0 4px 14px var(--primary-glow); transition: background 0.2s;\n" +
+            "    }\n" +
+            "    .btn:active { background: var(--primary-hover); transform: translateY(1px); }\n" +
+            "    .progress-section { display: none; margin-top: 20px; }\n" +
+            "    .progress-info { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: var(--text-muted); }\n" +
+            "    .progress-filename { color: var(--text); font-weight: 500; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n" +
+            "    .progress-bar-bg { width: 100%; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 9999px; overflow: hidden; }\n" +
+            "    .progress-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #6366f1, #10b981); transition: width 0.2s ease; }\n" +
+            "    .file-list { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }\n" +
+            "    .file-item { display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.04); padding: 12px 16px; border-radius: 10px; font-size: 14px; }\n" +
+            "    .file-item-name { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n" +
+            "    .file-item-badge { font-size: 12px; color: var(--success); font-weight: 600; }\n" +
+            "    .footer { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 20px; }\n" +
+            "  </style>\n" +
+            "</head>\n" +
+            "<body>\n" +
+            "  <div class=\"container\">\n" +
+            "    <div class=\"header\">\n" +
+            "      <div class=\"logo-badge\"><span class=\"status-dot\"></span><span>Fylo Direct Wireless Share</span></div>\n" +
+            "      <h1>" + escapeHtml(deviceName) + "</h1>\n" +
+            "      <p class=\"subtitle\">Direct Network Upload &bull; No Internet Needed</p>\n" +
+            "    </div>\n" +
+            "    <div class=\"card\">\n" +
+            "      <div class=\"dropzone\" id=\"dropzone\" onclick=\"document.getElementById('fileInput').click()\">\n" +
+            "        <svg class=\"dropzone-icon\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.8\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z\"/></svg>\n" +
+            "        <div class=\"dropzone-title\">Send Files to " + escapeHtml(deviceName) + "</div>\n" +
+            "        <div class=\"dropzone-hint\">Tap to select or drop files here</div>\n" +
+            "        <button class=\"btn\" type=\"button\" onclick=\"event.stopPropagation(); document.getElementById('fileInput').click();\">Choose Files</button>\n" +
+            "        <input type=\"file\" id=\"fileInput\" multiple />\n" +
+            "      </div>\n" +
+            "      <div class=\"progress-section\" id=\"progressSection\">\n" +
+            "        <div class=\"progress-info\"><span class=\"progress-filename\" id=\"progressFilename\">Uploading...</span><span id=\"progressPercent\">0%</span></div>\n" +
+            "        <div class=\"progress-bar-bg\"><div class=\"progress-bar-fill\" id=\"progressBar\"></div></div>\n" +
+            "      </div>\n" +
+            "      <div class=\"file-list\" id=\"fileList\"></div>\n" +
+            "    </div>\n" +
+            "    <div class=\"footer\">Powered by Fylo Local Engine &bull; Private & Encrypted Direct Transfer</div>\n" +
+            "  </div>\n" +
+            "  <script>\n" +
+            "    const AUTH_TOKEN = \"" + escapeJs(token) + "\";\n" +
+            "    const dropzone = document.getElementById('dropzone');\n" +
+            "    const fileInput = document.getElementById('fileInput');\n" +
+            "    const progressSection = document.getElementById('progressSection');\n" +
+            "    const progressFilename = document.getElementById('progressFilename');\n" +
+            "    const progressPercent = document.getElementById('progressPercent');\n" +
+            "    const progressBar = document.getElementById('progressBar');\n" +
+            "    const fileList = document.getElementById('fileList');\n" +
+            "    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });\n" +
+            "    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));\n" +
+            "    dropzone.addEventListener('drop', (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); if (e.dataTransfer && e.dataTransfer.files) { uploadFiles(Array.from(e.dataTransfer.files)); } });\n" +
+            "    fileInput.addEventListener('change', () => { if (fileInput.files) { uploadFiles(Array.from(fileInput.files)); } });\n" +
+            "    async function uploadFiles(files) {\n" +
+            "      if (!files || files.length === 0) return;\n" +
+            "      progressSection.style.display = 'block';\n" +
+            "      for (let i = 0; i < files.length; i++) {\n" +
+            "        const file = files[i];\n" +
+            "        progressFilename.textContent = '(' + (i + 1) + '/' + files.length + ') ' + file.name;\n" +
+            "        progressPercent.textContent = '0%';\n" +
+            "        progressBar.style.width = '0%';\n" +
+            "        await new Promise((resolve) => {\n" +
+            "          const xhr = new XMLHttpRequest();\n" +
+            "          let target = '/api/fs/upload?name=' + encodeURIComponent(file.name);\n" +
+            "          if (AUTH_TOKEN) { target += '&auth=' + encodeURIComponent(AUTH_TOKEN); }\n" +
+            "          xhr.open('POST', target, true);\n" +
+            "          if (AUTH_TOKEN) { xhr.setRequestHeader('X-Auth-Token', AUTH_TOKEN); }\n" +
+            "          xhr.upload.onprogress = (evt) => { if (evt.lengthComputable) { const pct = Math.round((evt.loaded / evt.total) * 100); progressPercent.textContent = pct + '%'; progressBar.style.width = pct + '%'; } };\n" +
+            "          xhr.onload = () => { addFileItem(file.name, xhr.status >= 200 && xhr.status < 300); resolve(); };\n" +
+            "          xhr.onerror = () => { addFileItem(file.name, false); resolve(); };\n" +
+            "          xhr.send(file);\n" +
+            "        });\n" +
+            "      }\n" +
+            "      progressFilename.textContent = 'All transfers complete!';\n" +
+            "      progressPercent.textContent = '100%';\n" +
+            "      progressBar.style.width = '100%';\n" +
+            "      fileInput.value = '';\n" +
+            "    }\n" +
+            "    function addFileItem(name, success) {\n" +
+            "      const item = document.createElement('div');\n" +
+            "      item.className = 'file-item';\n" +
+            "      item.innerHTML = '<span class=\"file-item-name\">' + name + '</span><span class=\"file-item-badge\" style=\"color: ' + (success ? 'var(--success)' : '#ef4444') + '\">' + (success ? '✓ Saved to Phone' : '✗ Failed') + '</span>';\n" +
+            "      fileList.prepend(item);\n" +
+            "    }\n" +
+            "  </script>\n" +
+            "</body>\n" +
+            "</html>";
+
+        byte[] htmlBytes = html.getBytes(StandardCharsets.UTF_8);
+        Map<String, String> extraHeaders = new HashMap<>();
+        sendResponseHeaders(out, 200, "OK", "text/html; charset=utf-8", htmlBytes.length, extraHeaders);
+        out.write(htmlBytes);
+        out.flush();
+    }
+
+    private String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(""", "&quot;");
+    }
+
+    private String escapeJs(String text) {
+        if (text == null) return "";
+        return text.replace("\\", "\\\\").replace(""", "\\"").replace("'", "\\'").replace("\n", "");
+    }
+
 
     private void handleInfo(OutputStream out) throws Exception {
         JSONObject json = new JSONObject();
