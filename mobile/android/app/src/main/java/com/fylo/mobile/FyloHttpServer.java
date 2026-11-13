@@ -825,6 +825,69 @@ public class FyloHttpServer {
             Log.w(TAG, "handleRecent error: " + e.getMessage());
         }
 
+        if (items.length() == 0) {
+            try {
+                String[] scanDirs = {
+                    "/storage/emulated/0/DCIM/Camera",
+                    "/storage/emulated/0/DCIM",
+                    "/storage/emulated/0/Pictures",
+                    "/storage/emulated/0/Download"
+                };
+                List<File> mediaFiles = new ArrayList<>();
+                for (String dirPath : scanDirs) {
+                    File d = new File(dirPath);
+                    if (d.isDirectory()) {
+                        File[] files = d.listFiles();
+                        if (files != null) {
+                            for (File f : files) {
+                                if (f.isFile() && f.length() > 0) {
+                                    String n = f.getName().toLowerCase();
+                                    if (n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png") ||
+                                        n.endsWith(".webp") || n.endsWith(".mp4") || n.endsWith(".mkv") ||
+                                        n.endsWith(".mov")) {
+                                        mediaFiles.add(f);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Collections.sort(mediaFiles, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+                int added = 0;
+                for (File f : mediaFiles) {
+                    if (added >= limit) break;
+                    String name = f.getName();
+                    String path = f.getAbsolutePath();
+                    long dateModified = f.lastModified();
+                    long size = f.length();
+                    String lower = name.toLowerCase();
+                    boolean isVideo = lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".mov");
+
+                    JSONObject item = new JSONObject();
+                    item.put("name", name);
+                    item.put("path", path);
+                    item.put("isDir", false);
+                    item.put("isDirectory", false);
+                    item.put("size", size);
+                    item.put("modified", dateModified);
+                    item.put("mtime", dateModified);
+
+                    String ext = "";
+                    int dotIdx = name.lastIndexOf('.');
+                    if (dotIdx > 0 && dotIdx < name.length() - 1) {
+                        ext = name.substring(dotIdx + 1).toLowerCase();
+                    }
+                    item.put("ext", ext);
+                    item.put("isVideo", isVideo);
+                    item.put("isMedia", true);
+                    items.put(item);
+                    added++;
+                }
+            } catch (Throwable e) {
+                Log.w(TAG, "handleRecent directory fallback error: " + e.getMessage());
+            }
+        }
+
         JSONObject resp = new JSONObject();
         resp.put("success", true);
         resp.put("items", items);
