@@ -30,7 +30,7 @@ if (electronApp && typeof electronApp.requestSingleInstanceLock === 'function') 
 const app = express();
 const PORT = 3000;
 const pkgJson = require('./package.json');
-const APP_VERSION = pkgJson.version || '4.1.0';
+const APP_VERSION = pkgJson.version || '4.2.0';
 let secretToken;
 const tokenPath = path.join(os.homedir(), '.fylo-token');
 try {
