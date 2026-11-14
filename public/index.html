@@ -6911,7 +6911,6 @@
                     </div>
                 </div>
             </div>
-            </div>
 
             <div id="view-devices" class="view-panel hidden">
                 <div class="feature-focus-header">
@@ -8971,6 +8970,13 @@
 
             const dashPinVal = document.getElementById('dash-web-pin-val');
             if (dashPinVal) dashPinVal.textContent = pcWebPin;
+            if (typeof apiFetch === 'function' && pcWebPin) {
+                apiFetch('/api/web-pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: pcWebPin })
+                }).catch(() => {});
+            }
 
             const lanWebPin = document.getElementById('dash-lan-web-pin');
             if (lanWebPin) lanWebPin.textContent = pcWebPin;
@@ -9266,6 +9272,13 @@
             pcWebPin = pcWebGeneratePin();
             window.initPcWebShareHub();
             showToast(`Generated new Room PIN: ${pcWebPin}`);
+            if (typeof apiFetch === 'function' && pcWebPin) {
+                apiFetch('/api/web-pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: pcWebPin })
+                }).catch(() => {});
+            }
         };
 
         window.pcWebJoinRoom = function(customPin) {
@@ -14489,14 +14502,35 @@ function iconLabel(ext, type) {
                 fn();
             };
 
-            setInterval(skipIfIdle(sendHeartbeat), 4000);
-            setInterval(skipIfIdle(loadFiles), 5000);
-            setInterval(skipIfIdle(loadDevices), 4000);
-            setInterval(skipIfIdle(loadMobileDevices), 3500);
-            setInterval(skipIfIdle(loadSavedDevicesList), 6000);
-            setInterval(skipIfIdle(loadDashboardData), 5000);
-            setInterval(skipIfIdle(loadClipboard), 4000);
-            setInterval(skipIfIdle(checkStreamRequests), 2500);
+            let appTickCounter = 0;
+            async function smartAppTick() {
+                if (document.hidden || window._isDormant) return;
+                appTickCounter++;
+                try {
+                    // Essential fast telemetry & security checks (every tick)
+                    await sendHeartbeat();
+                    if (isHost && typeof checkStreamRequests === 'function') checkStreamRequests();
+                    if (isHost && typeof checkServerSecurityPending === 'function') await checkServerSecurityPending();
+                    await loadMobileDevices();
+
+                    // Active files & Dashboard update (every 2nd tick ~7s)
+                    if (appTickCounter % 2 === 0) {
+                        await loadFiles();
+                        await loadDashboardData();
+                    }
+
+                    // Network subnets & clipboard sync (every 3rd tick ~10.5s)
+                    if (appTickCounter % 3 === 0) {
+                        await loadDevices();
+                        await loadSavedDevicesList();
+                        await loadClipboard();
+                    }
+                } catch(e) {
+                    console.warn('smartAppTick notice:', e.message);
+                }
+            }
+
+            setInterval(smartAppTick, 3500);
         }
 
         // Steady seamless background (mouse parallax removed to eliminate edge gaps and flicker)
@@ -14788,14 +14822,30 @@ function iconLabel(ext, type) {
             if (modal) modal.classList.add('active');
         }
 
-        window.allowDeviceSecurity = function() {
+        async function checkServerSecurityPending() {
+            if (!isHost) return;
+            try {
+                const res = await apiFetch('/api/security/pending');
+                if (res.ok) {
+                    const data = await res.json();
+                    const pendingList = data.pending || [];
+                    if (pendingList.length > 0 && !window._pendingSecurityDevice) {
+                        const target = pendingList[0];
+                        showDeviceSecurityPrompt(target);
+                    }
+                }
+            } catch(e) {}
+        }
+
+        window.allowDeviceSecurity = async function() {
             const modal = document.getElementById('device-security-modal');
             const dev = window._pendingSecurityDevice;
             if (dev) {
                 const devId = dev.id || dev.ip;
                 window._sessionAuthorizedDevices.add(devId);
                 const always = document.getElementById('sec-modal-always-trust');
-                if (always && always.checked) {
+                const remember = !!(always && always.checked);
+                if (remember) {
                     try {
                         let trusted = JSON.parse(localStorage.getItem('fylo_trusted_share_devices') || '[]');
                         if (!trusted.includes(devId)) {
@@ -14804,9 +14854,36 @@ function iconLabel(ext, type) {
                         }
                     } catch(e) {}
                 }
+                try {
+                    await apiFetch('/api/security/authorize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: dev.id, ip: dev.ip, allow: true, remember })
+                    });
+                } catch(e) {}
                 showToast(`File sharing authorized for ${dev.name || 'device'}`, 'success');
                 if (typeof fetchAndRenderPhoneRecents === 'function') {
                     fetchAndRenderPhoneRecents(true);
+                }
+            }
+            window._pendingSecurityDevice = null;
+            if (modal) modal.classList.remove('active');
+        };
+
+        window.denyDeviceSecurity = async function() {
+            const modal = document.getElementById('device-security-modal');
+            const dev = window._pendingSecurityDevice;
+            if (dev) {
+                try {
+                    await apiFetch('/api/security/authorize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: dev.id, ip: dev.ip, allow: false })
+                    });
+                } catch(e) {}
+                showToast(`Blocked file sharing for ${dev.name || 'device'}`, 'warning');
+                if (typeof kickDevice === 'function' && dev.id) {
+                    kickDevice(dev.id);
                 }
             }
             window._pendingSecurityDevice = null;

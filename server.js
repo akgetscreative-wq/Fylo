@@ -118,6 +118,59 @@ let downloadFolder = path.join(os.homedir(), 'Downloads');
 
 const SAVED_DEVICES_PATH = path.join(os.homedir(), '.fylo-devices.json');
 let savedDevices = {};
+let currentWebPin = '';
+let authorizedDevices = {};
+let pendingAuthRequests = {};
+
+function refreshAuthorizedDevices() {
+    for (const [id, dev] of Object.entries(savedDevices)) {
+        if (dev && dev.authorized !== false && !dev.blocked) {
+            authorizedDevices[id] = true;
+            const cleanIp = (dev.ip || '').replace(/^::ffff:/, '').trim();
+            if (cleanIp) authorizedDevices[cleanIp] = true;
+        }
+    }
+}
+
+function isClientAuthorized(req) {
+    if (isLocalHostIp(req.ip)) return true;
+    const cleanIp = (req.socket.remoteAddress || req.ip || '').replace(/^::ffff:/, '').trim();
+    if (authorizedDevices[cleanIp]) return true;
+
+    const cookies = parseCookies(req);
+    const token = (req.query.auth || req.query.token || req.headers['x-auth-token'] || req.headers['authorization'] || cookies['fylo_session'] || '').replace('Bearer ', '').trim();
+    const devId = (req.query.deviceId || req.headers['x-device-id'] || '').trim();
+
+    if (devId && authorizedDevices[devId]) return true;
+    if (token && token === secretToken && savedDevices[cleanIp]?.authorized !== false) return true;
+    return false;
+}
+
+function requireClientAuthorized(req, res, next) {
+    if (isClientAuthorized(req)) return next();
+    const cleanIp = (req.socket.remoteAddress || req.ip || '').replace(/^::ffff:/, '').trim();
+    const devName = req.query.deviceName || req.headers['x-device-name'] || (mobileDevices[cleanIp]?.name) || (devices[cleanIp]?.name) || 'Remote Device';
+    const devModel = req.query.model || req.headers['x-device-model'] || (mobileDevices[cleanIp]?.model) || 'LAN Client';
+
+    pendingAuthRequests[cleanIp] = {
+        id: cleanIp,
+        ip: cleanIp,
+        name: devName,
+        model: devModel,
+        requestedAt: Date.now(),
+        endpoint: req.originalUrl
+    };
+
+    if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('security-auth-request', pendingAuthRequests[cleanIp]);
+    }
+
+    return res.status(403).json({
+        securityRequired: true,
+        error: 'Device authorization required by PC host. Please confirm on PC.',
+        clientIp: cleanIp
+    });
+}
 
 function deduplicateSavedDevices() {
     const seen = new Map();
@@ -167,6 +220,7 @@ function persistSavedDevices() {
 }
 
 loadSavedDevices();
+refreshAuthorizedDevices();
 
 function probeAndActivateDevice(device) {
     return new Promise((resolve) => {
@@ -537,7 +591,8 @@ app.use((req, res, next) => {
     const sessionToken = cookies['fylo_session'];
     const headerToken = req.headers['x-auth-token'] || req.headers['authorization'];
 
-    if (urlToken === secretToken) {
+    const isTokenMatch = (urlToken && (urlToken === secretToken || (currentWebPin && urlToken === currentWebPin)));
+    if (isTokenMatch) {
         const newSessionId = sessionId || (crypto.randomBytes(8).toString('hex') + Date.now().toString(36));
         res.setHeader('Set-Cookie', [
             `fylo_session=${secretToken}; Path=/; HttpOnly; Max-Age=86400`,
@@ -557,7 +612,7 @@ app.use((req, res, next) => {
         return res.redirect('/');
     }
 
-    if (sessionToken === secretToken || headerToken === secretToken || (headerToken && headerToken.includes(secretToken))) {
+    if (sessionToken === secretToken || (currentWebPin && sessionToken === currentWebPin) || headerToken === secretToken || (headerToken && headerToken.includes(secretToken)) || (currentWebPin && headerToken && headerToken.includes(currentWebPin))) {
         return next();
     }
 
@@ -587,8 +642,8 @@ app.use((req, res, next) => {
                 <h2>⚡ Pair with Fylo PC</h2>
                 <p>To connect this browser to your Fylo host, please scan the QR code displayed on your PC screen, or enter the connection token below:</p>
                 <form class="token-form" method="GET" action="/">
-                    <input type="text" name="auth" placeholder="Paste connection token" required autofocus />
-                    <button type="submit">Connect to Host</button>
+                    <input type="text" name="auth" placeholder="Enter 6-digit Web PIN or Token..." required autofocus />
+                    <button type="submit">Connect & Share Files</button>
                 </form>
                 <div class="tip">💡 Tip: You can also use the Fylo Android App for seamless 1-tap connection.</div>
             </div>
@@ -622,6 +677,98 @@ app.get('/web-sharehub.html', (req, res) => {
 });
 
 // Serve other public assets safely
+// Web PIN sync endpoints
+app.post('/api/web-pin', (req, res) => {
+    const pin = (req.body && req.body.pin) ? String(req.body.pin).trim() : '';
+    if (pin && /^\d{6}$/.test(pin)) {
+        currentWebPin = pin;
+    }
+    res.json({ success: true, pin: currentWebPin });
+});
+
+app.get('/api/web-pin', (req, res) => {
+    res.json({ pin: currentWebPin });
+});
+
+// Device Security Authorization Endpoints
+app.get('/api/security/pending', (req, res) => {
+    res.json({ pending: Object.values(pendingAuthRequests) });
+});
+
+app.post('/api/security/authorize', (req, res) => {
+    const { id, ip, allow, remember } = req.body;
+    const targetKey = (ip || id || '').replace(/^::ffff:/, '').trim();
+    if (!targetKey) return res.status(400).json({ error: 'Missing target identifier' });
+
+    const pending = pendingAuthRequests[targetKey];
+    delete pendingAuthRequests[targetKey];
+
+    if (allow) {
+        authorizedDevices[targetKey] = true;
+        if (id) authorizedDevices[id] = true;
+        if (remember) {
+            savedDevices[targetKey] = {
+                id: id || targetKey,
+                name: pending?.name || 'Authorized Device',
+                model: pending?.model || 'Device',
+                ip: targetKey,
+                authorized: true,
+                trusted: true,
+                lastSeen: Date.now(),
+                autoConnect: true
+            };
+            persistSavedDevices();
+        }
+        console.log(`[Security] Authorized device ${targetKey} (${pending?.name || ''}), remember=${!!remember}`);
+        return res.json({ success: true, message: 'Device authorized' });
+    } else {
+        delete authorizedDevices[targetKey];
+        if (id) delete authorizedDevices[id];
+        blockedDevices[targetKey] = Date.now();
+        console.log(`[Security] Denied/blocked device ${targetKey}`);
+        return res.json({ success: true, message: 'Device denied' });
+    }
+});
+
+// Local WebRTC Signaling Room Fallback (100% offline LAN P2P)
+let localSignalingRooms = {};
+
+app.post('/api/webrtc/room/:pin/signal', (req, res) => {
+    const pin = req.params.pin;
+    const { peerId, signal } = req.body;
+    if (!localSignalingRooms[pin]) {
+        localSignalingRooms[pin] = { signals: [], updatedAt: Date.now() };
+    }
+    localSignalingRooms[pin].signals.push({
+        from: peerId,
+        signal: signal,
+        timestamp: Date.now()
+    });
+    localSignalingRooms[pin].updatedAt = Date.now();
+    // Prune old signals (> 60s)
+    if (localSignalingRooms[pin].signals.length > 50) {
+        localSignalingRooms[pin].signals = localSignalingRooms[pin].signals.slice(-30);
+    }
+    res.json({ success: true });
+});
+
+app.get('/api/webrtc/room/:pin/signals', (req, res) => {
+    const pin = req.params.pin;
+    const peerId = req.query.peer;
+    const since = parseInt(req.query.since || '0', 10);
+    const room = localSignalingRooms[pin];
+    if (!room) {
+        return res.json({ signals: [] });
+    }
+    const filtered = room.signals.filter(s => s.from !== peerId && s.timestamp > since);
+    res.json({ signals: filtered, now: Date.now() });
+});
+
+app.delete('/api/webrtc/room/:pin', (req, res) => {
+    delete localSignalingRooms[req.params.pin];
+    res.json({ success: true });
+});
+
 const publicDir = (electronApp && typeof electronApp.getAppPath === 'function') 
     ? path.join(electronApp.getAppPath(), 'public') 
     : path.join(__dirname, 'public');
@@ -1405,6 +1552,11 @@ app.post('/api/mobile/connect', (req, res) => {
                        req.ip.includes('192.168.') || req.ip.includes('10.') || req.ip.includes('172.') ||
                        req.ip.includes('::ffff:192.168.') || req.ip.includes('::ffff:10.');
 
+    const isSavedAndTrusted = (canonicalId && savedDevices[canonicalId] && savedDevices[canonicalId].authorized !== false);
+    const isValidToken = (authToken === secretToken) || (currentWebPin && authToken === currentWebPin);
+    if (!isValidToken && !isSavedAndTrusted && !isLocalHostIp(req.ip)) {
+        return res.status(403).json({ error: 'Device pairing authorization required. Please scan PC QR code or enter Web PIN.' });
+    }
     if (authToken && authToken !== secretToken && authToken !== 'lan' && !isLocalReq) {
         return res.status(403).json({ error: 'Invalid authentication token. Please scan the QR code on PC.' });
     }
@@ -2398,14 +2550,14 @@ function getQuickAccessShortcuts() {
     return shortcuts;
 }
 
-app.get('/api/pc/explorer/quick-access', (req, res) => {
+app.get('/api/pc/explorer/quick-access', requireClientAuthorized, (req, res) => {
     res.json({
         drives: getWindowsDrives(),
         shortcuts: getQuickAccessShortcuts()
     });
 });
 
-app.get('/api/pc/explorer/list', (req, res) => {
+app.get('/api/pc/explorer/list', requireClientAuthorized, (req, res) => {
     let targetPath = req.query.path;
     if (!targetPath || targetPath === 'undefined' || targetPath === 'undefined\\') {
         targetPath = path.join(os.homedir(), 'Downloads');
@@ -2484,7 +2636,7 @@ app.get('/api/pc/explorer/list', (req, res) => {
     }
 });
 
-app.get('/api/pc/explorer/file', (req, res) => {
+app.get('/api/pc/explorer/file', requireClientAuthorized, (req, res) => {
     const filePath = req.query.path;
     const download = req.query.download === '1';
 
