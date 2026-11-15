@@ -7764,9 +7764,9 @@
             <span id="phone-selected-text">files selected</span>
         </div>
         <div class="selection-actions">
-            <button id="phone-download-selected-btn" class="btn btn-accent">
+            <button id="phone-download-selected-btn" class="btn btn-accent" title="Save selected files directly to PC Downloads folder">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px; height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span>Download Selected (Zip)</span>
+                <span>Save Selected to PC</span>
             </button>
             <button id="phone-clear-selection-btn" class="btn" style="background: rgba(255, 255, 255, 0.08); border-radius: 12px; color: #fff;">Clear</button>
         </div>
@@ -10410,7 +10410,7 @@ function iconLabel(ext, type) {
                     const isFolder = f.type === 'folder';
                     const folderBadge = isFolder ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:700;color:var(--accent);background:var(--accent-bg);padding:2px 8px;border-radius:8px;margin-left:8px;">📁 ${f.fileCount || 0} files</span>` : '';
                     const iconBg = isFolder ? 'linear-gradient(135deg, #2563eb, #0ea5e9)' : colorFor(f.name);
-                    const downloadLabel = isFolder ? '⬇️ .zip' : '⬇️ Save';
+                    const downloadLabel = '⬇️ Save';
                     const displayName = isFolder ? f.name : f.name;
 
                     const fileIconMarkup = isFolder
@@ -12907,7 +12907,7 @@ function iconLabel(ext, type) {
             renderPhoneFiles();
         });
 
-        // Batch Download Selected Items
+        // Batch Download Selected Items directly to PC
         $('#phone-download-selected-btn')?.addEventListener('click', async () => {
             if (phoneSelectedPaths.size === 0) return;
             const paths = Array.from(phoneSelectedPaths);
@@ -12915,7 +12915,7 @@ function iconLabel(ext, type) {
             const btn = $('#phone-download-selected-btn');
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = `<span>Preparing ${paths.length} files...</span>`;
+            btn.innerHTML = `<span>Preparing ${paths.length} file(s)...</span>`;
 
             try {
                 const targetPhoneId = currentPhoneId || (mobileDeviceList.find(d => d.online)?.id) || (mobileDeviceList[0]?.id);
@@ -12946,31 +12946,34 @@ function iconLabel(ext, type) {
                             console.error('Batch download item error:', e);
                         }
                     }
-                    showToast(`✅ Saved ${successCount} of ${paths.length} file(s) to Downloads!`, 'download');
+                    showToast(`✅ Saved ${successCount} of ${paths.length} file(s) directly to Downloads!`, 'download');
                     phoneSelectedPaths.clear();
                     renderPhoneFiles();
                 } else {
-                    const link = document.createElement('a');
-                    link.href = `/api/mobile/fs/download-batch`;
-                    // Fetch post to get zip blob
-                    const res = await apiFetch('/api/mobile/fs/download-batch', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ deviceId: targetPhoneId, paths })
-                    });
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    link.href = url;
-                    link.download = `fylo-batch-${Date.now().toString(36)}.zip`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
+                    let successCount = 0;
+                    for (let i = 0; i < paths.length; i++) {
+                        const p = paths[i];
+                        const fileName = p.split('/').pop().split('\\').pop();
+                        btn.innerHTML = `<span>Saving (${i + 1}/${paths.length}) ${escapeHtml(fileName)}...</span>`;
+                        try {
+                            const link = document.createElement('a');
+                            link.href = `/api/mobile/fs/file?deviceId=${encodeURIComponent(targetPhoneId)}&path=${encodeURIComponent(p)}&download=1`;
+                            link.download = fileName;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            successCount++;
+                            await new Promise(r => setTimeout(r, 350));
+                        } catch (e) {
+                            console.error('Download item error:', e);
+                        }
+                    }
+                    showToast(`✅ Downloaded ${successCount} of ${paths.length} file(s) directly!`, 'download');
                     phoneSelectedPaths.clear();
                     renderPhoneFiles();
                 }
             } catch (err) {
-                showToast(`⚠️ Batch download failed: ${err.message}`, 'error');
+                showToast(`⚠️ Direct save failed: ${err.message}`, 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
