@@ -2341,7 +2341,7 @@ export default function App() {
           'X-Auth-Token': token ? token.trim() : '',
         },
         body: JSON.stringify(payload),
-      }, webPin ? 2000 : 7000); // Fast 2s timeout when Web P2P fallback PIN is available!
+      }, webPin ? 4000 : 7000);
 
       const roundTrip = Date.now() - startTime;
       const data = await safeJson(res);
@@ -2400,7 +2400,8 @@ export default function App() {
           }
         } catch (e2) {}
 
-        showToast(`⚠️ Pairing Failed: ${data?.error || 'PC rejected pairing request.'}`);
+        const errMsg = data?.error || (res?.status === 403 ? 'PC pairing authorization required.' : (res?.status ? `PC response error (${res.status})` : 'PC unreachable.'));
+        showToast(`⚠️ Pairing Failed: ${errMsg}`);
       }
     } catch (e) {
       // Fallback check for Phone peer if connection error

@@ -260,6 +260,8 @@ function probeAndActivateDevice(device) {
                             savedDevices[device.id].lastSeen = Date.now();
                             persistSavedDevices();
                         }
+                        authorizedDevices[device.id] = true;
+                        if (device.ip) authorizedDevices[device.ip] = true;
                         if (typeof wakeServerFromDormancy === 'function') {
                             wakeServerFromDormancy(phoneName);
                         }
@@ -1545,122 +1547,141 @@ app.patch('/api/settings', (req, res) => {
 
 // Register mobile device on QR scan handshake
 app.post('/api/mobile/connect', (req, res) => {
-    const { deviceId, deviceName, model, ip, port, authToken, readOnly, storage, battery, allowFullPhoneAccess } = req.body;
+    try {
+        const { deviceId, deviceName, model, ip, port, authToken, readOnly, storage, battery, allowFullPhoneAccess } = req.body || {};
 
-    // Validate token: allow if matched or on local network
-    const isLocalReq = req.ip === '127.0.0.1' || req.ip === '::1' || 
-                       req.ip.includes('192.168.') || req.ip.includes('10.') || req.ip.includes('172.') ||
-                       req.ip.includes('::ffff:192.168.') || req.ip.includes('::ffff:10.');
-
-    const isSavedAndTrusted = (canonicalId && savedDevices[canonicalId] && savedDevices[canonicalId].authorized !== false);
-    const isValidToken = (authToken === secretToken) || (currentWebPin && authToken === currentWebPin);
-    if (!isValidToken && !isSavedAndTrusted && !isLocalHostIp(req.ip)) {
-        return res.status(403).json({ error: 'Device pairing authorization required. Please scan PC QR code or enter Web PIN.' });
-    }
-    if (authToken && authToken !== secretToken && authToken !== 'lan' && !isLocalReq) {
-        return res.status(403).json({ error: 'Invalid authentication token. Please scan the QR code on PC.' });
-    }
-
-    if (!deviceId) {
-        return res.status(400).json({ error: 'Missing device information' });
-    }
-
-    // Resolve real client IP: if mobile provided a valid LAN IP, use it. Otherwise use socket remoteAddress.
-    let resolvedIp = ip;
-    const socketRemote = (req.socket.remoteAddress || req.ip || '').replace(/^::ffff:/, '');
-    if (!resolvedIp || resolvedIp === '127.0.0.1' || resolvedIp === 'Detecting...' || resolvedIp.startsWith('127.')) {
-        resolvedIp = socketRemote || '127.0.0.1';
-    }
-
-    const phonePort = port ? parseInt(port, 10) : 8080;
-    const phoneName = deviceName || model || 'Android Phone';
-
-    // DEDUPLICATION: Look for existing saved or mobile device with the same IP or (model + name)
-    let canonicalId = deviceId;
-    for (const [existingId, dev] of Object.entries(savedDevices)) {
-        if (existingId === deviceId || (resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
-            canonicalId = existingId;
-            break;
+        if (!deviceId) {
+            return res.status(400).json({ error: 'Missing device information' });
         }
-    }
-    if (canonicalId === deviceId) {
-        for (const [existingId, dev] of Object.entries(mobileDevices)) {
+
+        // Resolve real client IP: if mobile provided a valid LAN IP, use it. Otherwise use socket remoteAddress.
+        let resolvedIp = ip;
+        const socketRemote = (req.socket.remoteAddress || req.ip || '').replace(/^::ffff:/, '');
+        if (!resolvedIp || resolvedIp === '127.0.0.1' || resolvedIp === 'Detecting...' || resolvedIp.startsWith('127.')) {
+            resolvedIp = socketRemote || '127.0.0.1';
+        }
+
+        const phonePort = port ? parseInt(port, 10) : 8080;
+        const phoneName = deviceName || model || 'Android Phone';
+
+        // DEDUPLICATION: Look for existing saved or mobile device with the same IP or (model + name)
+        let canonicalId = deviceId;
+        for (const [existingId, dev] of Object.entries(savedDevices)) {
             if (existingId === deviceId || (resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
                 canonicalId = existingId;
                 break;
             }
         }
-    }
-
-    // Purge any other duplicate IDs matching the same physical phone
-    for (const id of Object.keys(savedDevices)) {
-        if (id !== canonicalId) {
-            const dev = savedDevices[id];
-            if ((resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
-                delete savedDevices[id];
+        if (canonicalId === deviceId) {
+            for (const [existingId, dev] of Object.entries(mobileDevices)) {
+                if (existingId === deviceId || (resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
+                    canonicalId = existingId;
+                    break;
+                }
             }
         }
-    }
-    for (const id of Object.keys(mobileDevices)) {
-        if (id !== canonicalId) {
-            const dev = mobileDevices[id];
-            if ((resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
-                delete mobileDevices[id];
+
+        // Purge any other duplicate IDs matching the same physical phone
+        for (const id of Object.keys(savedDevices)) {
+            if (id !== canonicalId) {
+                const dev = savedDevices[id];
+                if ((resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
+                    delete savedDevices[id];
+                }
             }
         }
-    }
-    for (const id of Object.keys(devices)) {
-        if (id !== canonicalId && !devices[id].isHost) {
-            const dev = devices[id];
-            if ((resolvedIp && dev.ip === resolvedIp) || (phoneName && dev.name === phoneName)) {
-                delete devices[id];
+        for (const id of Object.keys(mobileDevices)) {
+            if (id !== canonicalId) {
+                const dev = mobileDevices[id];
+                if ((resolvedIp && dev.ip === resolvedIp) || (model && dev.model === model && phoneName && dev.name === phoneName)) {
+                    delete mobileDevices[id];
+                }
             }
         }
+        for (const id of Object.keys(devices)) {
+            if (id !== canonicalId && !devices[id].isHost) {
+                const dev = devices[id];
+                if ((resolvedIp && dev.ip === resolvedIp) || (phoneName && dev.name === phoneName)) {
+                    delete devices[id];
+                }
+            }
+        }
+
+        // Validate token & authorization: allow if matched, or saved/trusted, or on local network
+        const isLocalReq = isLocalHostIp(req.ip) ||
+                           req.ip === '127.0.0.1' || req.ip === '::1' || 
+                           req.ip.includes('192.168.') || req.ip.includes('10.') || req.ip.includes('172.') ||
+                           req.ip.includes('::ffff:192.168.') || req.ip.includes('::ffff:10.') ||
+                           (resolvedIp && (resolvedIp.startsWith('192.168.') || resolvedIp.startsWith('10.') || resolvedIp.startsWith('172.')));
+
+        const isSavedAndTrusted = (canonicalId && savedDevices[canonicalId] && savedDevices[canonicalId].authorized !== false && !savedDevices[canonicalId].blocked) ||
+                                  (resolvedIp && savedDevices[resolvedIp] && savedDevices[resolvedIp].authorized !== false && !savedDevices[resolvedIp].blocked) ||
+                                  (authorizedDevices[canonicalId]) ||
+                                  (resolvedIp && authorizedDevices[resolvedIp]);
+
+        const isValidToken = (authToken && (authToken === secretToken || (currentWebPin && authToken === currentWebPin) || authToken === 'lan'));
+
+        if (!isValidToken && !isSavedAndTrusted && !isLocalReq) {
+            return res.status(403).json({ error: 'Device pairing authorization required. Please scan PC QR code or enter Web PIN.' });
+        }
+        if (authToken && authToken !== secretToken && authToken !== 'lan' && (!currentWebPin || authToken !== currentWebPin) && !isLocalReq) {
+            return res.status(403).json({ error: 'Invalid authentication token. Please scan the QR code on PC.' });
+        }
+
+        mobileDevices[canonicalId] = {
+            id: canonicalId,
+            name: phoneName,
+            model: model || 'Android Device',
+            ip: resolvedIp,
+            port: phonePort,
+            readOnly: readOnly !== undefined ? readOnly : true,
+            allowFullPhoneAccess: allowFullPhoneAccess !== undefined ? !!allowFullPhoneAccess : true,
+            storage: storage || { total: 0, free: 0 },
+            battery: battery !== undefined ? battery : null,
+            lastActive: Date.now()
+        };
+
+        // Mirror to general devices map for global dashboard & devices view
+        devices[canonicalId] = {
+            id: canonicalId,
+            name: phoneName,
+            kind: 'android',
+            isHost: false,
+            ip: resolvedIp,
+            lastActive: Date.now()
+        };
+
+        // Authorize device for security checks (file explorer, downloads, uploads)
+        authorizedDevices[canonicalId] = true;
+        if (resolvedIp) authorizedDevices[resolvedIp] = true;
+
+        // Persist to saved devices (only one single entry per phone)
+        savedDevices[canonicalId] = {
+            id: canonicalId,
+            name: phoneName,
+            model: model || 'Android Device',
+            ip: resolvedIp,
+            port: phonePort,
+            authorized: true,
+            trusted: true,
+            lastSeen: Date.now(),
+            autoConnect: savedDevices[canonicalId]?.autoConnect !== undefined ? savedDevices[canonicalId].autoConnect : true
+        };
+        persistSavedDevices();
+        refreshAuthorizedDevices();
+
+        console.log(`[Fylo v4] Mobile connected & authorized: ${phoneName} (${resolvedIp}:${phonePort}) [ID: ${canonicalId}], Read-Only: ${readOnly}, Full Phone Access: ${mobileDevices[canonicalId].allowFullPhoneAccess}`);
+        res.json({ 
+            success: true, 
+            message: 'Paired with Fylo PC', 
+            hostIp: getActiveIp(),
+            hostName: os.hostname(),
+            authToken: secretToken 
+        });
+    } catch (err) {
+        console.error('[Fylo v4] Error during mobile connect:', err);
+        res.status(500).json({ error: 'Server error during pairing: ' + err.message });
     }
-
-    mobileDevices[canonicalId] = {
-        id: canonicalId,
-        name: phoneName,
-        model: model || 'Android Device',
-        ip: resolvedIp,
-        port: phonePort,
-        readOnly: readOnly !== undefined ? readOnly : true,
-        allowFullPhoneAccess: allowFullPhoneAccess !== undefined ? !!allowFullPhoneAccess : true,
-        storage: storage || { total: 0, free: 0 },
-        battery: battery !== undefined ? battery : null,
-        lastActive: Date.now()
-    };
-
-    // Mirror to general devices map for global dashboard & devices view
-    devices[canonicalId] = {
-        id: canonicalId,
-        name: phoneName,
-        kind: 'android',
-        isHost: false,
-        ip: resolvedIp,
-        lastActive: Date.now()
-    };
-
-    // Persist to saved devices (only one single entry per phone)
-    savedDevices[canonicalId] = {
-        id: canonicalId,
-        name: phoneName,
-        model: model || 'Android Device',
-        ip: resolvedIp,
-        port: phonePort,
-        lastSeen: Date.now(),
-        autoConnect: savedDevices[canonicalId]?.autoConnect !== undefined ? savedDevices[canonicalId].autoConnect : true
-    };
-    persistSavedDevices();
-
-    console.log(`[Fylo v4] Mobile connected: ${phoneName} (${resolvedIp}:${phonePort}) [ID: ${canonicalId}], Read-Only: ${readOnly}, Full Phone Access: ${mobileDevices[canonicalId].allowFullPhoneAccess}`);
-    res.json({ 
-        success: true, 
-        message: 'Paired with Fylo PC', 
-        hostIp: getActiveIp(),
-        hostName: os.hostname(),
-        authToken: secretToken 
-    });
 });
 
 // Get connected mobile devices
